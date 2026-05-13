@@ -1,0 +1,2194 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#060d1a">
+<title>설악산 현장관리</title>
+<!-- ★ 카카오 API 키: 아래 값만 교체 (developers.kakao.com → JavaScript 키) ★ -->
+<script>
+var KAKAO_KEY='YOUR_KAKAO_KEY_HERE';
+(function(){var s=document.createElement('script');s.src='//dapi.kakao.com/v2/maps/sdk.js?appkey='+KAKAO_KEY+'&libraries=services&autoload=false';s.onload=function(){kakao.maps.load(function(){window._KR=true;if(window._KCB)window._KCB();});};document.head.appendChild(s);})();
+</script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:#060d1a;font-family:-apple-system,'Noto Sans KR',sans-serif;}
+#app{max-width:430px;margin:0 auto;height:100dvh;display:flex;flex-direction:column;background:#08111f;overflow:hidden;position:relative;}
+
+/* ─── 상태바·헤더 ─── */
+.sbar{background:#040a16;padding:8px 18px 5px;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#3a6a8a;flex-shrink:0;}
+.ahdr{background:#040a16;padding:9px 14px 10px;flex-shrink:0;display:none;border-bottom:1px solid rgba(255,255,255,.05);}
+.ahdr-row{display:flex;justify-content:space-between;align-items:center;}
+.ahdr-title{font-size:14px;font-weight:700;color:#e0edf8;display:flex;align-items:center;gap:6px;}
+.back-btn{background:none;border:none;color:#4fa8d0;font-size:12px;cursor:pointer;font-weight:600;padding:3px 8px;border-radius:6px;}
+
+/* ─── 벨 ─── */
+.bell-wrap{position:relative;}
+.bell-btn{background:none;border:none;color:#c0d8ec;font-size:19px;cursor:pointer;padding:3px;}
+.bell-cnt{position:absolute;top:-3px;right:-3px;background:#c0392b;color:#fff;font-size:9px;font-weight:700;min-width:15px;height:15px;border-radius:8px;display:none;align-items:center;justify-content:center;border:2px solid #040a16;padding:0 2px;}
+.bell-cnt.on{display:flex;}
+
+/* ─── 알림 패널 ─── */
+.noti-bg{position:absolute;inset:0;background:rgba(0,0,0,.65);z-index:180;display:none;}
+.noti-bg.on{display:block;}
+.noti-panel{position:absolute;top:0;right:0;width:88%;max-width:340px;height:100%;background:#0b1c30;z-index:190;transform:translateX(100%);transition:transform .25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;box-shadow:-6px 0 28px rgba(0,0,0,.7);}
+.noti-panel.on{transform:translateX(0);}
+.noti-phdr{background:#040a16;padding:12px 15px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;}
+.noti-ptitle{color:#e0edf8;font-size:14px;font-weight:700;}
+.noti-pclose{background:none;border:none;color:#4a7090;font-size:21px;cursor:pointer;}
+.noti-scroll{flex:1;overflow-y:auto;padding:7px;}
+.ni{display:flex;gap:9px;padding:10px 11px;border-radius:9px;margin-bottom:4px;border-left:3px solid;}
+.ni.unread{background:rgba(79,168,208,.06);border-color:#4fa8d0;}
+.ni.read{background:rgba(255,255,255,.02);border-color:transparent;}
+.ni-ico{font-size:18px;flex-shrink:0;}.ni-msg{font-size:12px;color:#b8d4e8;line-height:1.4;}.ni-t{font-size:10px;color:rgba(255,255,255,.25);margin-top:2px;}
+.noti-acts{display:flex;gap:6px;padding:7px;border-top:1px solid rgba(255,255,255,.05);flex-shrink:0;}
+.noti-act-btn{flex:1;background:rgba(255,255,255,.05);border:none;color:rgba(255,255,255,.4);border-radius:7px;padding:8px;font-size:11px;cursor:pointer;}
+.noti-empty{text-align:center;padding:32px;color:rgba(255,255,255,.22);font-size:12px;}
+
+/* ─── 뷰 ─── */
+.vc{flex:1;position:relative;overflow:hidden;}
+.view{position:absolute;inset:0;display:none;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.view.on{display:flex;}
+.bpad{padding:12px 12px 80px;display:flex;flex-direction:column;gap:9px;}
+.ok{color:#27ae60;}.warn{color:#e67e22;}.bad{color:#c0392b;}.blu{color:#4fa8d0;}.muted{color:rgba(255,255,255,.3);}
+
+/* ═══ 홈 ═══ */
+#v-home{background:#060d1a;overflow:hidden;}
+.home-inner{display:flex;flex-direction:column;height:100%;padding:8px 12px 6px;}
+.home-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;flex-shrink:0;}
+.home-brand-sub{font-size:10px;color:#2a5070;font-weight:600;letter-spacing:.8px;text-transform:uppercase;}
+.home-brand-title{font-size:19px;font-weight:800;color:#e0edf8;letter-spacing:-.3px;}
+.home-date{font-size:10px;color:#2a5070;margin-top:2px;}
+.my-card{background:#0b1c30;border-radius:11px;padding:9px 12px;border:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:10px;cursor:pointer;flex-shrink:0;margin-bottom:7px;}
+.my-avatar{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#1a4a6e,#0d3050);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.my-info{flex:1;min-width:0;}
+.my-name{font-size:13px;font-weight:700;color:#e0edf8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.my-sub{font-size:10px;color:#3a6a8a;margin-top:1px;}
+.my-change-btn{background:rgba(79,168,208,.1);border:1px solid rgba(79,168,208,.22);color:#4fa8d0;padding:4px 9px;border-radius:6px;font-size:11px;font-weight:600;flex-shrink:0;}
+.home-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;flex-shrink:0;margin-bottom:7px;}
+.hstat{background:#0b1c30;border-radius:10px;padding:9px;border:1px solid rgba(255,255,255,.05);cursor:pointer;}
+.hstat-num{font-size:19px;font-weight:800;margin-bottom:1px;}
+.hstat-lbl{font-size:10px;color:#3a6a8a;}
+.hstat-sub{font-size:9px;margin-top:2px;}
+.home-menu{display:grid;grid-template-columns:1fr 1fr;gap:6px;flex:1;min-height:0;}
+/* 하단에 설정/관리자 버튼 추가: 5,6번째는 하단 행 */
+.home-menu-bottom{display:grid;grid-template-columns:1fr 1fr;gap:6px;flex-shrink:0;margin-top:6px;}
+.mbtn{border-radius:11px;padding:11px 11px 10px;font-weight:700;color:#fff;border:none;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;text-align:left;transition:transform .1s;overflow:hidden;min-height:0;}
+.mbtn:active{transform:scale(.96);}
+.mbtn-ico{font-size:20px;margin-bottom:4px;}
+.mbtn-title{font-size:12px;font-weight:700;line-height:1.2;}
+.mbtn-desc{font-size:9px;font-weight:400;opacity:.72;margin-top:2px;line-height:1.3;}
+.mb-red{background:linear-gradient(145deg,#7a1818,#601010);}
+.mb-teal{background:linear-gradient(145deg,#0c4838,#082e23);}
+.mb-navy{background:linear-gradient(145deg,#112e50,#0a1e36);}
+.mb-slate{background:#0b1c30;border:1px solid rgba(255,255,255,.09);}
+.mb-gray{background:#111a28;border:1px solid rgba(255,255,255,.07);}
+.mb-purple{background:linear-gradient(145deg,#2d1b4e,#1e1035);}
+/* 설정/관리자는 작게 */
+.mbtn-sm{border-radius:10px;padding:9px 11px;font-weight:600;color:#c0d8ec;border:1px solid rgba(255,255,255,.07);cursor:pointer;display:flex;align-items:center;gap:8px;text-align:left;transition:transform .1s;background:#0b1c30;}
+.mbtn-sm:active{transform:scale(.97);}
+.mbtn-sm-ico{font-size:16px;flex-shrink:0;}
+.mbtn-sm-text{flex:1;}
+.mbtn-sm-title{font-size:12px;font-weight:600;color:#e0edf8;}
+.mbtn-sm-desc{font-size:10px;color:#3a6a8a;margin-top:1px;}
+
+/* ═══ 지도 ═══ */
+.mapwrap{position:absolute;inset:0;}
+.kakaomap{position:absolute;inset:0;z-index:1;}
+.fab{position:absolute;bottom:14px;right:13px;width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:21px;box-shadow:0 4px 14px rgba(0,0,0,.6);border:none;cursor:pointer;z-index:10;}
+.fab2{position:absolute;bottom:14px;left:13px;background:#7a1818;color:#fff;border:none;border-radius:10px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;z-index:10;box-shadow:0 3px 10px rgba(0,0,0,.5);}
+.fab-gps{position:absolute;bottom:72px;right:13px;width:40px;height:40px;border-radius:50%;background:#0b1c30;color:#4fa8d0;display:flex;align-items:center;justify-content:center;font-size:16px;border:1.5px solid rgba(79,168,208,.35);cursor:pointer;z-index:10;}
+.map-ctrl{position:absolute;top:10px;left:10px;background:rgba(11,28,48,.85);color:#4fa8d0;border:1px solid rgba(79,168,208,.22);border-radius:7px;padding:5px 9px;font-size:11px;font-weight:600;cursor:pointer;z-index:10;}
+.nomap-banner{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(11,28,48,.92);color:#c0d8ec;padding:8px 14px;border-radius:8px;font-size:11px;z-index:12;border:1px solid rgba(79,168,208,.2);white-space:nowrap;display:none;}
+.mpin{width:34px;height:34px;border-radius:50%;background:#0b1c30;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;border:2.5px solid;box-shadow:0 3px 8px rgba(0,0,0,.8);}
+.p-ok{border-color:#27ae60;}.p-warn{border-color:#e67e22;}.p-bad{border-color:#c0392b;}
+.p-acc{border-color:#c0392b;background:#c0392b;color:#fff;}.p-rock{border-color:#7d3c98;background:#7d3c98;color:#fff;}
+.p-tree{border-color:#ca6f1e;background:#ca6f1e;color:#fff;}.p-fire{border-color:#a93226;background:#a93226;color:#fff;}
+.p-haz{border-color:#e67e22;background:#e67e22;color:#fff;}.p-etc{border-color:#5d6d7e;background:#4a5568;color:#fff;}.p-done{opacity:.4;}
+.p-me{border-color:#4fa8d0;background:#4fa8d0;color:#fff;}
+@keyframes blink{0%,100%{box-shadow:0 0 4px 2px rgba(192,57,43,.5);}50%{transform:scale(1.2);box-shadow:0 0 16px 6px rgba(192,57,43,.85);}}
+.blink{animation:blink .95s infinite;}
+.dbcard{position:absolute;bottom:-300px;left:9px;right:9px;background:#0b1c30;border-radius:14px;padding:13px;border:1px solid rgba(79,168,208,.14);box-shadow:0 -4px 20px rgba(0,0,0,.7);transition:bottom .25s cubic-bezier(.4,0,.2,1);z-index:15;}
+.dbcard.on{bottom:12px;}
+.dbhandle{width:28px;height:3px;background:rgba(255,255,255,.1);border-radius:2px;margin:0 auto 10px;}
+.dbclose{position:absolute;top:10px;right:10px;background:none;border:none;color:rgba(255,255,255,.22);font-size:18px;cursor:pointer;}
+.dbtitle{font-size:14px;font-weight:700;color:#e0edf8;margin-bottom:4px;padding-right:20px;}
+.dbmeta{font-size:11px;color:#3a6a8a;line-height:1.7;}
+.dbbtns{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+
+/* ═══ 공통 버튼 ═══ */
+.btn{padding:10px 14px;border-radius:8px;border:none;font-weight:600;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:5px;}
+.btn:active{opacity:.8;}
+.btn-blue{background:#1a4a6e;color:#fff;}.btn-red{background:#7b1c1c;color:#fff;}
+.btn-green{background:#0d5040;color:#fff;}.btn-ghost{background:rgba(255,255,255,.07);color:#c0d8ec;}
+.btn-orange{background:#7a3800;color:#fff;}
+.btn-submit{width:100%;padding:12px;border-radius:9px;border:none;font-weight:700;font-size:13px;cursor:pointer;margin-top:4px;}
+
+/* ═══ 리스트 ═══ */
+.lcard{background:#0b1c30;border-radius:10px;padding:11px 12px;display:flex;align-items:center;gap:10px;border:.5px solid rgba(255,255,255,.06);cursor:pointer;margin-bottom:5px;}
+.lcard:active{background:#112030;}
+.lico{width:38px;height:38px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;background:#060d1a;border:1.5px solid;flex-shrink:0;}
+.linfo{flex:1;overflow:hidden;}
+.lname{font-size:13px;color:#e0edf8;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lmeta{font-size:10px;color:rgba(255,255,255,.3);margin-top:2px;line-height:1.5;}
+.lbadge{font-size:10px;font-weight:700;padding:3px 7px;border-radius:20px;flex-shrink:0;white-space:nowrap;}
+
+/* ═══ 필터바 ═══ */
+.fbar{display:flex;gap:5px;padding:9px 12px 5px;overflow-x:auto;flex-shrink:0;}
+.fbar::-webkit-scrollbar{display:none;}
+.ftag{padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid rgba(255,255,255,.1);color:rgba(255,255,255,.38);background:transparent;white-space:nowrap;flex-shrink:0;transition:all .15s;}
+.ftag.on{border-color:rgba(79,168,208,.65);color:#4fa8d0;background:rgba(79,168,208,.09);}
+
+/* ═══ 카드/섹션 ═══ */
+.scard{background:#0b1c30;border-radius:10px;padding:12px;border:.5px solid rgba(255,255,255,.07);}
+.stitle{font-size:11px;color:#4fa8d0;font-weight:700;margin-bottom:8px;}
+.sec-label{font-size:10px;color:#3a6a8a;font-weight:700;letter-spacing:.4px;padding:4px 0 5px;}
+
+/* ═══ 통계 ═══ */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.stat-box{background:#0b1c30;border-radius:10px;padding:13px 9px;text-align:center;border:1px solid rgba(255,255,255,.06);}
+.stat-num{font-size:20px;font-weight:800;color:#e0edf8;margin-bottom:2px;}
+.stat-lbl{font-size:10px;color:#3a6a8a;}
+.type-row{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.03);margin-bottom:4px;cursor:pointer;}
+.type-row:active{background:rgba(79,168,208,.07);}
+.t-ico{font-size:17px;width:20px;flex-shrink:0;}.t-lbl{flex:1;font-size:12px;color:#c0d8ec;}.t-cnt{font-size:12px;font-weight:700;}.t-arr{font-size:14px;color:rgba(255,255,255,.22);}
+
+/* ═══ 보고서 / 타임라인 ═══ */
+.phase-bar{display:flex;background:#040a16;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.06);overflow-x:auto;}
+.phase-bar::-webkit-scrollbar{display:none;}
+.ph{flex:1;min-width:44px;padding:7px 2px;text-align:center;font-size:9px;color:rgba(255,255,255,.26);cursor:pointer;border-bottom:2px solid transparent;}
+.ph.done{color:#27ae60;border-bottom-color:#27ae60;}.ph.active{color:#4fa8d0;border-bottom-color:#4fa8d0;}
+.ph-dot{width:4px;height:4px;border-radius:50%;background:currentColor;margin:0 auto 3px;}
+.rcontent{flex:1;overflow-y:auto;padding:12px 12px 80px;}
+.rsec{background:#0b1c30;border-radius:10px;padding:12px;margin-bottom:8px;border:.5px solid rgba(255,255,255,.07);}
+.rsec-t{font-size:11px;color:#4fa8d0;font-weight:700;margin-bottom:8px;}
+
+/* 타임라인 */
+.timeline{position:relative;padding-left:20px;}
+.timeline::before{content:'';position:absolute;left:6px;top:0;bottom:0;width:2px;background:rgba(79,168,208,.2);border-radius:1px;}
+.tl-item{position:relative;margin-bottom:14px;}
+.tl-dot{position:absolute;left:-17px;top:3px;width:10px;height:10px;border-radius:50%;border:2px solid #4fa8d0;background:#08111f;}
+.tl-dot.done{background:#4fa8d0;}
+.tl-dot.active{background:#27ae60;border-color:#27ae60;box-shadow:0 0 6px rgba(39,174,96,.5);}
+.tl-time{font-size:10px;color:#3a6a8a;margin-bottom:3px;}
+.tl-box{background:#060d1a;border-radius:8px;padding:10px 11px;border:1px solid rgba(79,168,208,.12);}
+.tl-title{font-size:12px;font-weight:700;color:#e0edf8;margin-bottom:4px;}
+.tl-body{font-size:11px;color:#7a9cb8;line-height:1.7;}
+.tl-diff{background:rgba(39,174,96,.08);border:1px solid rgba(39,174,96,.2);border-radius:7px;padding:8px 10px;margin-top:7px;}
+.tl-diff-t{font-size:10px;color:#27ae60;font-weight:700;margin-bottom:4px;}
+.tl-diff-row{font-size:11px;color:#b8d4e8;padding:2px 0;}
+
+/* ═══ 폼 ═══ */
+.fg{margin-bottom:11px;}.fg:last-child{margin-bottom:0;}
+.fl{display:block;font-size:10px;color:#3a6a8a;margin-bottom:4px;font-weight:600;}
+.fi,.fsel,.fta{width:100%;background:#060d1a;border:1px solid rgba(255,255,255,.09);color:#e0edf8;padding:9px 11px;border-radius:8px;font-size:12px;outline:none;font-family:inherit;}
+.fi:focus,.fsel:focus,.fta:focus{border-color:rgba(79,168,208,.5);}
+.fi.ro{background:#040a14;color:#3a6a8a;border-color:transparent;}
+.fta{resize:none;line-height:1.6;}
+.frow{display:flex;gap:6px;}.frow .fg{flex:1;}
+.gps-row{display:flex;gap:5px;}
+.sm-btn{background:rgba(79,168,208,.07);color:#4fa8d0;border:1px solid rgba(79,168,208,.18);border-radius:7px;padding:0 8px;font-size:10px;cursor:pointer;white-space:nowrap;font-weight:600;flex-shrink:0;height:36px;}
+.pills{display:flex;flex-wrap:wrap;gap:5px;}
+.pill{padding:5px 10px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid rgba(255,255,255,.1);color:rgba(255,255,255,.38);background:transparent;transition:all .15s;}
+.pill.on{border-color:rgba(79,168,208,.65);color:#4fa8d0;background:rgba(79,168,208,.09);}
+.chk-grid{display:grid;grid-template-columns:1fr 1fr;gap:5px;}
+.chk-item{display:flex;align-items:center;gap:6px;padding:7px 9px;background:rgba(255,255,255,.03);border-radius:7px;cursor:pointer;border:1px solid transparent;}
+.chk-item.on{background:rgba(79,168,208,.07);border-color:rgba(79,168,208,.2);}
+.chk-box{width:16px;height:16px;border-radius:4px;border:1.5px solid rgba(255,255,255,.15);flex-shrink:0;}
+.chk-box.on{background:#1a4a6e;border-color:#1a4a6e;}
+.chk-txt{font-size:11px;color:#b8d4e8;}
+.photo-slot{width:100%;height:90px;background:#060d1a;border:1.5px dashed rgba(79,168,208,.2);border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#3a6a8a;font-size:11px;text-align:center;line-height:1.7;overflow:hidden;}
+.photo-slot img{width:100%;height:100%;object-fit:cover;}
+.info-btn{background:rgba(79,168,208,.07);border:1px solid rgba(79,168,208,.18);color:#4fa8d0;border-radius:5px;padding:2px 6px;font-size:10px;cursor:pointer;margin-left:4px;}
+
+/* ─── 위키 ─── */
+.wiki-search{background:#0b1c30;border:1px solid rgba(79,168,208,.22);color:#e0edf8;padding:10px 13px;border-radius:9px;width:100%;font-size:13px;outline:none;}
+.wiki-search:focus{border-color:rgba(79,168,208,.5);}
+.hot-wrap{margin:5px 0;}
+.hot-title{font-size:10px;color:#3a6a8a;font-weight:600;margin-bottom:4px;}
+.hot-tags{display:flex;flex-wrap:wrap;gap:4px;}
+.hot-tag{display:flex;align-items:center;gap:3px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);color:#b8d4e8;padding:4px 9px;border-radius:20px;font-size:11px;cursor:pointer;}
+.hot-rank{font-size:9px;font-weight:700;color:#4fa8d0;width:11px;}
+.wiki-page{background:#0b1c30;border-radius:10px;border:.5px solid rgba(255,255,255,.07);}
+.wiki-ph{padding:12px 13px 0;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+.wiki-ph-title{font-size:16px;font-weight:800;color:#e0edf8;flex:1;}
+.wiki-ph-acts{display:flex;gap:4px;flex-shrink:0;}
+.wiki-act{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);color:#8ab4cc;padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600;}
+.wiki-act:active{opacity:.7;}.wiki-act.del{color:#c0392b;border-color:rgba(192,57,43,.25);}
+.wiki-cats{display:flex;flex-wrap:wrap;gap:3px;padding:7px 13px;border-top:1px solid rgba(255,255,255,.05);}
+.wiki-cat{font-size:9px;background:rgba(79,168,208,.08);color:#4fa8d0;padding:2px 7px;border-radius:20px;}
+.wiki-info-bar{padding:4px 13px;font-size:10px;color:rgba(255,255,255,.2);border-top:1px solid rgba(255,255,255,.04);}
+.wiki-toc{border:1px solid rgba(79,168,208,.15);border-radius:8px;margin:8px 13px;background:rgba(79,168,208,.04);padding:9px 11px;}
+.wiki-toc-t{font-size:10px;color:#3a6a8a;margin-bottom:4px;font-weight:700;}
+.wiki-toc-item{font-size:11px;color:#4fa8d0;padding:2px 0 2px 0;cursor:pointer;text-decoration:underline;display:block;}
+.wiki-toc-sub{font-size:11px;color:#6a9ab8;padding:2px 0 2px 12px;cursor:pointer;text-decoration:underline;display:block;}
+.wiki-toc-sub2{font-size:11px;color:#5a8090;padding:2px 0 2px 22px;cursor:pointer;text-decoration:underline;display:block;}
+.wiki-body{padding:11px 13px;border-top:1px solid rgba(255,255,255,.05);}
+.wiki-h1{font-size:14px;font-weight:700;color:#e0edf8;margin:12px 0 5px;padding:6px 10px;background:rgba(79,168,208,.1);border-left:3px solid #4fa8d0;border-radius:0 5px 5px 0;}
+.wiki-h1:first-child{margin-top:0;}
+.wiki-h2{font-size:13px;font-weight:700;color:#b8d4e8;margin:9px 0 4px;padding:4px 8px;background:rgba(79,168,208,.05);border-left:2px solid rgba(79,168,208,.4);}
+.wiki-h3{font-size:12px;font-weight:700;color:#9abece;margin:6px 0 3px;padding:3px 8px 3px 14px;border-left:1px dashed rgba(79,168,208,.3);}
+.wiki-txt{font-size:12px;color:#7a9cb8;line-height:1.85;margin-bottom:5px;}
+.wiki-quote{border-left:3px solid rgba(79,168,208,.3);padding:4px 10px;margin:5px 0;color:#5a8aa0;font-style:italic;font-size:12px;}
+.wlink{color:#4fa8d0;text-decoration:underline;cursor:pointer;font-weight:600;}
+.wiki-img-el{width:100%;border-radius:7px;margin:7px 0;max-height:160px;object-fit:cover;}
+.wiki-tbl{width:100%;border-collapse:collapse;margin:7px 0;font-size:11px;}
+.wiki-tbl th{background:rgba(79,168,208,.08);color:#4fa8d0;padding:6px 8px;border:1px solid rgba(255,255,255,.07);text-align:left;}
+.wiki-tbl td{padding:6px 8px;border:1px solid rgba(255,255,255,.05);color:#b8d4e8;}
+.wiki-tbl tr:nth-child(even) td{background:rgba(255,255,255,.02);}
+.wiki-ver-area{padding:8px 13px;border-top:1px solid rgba(255,255,255,.05);}
+.wiki-ver-t{font-size:10px;color:#3a6a8a;margin-bottom:3px;}
+.wiki-ver-item{font-size:11px;color:#4fa8d0;cursor:pointer;text-decoration:underline;display:block;padding:2px 0;}
+.wiki-bottom{padding:8px 13px;border-top:1px solid rgba(255,255,255,.05);display:flex;gap:5px;}
+
+/* 위키 에디터 - 개선 */
+.wiki-editor-wrap{background:#060d1a;border-radius:9px;border:1px solid rgba(79,168,208,.2);overflow:hidden;}
+.wiki-toolbar{display:flex;flex-wrap:wrap;gap:3px;padding:7px 8px;background:rgba(79,168,208,.05);border-bottom:1px solid rgba(79,168,208,.12);}
+.tb-btn{background:rgba(79,168,208,.08);border:1px solid rgba(79,168,208,.15);color:#4fa8d0;padding:5px 9px;border-radius:6px;font-size:11px;cursor:pointer;white-space:nowrap;}
+.tb-btn:active{background:rgba(79,168,208,.2);}
+.tb-sep{width:1px;background:rgba(79,168,208,.15);margin:3px 2px;flex-shrink:0;}
+.wiki-textarea{width:100%;background:transparent;border:none;color:#e0edf8;padding:10px 11px;font-size:12px;outline:none;font-family:inherit;resize:none;line-height:1.7;min-height:160px;}
+.ac-box{background:#0b1c30;border:1px solid rgba(79,168,208,.3);border-radius:8px;max-height:120px;overflow-y:auto;display:none;position:absolute;left:0;right:0;top:calc(100%+2px);z-index:30;box-shadow:0 4px 14px rgba(0,0,0,.5);}
+.ac-item{padding:8px 12px;font-size:12px;color:#b8d4e8;cursor:pointer;border-bottom:.5px solid rgba(255,255,255,.04);}
+.cat-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:5px;}
+.cat-tag-sel{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid rgba(255,255,255,.1);color:rgba(255,255,255,.36);background:transparent;transition:all .15s;}
+.cat-tag-sel.on{border-color:rgba(79,168,208,.65);color:#4fa8d0;background:rgba(79,168,208,.08);}
+
+/* ─── 관리자 ─── */
+.adm-tabs{display:flex;background:#040a16;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;overflow-x:auto;}
+.adm-tabs::-webkit-scrollbar{display:none;}
+.adm-tab{flex:1;min-width:48px;padding:9px 2px;text-align:center;font-size:10px;color:rgba(255,255,255,.28);cursor:pointer;border-bottom:2px solid transparent;white-space:nowrap;}
+.adm-tab.on{color:#4fa8d0;border-bottom-color:#4fa8d0;}
+.adm-sec{display:none;flex:1;overflow-y:auto;}
+.adm-sec.on{display:block;}
+.adm-row{display:flex;align-items:center;gap:8px;padding:10px 11px;background:#0b1c30;border-radius:9px;margin-bottom:5px;}
+.adm-info{flex:1;min-width:0;}
+.adm-name{font-size:12px;color:#e0edf8;font-weight:600;}
+.adm-meta{font-size:10px;color:rgba(255,255,255,.27);margin-top:2px;line-height:1.4;}
+.adm-btns{display:flex;gap:4px;flex-shrink:0;}
+.abtn{background:none;border:1px solid rgba(255,255,255,.11);color:#8ab4cc;padding:4px 8px;border-radius:6px;font-size:10px;cursor:pointer;}
+.abtn.del{border-color:rgba(192,57,43,.28);color:#c0392b;}
+.tog-row{display:flex;justify-content:space-between;align-items:center;padding:10px 11px;background:#0b1c30;border-radius:9px;margin-bottom:5px;}
+.tog-lbl{font-size:12px;color:#e0edf8;}.tog-sub{font-size:10px;color:rgba(255,255,255,.25);margin-top:1px;}
+.toggle{width:40px;height:22px;border-radius:11px;position:relative;cursor:pointer;transition:background .16s;flex-shrink:0;}
+.toggle.on{background:#1a4a6e;}.toggle.off{background:rgba(255,255,255,.1);}
+.toggle::after{content:'';position:absolute;width:16px;height:16px;background:#fff;border-radius:50%;top:3px;transition:left .16s;box-shadow:0 1px 3px rgba(0,0,0,.3);}
+.toggle.on::after{left:21px;}.toggle.off::after{left:3px;}
+
+/* ─── 모달 ─── */
+.modal{position:absolute;inset:0;background:rgba(0,0,0,.88);z-index:50;display:none;flex-direction:column;justify-content:flex-end;}
+.modal.on{display:flex;}
+.mbox{background:#0b1c30;border-radius:18px 18px 0 0;padding:15px 14px 32px;max-height:90vh;overflow-y:auto;}
+.mhdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px;}
+.mtitle{font-size:14px;font-weight:700;color:#e0edf8;}
+.mclose{background:none;border:none;color:rgba(255,255,255,.26);font-size:21px;cursor:pointer;}
+
+/* ─── 하단 네비 ─── */
+.bnav{position:absolute;bottom:0;width:100%;background:#040a16;display:none;border-top:.5px solid rgba(255,255,255,.07);padding-bottom:env(safe-area-inset-bottom);z-index:20;}
+.navi{flex:1;padding:8px 3px 6px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;}
+.navi:active{opacity:.6;}
+.navi-ico{font-size:18px;color:rgba(255,255,255,.2);}
+.navi.on .navi-ico{color:#4fa8d0;}
+.navi-lbl{font-size:9px;color:rgba(255,255,255,.2);}
+.navi.on .navi-lbl{color:#4fa8d0;}
+
+/* ─── 토스트·기타 ─── */
+.toast{position:absolute;bottom:80px;left:50%;transform:translateX(-50%);background:#0b1c30;color:#e0edf8;padding:8px 16px;border-radius:24px;font-size:12px;font-weight:500;border:1px solid rgba(79,168,208,.2);box-shadow:0 4px 16px rgba(0,0,0,.5);z-index:100;opacity:0;transition:opacity .28s;white-space:nowrap;pointer-events:none;}
+.toast.on{opacity:1;}
+.empty{text-align:center;padding:32px 16px;color:rgba(255,255,255,.2);}
+.empty-ico{font-size:34px;margin-bottom:8px;}.empty-txt{font-size:12px;line-height:1.6;}
+.guide-item{padding:8px 0;border-bottom:.5px solid rgba(255,255,255,.06);}
+.guide-item:last-child{border-bottom:none;}
+.guide-t{font-size:12px;font-weight:700;color:#4fa8d0;margin-bottom:2px;}
+.guide-d{font-size:11px;color:#7a9cb8;line-height:1.6;}
+/* 위험상황 카드 */
+.haz-card{background:#0b1c30;border-radius:10px;padding:12px;border:.5px solid rgba(230,126,34,.2);margin-bottom:5px;cursor:pointer;}
+.haz-card:active{background:#112030;}
+.haz-removed{opacity:.4;}
+.haz-badge-done{background:rgba(39,174,96,.15);color:#27ae60;}
+.haz-badge-active{background:rgba(230,126,34,.15);color:#e67e22;}
+/* 알림 클릭 가능 표시 */
+.ni[onclick]{cursor:pointer;}
+.ni[onclick]:active{background:rgba(79,168,208,.12);}
+
+/* 댓글 입력 영역 */
+.cmt-area{margin-top:10px;padding:10px 12px;background:#060d1a;border-radius:9px;border:1px solid rgba(79,168,208,.12);}
+.cmt-hdr{font-size:11px;color:#4fa8d0;font-weight:700;margin-bottom:7px;}
+
+/* 보 선택 모달 강조 */
+#phaseSelectList .lcard:active{background:#1a3050;}
+
+/* 설정 페이지 키 입력 강조 */
+#kakaoKeyIn:focus{border-color:#4fa8d0;box-shadow:0 0 0 2px rgba(79,168,208,.15);}
+
+/* 전체 통계 뷰 */
+#statsWrap .stat-box{cursor:default;}
+
+/* 목록 보 표시 */
+.phase-badge{font-size:9px;color:#4fa8d0;margin-top:2px;}
+
+/* 간편/전체 토글 버튼 active */
+.view-toggle-btn.active{background:rgba(79,168,208,.15);color:#4fa8d0;border-color:rgba(79,168,208,.5);}
+
+</style>
+
+<div id="app">
+<div class="sbar"><span id="nowTime">00:00</span><span style="font-size:12px;">📶 🔋</span></div>
+<div class="ahdr" id="appHdr">
+  <div class="ahdr-row">
+    <div class="ahdr-title"><button class="back-btn" onclick="goHome()">← 홈</button><span id="topTitle"></span></div>
+    <div class="bell-wrap"><button class="bell-btn" onclick="openNoti()">🔔</button><div class="bell-cnt" id="bellCnt"></div></div>
+  </div>
+</div>
+<div class="noti-bg" id="notiBg" onclick="closeNoti()"></div>
+<div class="noti-panel" id="notiPanel">
+  <div class="noti-phdr"><span class="noti-ptitle">🔔 알림</span><button class="noti-pclose" onclick="closeNoti()">×</button></div>
+  <div class="noti-scroll" id="notiList"></div>
+  <div class="noti-acts"><button class="noti-act-btn" onclick="markAllRead()">✓ 모두 읽음</button><button class="noti-act-btn" onclick="clearNotis()">🗑 삭제</button></div>
+</div>
+<div class="vc">
+
+<!-- ══ 홈 ══ -->
+<div id="v-home" class="view on" style="overflow:hidden;">
+<div class="home-inner">
+  <div class="home-top">
+    <div><div class="home-brand-sub">설악산국립공원</div><div class="home-brand-title">현장관리 시스템</div><div class="home-date" id="homeDate"></div></div>
+    <div class="bell-wrap" style="margin-top:2px;"><button class="bell-btn" onclick="openNoti()">🔔</button><div class="bell-cnt" id="bellCntHome"></div></div>
+  </div>
+  <div class="my-card" onclick="openChangeUser()">
+    <div class="my-avatar">👤</div>
+    <div class="my-info"><div class="my-name" id="myName">작성자를 선택하세요</div><div class="my-sub" id="mySub">탭하여 설정</div></div>
+    <div class="my-change-btn">변경</div>
+  </div>
+  <div class="home-stats">
+    <div class="hstat" onclick="openApp('rescue');setTimeout(()=>switchTab(2,document.getElementById('nv2')),200)"><div class="hstat-num bad" id="hs-og">0</div><div class="hstat-lbl">진행중 구조</div><div class="hstat-sub bad" id="hs-og-sub"></div></div>
+    <div class="hstat" onclick="openApp('rescue');setTimeout(()=>switchTab(3,document.getElementById('nv3')),200)"><div class="hstat-num" id="hs-tot">0</div><div class="hstat-lbl">총 구조 건수</div><div class="hstat-sub muted" id="hs-tot-sub"></div></div>
+    <div class="hstat" onclick="openApp('inspect');setTimeout(()=>switchTab(2,document.getElementById('nv2')),200)"><div class="hstat-num bad" id="hs-fb">0</div><div class="hstat-lbl">위험 시설물</div><div class="hstat-sub warn" id="hs-fw-sub"></div></div>
+    <div class="hstat" onclick="openApp('inspect')"><div class="hstat-num" id="hs-ft">0</div><div class="hstat-lbl">전체 시설물</div><div class="hstat-sub ok" id="hs-ft-sub"></div></div>
+  </div>
+  <div class="home-menu">
+    <button class="mbtn mb-red" onclick="openApp('rescue')"><div class="mbtn-ico">🚨</div><div><div class="mbtn-title">재난/구조</div><div class="mbtn-desc" id="hdR">구조보고·위험상황</div></div></button>
+    <button class="mbtn mb-teal" onclick="openApp('inspect')"><div class="mbtn-ico">🛠️</div><div><div class="mbtn-title">시설물 점검</div><div class="mbtn-desc" id="hdI">시설 관리·이력</div></div></button>
+    <button class="mbtn mb-navy" onclick="openApp('wiki')"><div class="mbtn-ico">📚</div><div><div class="mbtn-title">설악위키</div><div class="mbtn-desc" id="hdW">현장 지식 DB</div></div></button>
+    <button class="mbtn mb-gray" onclick="openApp('admin')"><div class="mbtn-ico">🔐</div><div><div class="mbtn-title">관리자</div><div class="mbtn-desc">관제·데이터 관리</div></div></button>
+  </div>
+  <div class="home-menu-bottom">
+    <button class="mbtn-sm" onclick="openApp('stats')"><span class="mbtn-sm-ico">📊</span><div class="mbtn-sm-text"><div class="mbtn-sm-title">전체 통계</div><div class="mbtn-sm-desc">현황 분석 열람</div></div></button>
+    <button class="mbtn-sm" style="background:#150e2a;border:1px solid rgba(139,92,246,.2);" onclick="openApp('admin')"><span class="mbtn-sm-ico">🔐</span><div class="mbtn-sm-text"><div class="mbtn-sm-title" style="color:#c4b5fd;">관리자 전용</div><div class="mbtn-sm-desc">관제·데이터 관리</div></div></button>
+  </div>
+</div>
+</div>
+
+<!-- ══ 재난 지도 ══ -->
+<div id="v-rescue-map" class="view" style="position:absolute;inset:0;">
+  <div class="mapwrap">
+    <div id="mapRescue" class="kakaomap"></div>
+    <button class="map-ctrl" onclick="toggleMapType('rescue')">위성/일반</button>
+    <button class="fab-gps" onclick="gpsTo('rescue')">📍</button>
+    <button class="fab" style="background:#7a1818;color:#fff;" onclick="openNewRescue()">🚨</button>
+    <button class="fab2" onclick="openNewHazard()">⚠️ 위험상황 보고</button>
+    <div class="nomap-banner" id="nomapR">📍 API 키 설정 후 지도 사용 가능 — 목록탭 이용</div>
+    <div class="dbcard" id="resPopup">
+      <button class="dbclose" onclick="closeDB()">×</button><div class="dbhandle"></div>
+      <div class="dbtitle" id="resPopTitle">핀을 탭하여 조회</div>
+      <div class="dbmeta" id="resPopMeta"></div>
+      <div class="dbbtns">
+        <button class="btn btn-blue" id="btnAddRep" onclick="addPhase()" style="display:none;">📋 다음 보 추가</button>
+        <button class="btn btn-ghost" id="btnViewRep" onclick="viewReport()" style="display:none;">📄 보고서 전체보기</button>
+        <button class="btn btn-green" id="btnEndSit" onclick="endSit()" style="display:none;">✅ 상황 종료</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 재난 목록 ══ -->
+<div id="v-rescue-list" class="view" style="flex-direction:column;">
+  <div class="fbar" id="resFBar"></div>
+  <div style="flex:1;overflow-y:auto;padding:6px 12px 80px;" id="resListWrap"></div>
+</div>
+
+<!-- ══ 재난 통계 ══ -->
+<div id="v-rescue-stats" class="view">
+  <div class="bpad">
+    <div class="stat-grid">
+      <div class="stat-box"><div class="stat-num" id="st-tot">0</div><div class="stat-lbl">총 발생</div></div>
+      <div class="stat-box" style="border-color:#c0392b;"><div class="stat-num bad" id="st-og">0</div><div class="stat-lbl">진행중</div></div>
+      <div class="stat-box" style="border-color:#27ae60;"><div class="stat-num ok" id="st-done">0</div><div class="stat-lbl">종료</div></div>
+      <div class="stat-box" style="border-color:#e67e22;"><div class="stat-num warn" id="st-mon">0</div><div class="stat-lbl">이번 달</div></div>
+    </div>
+    <div class="scard"><div class="stitle">유형별 현황 (탭하면 세부)</div><div id="typeStatWrap"></div></div>
+    <div class="sec-label">전체 이력</div><div id="resAllWrap"></div>
+  </div>
+</div>
+
+<!-- ══ 보고서 (타임라인) ══ -->
+<div id="v-report" class="view" style="flex-direction:column;">
+  <div class="phase-bar" id="phaseBar"></div>
+  <div class="rcontent" id="repContent"></div>
+</div>
+
+<!-- ══ 유형 세부통계 ══ -->
+<div id="v-type-detail" class="view"><div class="bpad" id="typeDetailWrap"></div></div>
+
+<!-- ══ 시설물 지도 ══ -->
+<div id="v-inspect-map" class="view" style="position:absolute;inset:0;">
+  <div class="mapwrap">
+    <div id="mapInspect" class="kakaomap"></div>
+    <button class="map-ctrl" onclick="toggleMapType('inspect')">위성/일반</button>
+    <button class="fab-gps" onclick="gpsTo('inspect')">📍</button>
+    <button class="fab" style="background:#0c4838;color:#fff;" onclick="openAddFac()">＋</button>
+    <div class="nomap-banner" id="nomapI">📍 API 키 설정 후 지도 사용 가능 — 목록탭 이용</div>
+    <div class="dbcard" id="facPopup">
+      <button class="dbclose" onclick="closeDB()">×</button><div class="dbhandle"></div>
+      <div class="dbtitle" id="facPopTitle">시설물 핀을 탭하여 조회</div>
+      <div class="dbmeta" id="facPopMeta"></div>
+      <div class="dbbtns">
+        <button class="btn btn-blue" onclick="openInspModal()">📝 점검일지 작성</button>
+        <button class="btn btn-ghost" onclick="openHistModal()">📖 점검 이력</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 시설물 목록 ══ -->
+<div id="v-inspect-list" class="view" style="flex-direction:column;">
+  <div class="fbar" id="facFBar"></div>
+  <div style="flex:1;overflow-y:auto;padding:6px 12px 80px;" id="facListWrap"></div>
+</div>
+
+<!-- ══ 시설물 통계 ══ -->
+<div id="v-inspect-stats" class="view">
+  <div class="bpad">
+    <div class="stat-grid">
+      <div class="stat-box"><div class="stat-num" id="fs-tot">0</div><div class="stat-lbl">전체</div></div>
+      <div class="stat-box" style="border-color:#c0392b;"><div class="stat-num bad" id="fs-bad">0</div><div class="stat-lbl">위험</div></div>
+      <div class="stat-box" style="border-color:#e67e22;"><div class="stat-num warn" id="fs-warn">0</div><div class="stat-lbl">요주의</div></div>
+      <div class="stat-box" style="border-color:#27ae60;"><div class="stat-num ok" id="fs-ok">0</div><div class="stat-lbl">양호</div></div>
+    </div>
+    <div class="scard"><div class="stitle">종류별 분포</div><div id="facTypeStatWrap"></div></div>
+    <div class="scard"><div class="stitle">최근 점검 이력</div><div id="facRecentWrap"></div></div>
+  </div>
+</div>
+
+<!-- ══ 위키 ══ -->
+<div id="v-wiki" class="view">
+  <div class="bpad">
+    <input type="text" class="wiki-search" id="wikiSearch" placeholder="🔍 문서 검색..." oninput="onWikiSearch(this.value)">
+    <div id="hotSearchWrap"></div>
+    <button class="btn btn-ghost" style="padding:9px;border-radius:9px;font-size:12px;width:100%;" onclick="openWikiEdit()">✏️ 새 문서 작성</button>
+    <div id="wikiListWrap"></div>
+    <div id="wikiPageWrap" style="display:none;"></div>
+  </div>
+</div>
+
+<!-- ══ 전체 통계 ══ -->
+<div id="v-stats" class="view">
+  <div class="bpad" id="statsWrap"></div>
+</div>
+
+<!-- ══ 관리자 ══ -->
+<div id="v-admin" class="view" style="flex-direction:column;">
+  <div style="background:rgba(192,57,43,.08);border-bottom:1px solid rgba(192,57,43,.15);padding:8px 13px;flex-shrink:0;display:flex;align-items:center;gap:8px;">
+    <span style="font-size:13px;">🔐</span>
+    <div><div style="font-size:12px;font-weight:700;color:#e0edf8;">관리자 전용</div><div style="font-size:10px;color:#3a6a8a;">관제·데이터 관리 (권한자만 접근)</div></div>
+  </div>
+  <div class="adm-tabs">
+    <div class="adm-tab on" onclick="admTab('ctrl',this)" style="color:#c0392b;border-bottom-color:#c0392b;">📊 관제</div>
+    <div class="adm-tab" onclick="admTab('members',this)">👤 대원</div>
+    <div class="adm-tab" onclick="admTab('cat',this)">🏷 분류</div>
+    <div class="adm-tab" onclick="admTab('sheets',this)">🔗 연동</div>
+    <div class="adm-tab" onclick="admTab('sys',this)">⚙️ 시스템</div>
+  </div>
+  <div id="adm-ctrl" class="adm-sec on"><div class="bpad" id="admCtrlWrap"></div></div>
+  <div id="adm-members" class="adm-sec"><div class="bpad" id="admMembersWrap"></div></div>
+  <div id="adm-cat" class="adm-sec"><div class="bpad" id="admCatWrap"></div></div>
+  <div id="adm-sheets" class="adm-sec"><div class="bpad" id="admSheetsWrap"></div></div>
+  <div id="adm-sys" class="adm-sec"><div class="bpad" id="admSysWrap"></div></div>
+</div>
+
+<!-- ══ 내 설정 (일반직원) ══ -->
+<div id="v-settings" class="view" style="flex-direction:column;">
+  <div style="background:rgba(79,168,208,.07);border-bottom:1px solid rgba(79,168,208,.12);padding:8px 13px;flex-shrink:0;display:flex;align-items:center;gap:8px;">
+    <span style="font-size:13px;">⚙️</span>
+    <div><div style="font-size:12px;font-weight:700;color:#e0edf8;">내 설정</div><div style="font-size:10px;color:#3a6a8a;">알림·개인 설정</div></div>
+  </div>
+  <div class="bpad" id="settingsWrap"></div>
+</div>
+
+</div><!-- /vc -->
+
+<!-- 하단 네비 -->
+<div class="bnav" id="bnav">
+  <div class="navi on" id="nv1" onclick="switchTab(1,this)"><div class="navi-ico">🗺️</div><span class="navi-lbl">지도</span></div>
+  <div class="navi" id="nv2" onclick="switchTab(2,this)"><div class="navi-ico">📋</div><span class="navi-lbl" id="nvl2">목록</span></div>
+  <div class="navi" id="nv3" onclick="switchTab(3,this)"><div class="navi-ico">📊</div><span class="navi-lbl">통계</span></div>
+</div>
+<div class="toast" id="toast"></div>
+<!-- ══ 모달: 작성자 설정 ══ -->
+<div id="modalUser" class="modal">
+  <div class="mbox">
+    <div class="mhdr"><span class="mtitle">👤 작성자 설정</span><button class="mclose" onclick="closeM('modalUser')">×</button></div>
+    <div id="kakaoUserBanner" style="display:none;background:rgba(254,229,0,.1);border:1px solid rgba(254,229,0,.3);border-radius:8px;padding:9px 11px;margin-bottom:11px;font-size:11px;color:#f0d900;">
+      💬 카카오 계정으로 로그인됨 — 이름·소속만 확인하세요
+    </div>
+    <div class="fg"><span class="fl">소속 과/분소 <span style="color:#c0392b;">*</span></span>
+      <select id="uDeptIn" class="fsel">
+        <option value="">선택하세요</option>
+        <option>행정과</option><option>재난안전과</option><option>탐방시설과</option><option>자원보전과</option>
+        <option>특수산악구조대</option><option>대청분소</option><option>백담분소</option>
+        <option>오색분소</option><option>한계산성분소</option><option>점봉산분소</option>
+      </select>
+    </div>
+    <div class="fg"><span class="fl">직위</span>
+      <div class="pills" id="rankPills">
+        <div class="pill" onclick="sPill(this,'rankPills')">주임</div>
+        <div class="pill" onclick="sPill(this,'rankPills')">계장</div>
+        <div class="pill" onclick="sPill(this,'rankPills')">팀장</div>
+        <div class="pill" onclick="sPill(this,'rankPills')">과장</div>
+        <div class="pill" onclick="sPill(this,'rankPills')">분소장</div>
+        <div class="pill" onclick="sPill(this,'rankPills')">소장</div>
+      </div>
+    </div>
+    <div class="fg"><span class="fl">이름</span><input type="text" id="uNameIn" class="fi" placeholder="이름 입력"></div>
+    <div class="fg"><span class="fl">구조대원 바로 선택</span><div id="memberPillWrap" class="pills"></div></div>
+    <button class="btn-submit" style="background:#1a4a6e;color:#fff;" onclick="saveUser()">저장</button>
+  </div>
+</div>
+
+<!-- ══ 모달: 구조 보고 (2보+ 간편) ══ -->
+<div id="modalAddPhase" class="modal">
+  <div class="mbox">
+    <div class="mhdr"><span class="mtitle" id="addPhaseTitle">다음 보 추가</span><button class="mclose" onclick="closeM('modalAddPhase')">×</button></div>
+    <!-- 이전 보 차이점 요약 -->
+    <div id="prevDiffWrap" style="display:none;margin-bottom:12px;">
+      <div style="font-size:11px;color:#4fa8d0;font-weight:700;margin-bottom:6px;">📋 이전 보 요약</div>
+      <div id="prevDiffContent" class="tl-diff"></div>
+      <div style="display:flex;gap:5px;margin-top:7px;">
+        <button class="btn btn-ghost" style="flex:1;font-size:11px;" onclick="viewFullPrev()">📄 전보 전체 보기</button>
+        <button class="btn btn-ghost" style="flex:1;font-size:11px;" onclick="viewAllTimeline()">📊 전체 타임라인</button>
+      </div>
+    </div>
+    <div class="fg"><span class="fl">보고 일시</span><input type="datetime-local" id="r_repdt" class="fi"></div>
+    <div class="fg"><span class="fl">현재 상황 내용</span><textarea id="r_upd" class="fta" rows="4" placeholder="현재 상황 변화, 추가 조치 내용 등을 입력하세요"></textarea></div>
+    <div class="fg"><span class="fl">부상자 상태</span>
+      <select id="r_vChg" class="fsel"><option>변화없음</option><option>호전</option><option>악화</option><option>심정지</option></select>
+    </div>
+    <div class="fg"><span class="fl">추가 출동 대원 (선택)</span><input type="text" id="r_addMem" class="fi" placeholder="추가 투입 대원명"></div>
+    <div class="fg"><span class="fl">작성자</span><input type="text" id="r_repAuthor" class="fi"></div>
+    <button class="btn-submit" style="background:#1a4a6e;color:#fff;" onclick="submitNBo()">💾 저장</button>
+  </div>
+</div>
+
+<!-- ══ 모달: 위험상황 보고 (간소화) ══ -->
+<div id="modalHazard" class="modal">
+  <div class="mbox">
+    <div class="mhdr"><span class="mtitle">⚠️ 위험상황 보고</span><button class="mclose" onclick="closeM('modalHazard')">×</button></div>
+    <div style="font-size:11px;color:#e67e22;background:rgba(230,126,34,.08);border:1px solid rgba(230,126,34,.2);border-radius:8px;padding:8px 10px;margin-bottom:12px;">
+      낙석·위험수목·화재·기타 위험상황 간편 기록 (구조보고와 분리)
+    </div>
+    <div class="fg"><span class="fl">유형</span>
+      <div class="pills" id="hazTypePills">
+        <div class="pill" onclick="sPill(this,'hazTypePills')">🪨 낙석</div>
+        <div class="pill" onclick="sPill(this,'hazTypePills')">🌲 위험수목</div>
+        <div class="pill" onclick="sPill(this,'hazTypePills')">🔥 화재</div>
+        <div class="pill" onclick="sPill(this,'hazTypePills')">🌊 침수</div>
+        <div class="pill" onclick="sPill(this,'hazTypePills')">⚡ 기타</div>
+      </div>
+    </div>
+    <div class="fg"><span class="fl">발생 일시</span><input type="datetime-local" id="hz_dt" class="fi"></div>
+    <div class="fg"><span class="fl">발생 위치</span><input type="text" id="hz_loc" class="fi" placeholder="예: 천불동 계곡 3km 지점"></div>
+    <div class="fg">
+      <span class="fl">GPS 좌표 (선택)</span>
+      <div class="gps-row"><input type="text" id="hz_gps" class="fi" placeholder="위도, 경도">
+        <button class="sm-btn" onclick="gpsFromMap('hz_gps','rescue')">🗺</button>
+        <button class="sm-btn" onclick="gpsFromPhone('hz_gps')">📍</button>
+      </div>
+    </div>
+    <div class="fg"><span class="fl">위험성</span>
+      <div class="pills" id="hazDangerPills">
+        <div class="pill" onclick="sPill(this,'hazDangerPills')">즉시 위험</div>
+        <div class="pill" onclick="sPill(this,'hazDangerPills')">잠재 위험</div>
+        <div class="pill" onclick="sPill(this,'hazDangerPills')">경미</div>
+      </div>
+    </div>
+    <div class="fg"><span class="fl">상황 설명</span><textarea id="hz_desc" class="fta" rows="3" placeholder="상황을 간략히 기술"></textarea></div>
+    <div class="fg"><span class="fl">현장 사진</span>
+      <div class="photo-slot" onclick="document.getElementById('fileHaz').click()">
+        <input type="file" id="fileHaz" accept="image/*" capture="environment" style="display:none;" onchange="prevImg(this,'prevHaz')">
+        <div id="prevHaz">📸 현장 사진</div>
+      </div>
+    </div>
+    <div class="fg"><span class="fl">제거/조치 여부</span>
+      <div class="pills" id="hazStatusPills">
+        <div class="pill" onclick="sPill(this,'hazStatusPills')">미조치</div>
+        <div class="pill" onclick="sPill(this,'hazStatusPills')">조치중</div>
+        <div class="pill" onclick="sPill(this,'hazStatusPills')">제거 완료</div>
+        <div class="pill" onclick="sPill(this,'hazStatusPills')">통제중</div>
+      </div>
+    </div>
+    <div class="fg"><span class="fl">보고자</span><input type="text" id="hz_author" class="fi"></div>
+    <button class="btn-submit" style="background:#7a3800;color:#fff;" onclick="submitHazard()">⚠️ 위험상황 등록</button>
+  </div>
+</div>
+
+<!-- ══ 모달: 시설물 등록 ══ -->
+<div id="modalAddFac" class="modal">
+  <div class="mbox">
+    <div class="mhdr"><span class="mtitle">🆕 시설물 등록</span><button class="mclose" onclick="closeM('modalAddFac')">×</button></div>
+    <div class="fg"><span class="fl">종류</span><select id="facTypeSel" class="fsel"></select></div>
+    <div class="fg"><span class="fl">관리 명칭</span><input type="text" id="facNameIn" class="fi" placeholder="예: 비선대 01번 이정표"></div>
+    <div class="fg"><span class="fl">위치 설명</span><input type="text" id="facLocIn" class="fi" placeholder="예: 대청봉 1.2km 지점"></div>
+    <div class="fg">
+      <span class="fl">GPS 좌표 <span class="muted" style="font-weight:400;">(선택 — 지명만도 OK)</span></span>
+      <div class="gps-row"><input type="text" id="facGpsIn" class="fi" placeholder="위도, 경도">
+        <button class="sm-btn" onclick="gpsFromMap('facGpsIn','inspect')">🗺</button>
+        <button class="sm-btn" onclick="gpsFromPhone('facGpsIn')">📍GPS</button>
+      </div>
+    </div>
+    <div class="fg"><span class="fl">설치일</span><input type="date" id="facInstall" class="fi"></div>
+    <div class="fg"><span class="fl">초기 상태</span>
+      <select id="facInitSt" class="fsel"><option value="ok">✅ 신규/양호</option><option value="warn">⚠️ 일부 파손</option><option value="bad">🚨 파손 심각</option></select>
+    </div>
+    <div class="fg"><span class="fl">특이사항</span><textarea id="facNote" class="fta" rows="2" placeholder="재질, 설치기관 등"></textarea></div>
+    <div class="fg"><span class="fl">등록자</span><input type="text" id="facAuthor" class="fi"></div>
+    <div class="fg"><span class="fl">초기 사진</span>
+      <div class="photo-slot" onclick="document.getElementById('fileFac').click()">
+        <input type="file" id="fileFac" accept="image/*" capture="environment" style="display:none;" onchange="prevImg(this,'prevFac')">
+        <div id="prevFac">📸 촬영 또는 앨범</div>
+      </div>
+    </div>
+    <button class="btn-submit" style="background:#0c4838;color:#fff;" onclick="submitAddFac()">등록 완료</button>
+  </div>
+</div>
+
+<!-- ══ 모달: 시설물 상세 ══ -->
+<div id="modalFacDetail" class="modal">
+  <div class="mbox">
+    <div class="mhdr"><span class="mtitle" id="facDetailTitle">시설물 상세</span><button class="mclose" onclick="closeM('modalFacDetail')">×</button></div>
+    <div id="facDetailContent"></div>
+    <div style="display:flex;gap:7px;margin-top:12px;">
+      <button class="btn btn-blue" style="flex:1;" onclick="openInspModalFromDetail()">📝 점검일지</button>
+      <button class="btn btn-ghost" style="flex:1;" onclick="openHistModalFromDetail()">📖 이력 보기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ 모달: 점검일지 ══ -->
+<div id="modalInsp" class="modal">
+  <div class="mbox">
+    <div class="mhdr"><span class="mtitle">📋 현장 점검일지</span><button class="mclose" onclick="closeM('modalInsp')">×</button></div>
+    <div class="fg"><span class="fl">점검 대상</span><input type="text" id="inspTarget" class="fi ro" readonly></div>
+    <div class="fg"><span class="fl">점검자</span><input type="text" id="inspAuthor" class="fi"></div>
+    <div class="fg"><span class="fl">상태 판정</span>
+      <select id="inspStatus" class="fsel"><option value="ok">✅ 양호</option><option value="warn">⚠️ 보수 필요</option><option value="bad">🚨 위험/즉시조치</option></select>
+    </div>
+    <div class="fg"><span class="fl">점검 내용</span><textarea id="inspNote" class="fta" rows="3" placeholder="파손 위치, 규모, 조치 내용 등"></textarea></div>
+    <div class="fg"><span class="fl">현장 사진</span>
+      <div class="photo-slot" onclick="document.getElementById('fileInsp').click()">
+        <input type="file" id="fileInsp" accept="image/*" capture="environment" style="display:none;" onchange="prevImg(this,'prevInsp')">
+        <div id="prevInsp">📸 현장 사진</div>
+      </div>
+    </div>
+    <button class="btn-submit" style="background:#1a4a6e;color:#fff;" onclick="submitInsp()">점검 결과 저장</button>
+  </div>
+</div>
+
+<!-- ══ 모달: 점검 이력 ══ -->
+<div id="modalHist" class="modal">
+  <div class="mbox">
+    <div class="mhdr"><span class="mtitle">📖 점검 이력</span><button class="mclose" onclick="closeM('modalHist')">×</button></div>
+    <div id="histTitleEl" style="font-size:12px;color:#4fa8d0;margin-bottom:11px;font-weight:600;"></div>
+    <div id="histContent"></div>
+  </div>
+</div>
+
+<!-- ══ 모달: 위키 편집 ══ -->
+<div id="modalWikiEdit" class="modal">
+  <div class="mbox">
+    <div class="mhdr"><span class="mtitle">✏️ 위키 문서</span><button class="mclose" onclick="closeM('modalWikiEdit')">×</button></div>
+    <div class="fg"><span class="fl">문서 제목</span><input type="text" id="wikiTitleIn" class="fi" placeholder="예: 너덜지대"></div>
+    <div class="fg">
+      <span class="fl">카테고리 (탭 선택 + 직접 입력)</span>
+      <div class="cat-tags" id="catTagsWrap"></div>
+      <input type="text" class="fi" style="font-size:11px;margin-top:4px;" placeholder="새 카테고리 입력 후 Enter" onkeydown="addCatInput(event,this)">
+    </div>
+    <div class="fg">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <span class="fl" style="margin:0;">본문 작성</span>
+        <button class="tb-btn" onclick="insertTemplate()">📋 템플릿</button>
+      </div>
+      <!-- 개선된 위키 에디터 -->
+      <div class="wiki-editor-wrap">
+        <div class="wiki-toolbar">
+          <button class="tb-btn" onclick="wIns('# ','',true)">H1 대분류</button>
+          <button class="tb-btn" onclick="wIns('## ','',true)">H2 중분류</button>
+          <button class="tb-btn" onclick="wIns('### ','',true)">H3 소분류</button>
+          <div class="tb-sep"></div>
+          <button class="tb-btn" onclick="wIns('**','**')"><b>굵게</b></button>
+          <button class="tb-btn" onclick="wIns('[','링크대상]')">🔗 링크</button>
+          <button class="tb-btn" onclick="wIns('\n> ','')">💬 인용</button>
+          <div class="tb-sep"></div>
+          <button class="tb-btn" onclick="insTable()">📋 표</button>
+          <button class="tb-btn" onclick="insList()">• 목록</button>
+          <button class="tb-btn" onclick="document.getElementById('wikiBodyImg').click()">📷 사진</button>
+          <input type="file" id="wikiBodyImg" accept="image/*" style="display:none;" onchange="insBodyImg(this)">
+        </div>
+        <div style="position:relative;">
+          <textarea id="wikiBodyIn" class="wiki-textarea" oninput="onWikiBodyInput(this)" placeholder="# 대분류 제목&#10;내용을 입력하세요...&#10;&#10;## 중분류 제목&#10;세부 내용...&#10;&#10;### 소분류&#10;더 상세한 내용...&#10;&#10;[다른문서] 로 링크 가능"></textarea>
+          <div class="ac-box" id="wikiAC"></div>
+        </div>
+      </div>
+      <div style="font-size:10px;color:#3a6a8a;margin-top:5px;line-height:1.5;">
+        💡 # = 대분류 / ## = 중분류 / ### = 소분류 · [문서명] = 링크 · **굵게**
+      </div>
+    </div>
+    <div class="fg"><span class="fl">대표 사진</span>
+      <div class="photo-slot" onclick="document.getElementById('fileWiki').click()">
+        <input type="file" id="fileWiki" accept="image/*" style="display:none;" onchange="prevImg(this,'prevWiki')">
+        <div id="prevWiki">📸 대표 이미지</div>
+      </div>
+    </div>
+    <div class="fg"><span class="fl">작성자 (누구나 가능)</span><input type="text" id="wikiAuthorIn" class="fi" placeholder="이름 입력"></div>
+    <input type="hidden" id="wikiEditId">
+    <button class="btn-submit" style="background:#112e50;color:#fff;" onclick="submitWiki()">저장</button>
+  </div>
+</div>
+
+<!-- ══ 모달: 가이드 ══ -->
+<div id="modalGuide" class="modal">
+  <div class="mbox">
+    <div class="mhdr"><span class="mtitle" id="guideTitle">안내</span><button class="mclose" onclick="closeM('modalGuide')">×</button></div>
+    <div id="guideContent"></div>
+  </div>
+</div>
+
+<!-- ══ 모달: 버전 히스토리 ══ -->
+<div id="modalVer" class="modal">
+  <div class="mbox">
+    <div class="mhdr"><span class="mtitle">📅 버전 히스토리</span><button class="mclose" onclick="closeM('modalVer')">×</button></div>
+    <div id="verContent"></div>
+  </div>
+</div>
+
+<!-- ══ 모달: 보 선택 ══ -->
+<div id="modalPhaseSelect" class="modal">
+  <div class="mbox">
+    <div class="mhdr"><span class="mtitle" id="phaseSelectTitle">보 선택</span><button class="mclose" onclick="closeM('modalPhaseSelect')">×</button></div>
+    <div style="font-size:11px;color:#7a9cb8;margin-bottom:10px;">원하는 보를 선택하여 내용을 확인하세요</div>
+    <div id="phaseSelectList"></div>
+    <button class="btn-submit" style="background:#1a4a6e;color:#fff;margin-top:8px;" onclick="openFullTimeline()">📊 타임라인 전체보기</button>
+  </div>
+</div>
+
+<!-- ══ 모달: 전보 전체보기 ══ -->
+<div id="modalPrevReport" class="modal">
+  <div class="mbox">
+    <div class="mhdr"><span class="mtitle" id="prevRepTitle">이전 보고서</span><button class="mclose" onclick="closeM('modalPrevReport')">×</button></div>
+    <div id="prevRepContent"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+// ══════════════════════════════════════════
+// DB
+// ══════════════════════════════════════════
+const DB={
+  g(k){try{return JSON.parse(localStorage.getItem('v7_'+k)||'null');}catch{return null;}},
+  s(k,v){try{localStorage.setItem('v7_'+k,JSON.stringify(v));}catch{}},
+  d(k){localStorage.removeItem('v7_'+k);}
+};
+
+const RES_TYPES={
+  '안전사고':{ico:'🤕',pc:'p-acc',color:'#c0392b'},
+  '낙석':    {ico:'🪨',pc:'p-rock',color:'#7d3c98'},
+  '위험수목':{ico:'🌲',pc:'p-tree',color:'#ca6f1e'},
+  '화재':    {ico:'🔥',pc:'p-fire',color:'#a93226'},
+  '침수':    {ico:'🌊',pc:'p-haz', color:'#1a6090'},
+  '기타':    {ico:'⚠️',pc:'p-etc', color:'#5d6d7e'},
+};
+
+function initDB(){
+  if(!DB.g('members'))    DB.s('members',['손경완','김택찬','염원종','김종식','장기수','나진영','양지석','윤태종']);
+  if(!DB.g('catFac'))     DB.s('catFac',['🪧 위치표지판','🛤️ 데크/계단','🌉 교량','🏠 대피소','🛡️ 안전난간','🪵 목재계단','🚿 계곡시설']);
+  if(!DB.g('wikiCats'))   DB.s('wikiCats',['지형','안전','장비','법령','응급','탐방로','시설','동식물','기상']);
+  if(!DB.g('facilities')) DB.s('facilities',[
+    {id:1,type:'🌉 교량',name:'설악-01 출렁다리',loc:'소공원 입구',status:'bad',lat:38.170,lng:128.480,install:'2025-05-10',note:'강철 와이어 부식',author:'손경완'},
+    {id:2,type:'🪧 위치표지판',name:'천불동 04지점',loc:'천불동 계곡',status:'ok',lat:38.165,lng:128.475,install:'2024-11-20',note:'',author:'김택찬'},
+    {id:3,type:'🛡️ 안전난간',name:'비선대 상단 난간',loc:'비선대 직상부',status:'warn',lat:38.168,lng:128.483,install:'2023-08-15',note:'볼트 2개 이완',author:'손경완'},
+  ]);
+  if(!DB.g('rescues'))    DB.s('rescues',[]);
+  if(!DB.g('hazards'))    DB.s('hazards',[]);
+  if(!DB.g('history'))    DB.s('history',[]);
+  if(!DB.g('wikis'))      DB.s('wikis',[
+    {id:1,title:'너덜지대',cats:['지형','안전'],body:'# 개요\n바위가 쌓인 급경사 비탈면. [낙석] 위험 상시 존재.\n\n## 주의사항\n우천 시 통제 기준 적용.\n\n### 우천 시\n강수량 20mm 이상 시 즉시 통제.\n\n# 관련 구간\n천불동 계곡, 대청봉 능선부.',photo:'',author:'손경완',versions:[]},
+    {id:2,title:'낙석',cats:['안전'],body:'# 개요\n급경사 구간에서 바위가 굴러 떨어지는 현상.\n\n## 주요 발생 구간\n[너덜지대], 천불동 계곡 상단부.\n\n## 대응 요령\n탐방객 대피 후 구역 통제.',photo:'',author:'손경완',versions:[]},
+  ]);
+  if(!DB.g('notis'))         DB.s('notis',[]);
+  if(!DB.g('hotSearch'))     DB.s('hotSearch',{});
+  if(!DB.g('notiSetting'))   DB.s('notiSetting',{안전사고:true,낙석:true,위험수목:true,화재:true,기타:true,fac_bad:true,fac_warn:false});
+  if(!DB.g('currentUser'))   DB.s('currentUser',{name:'',dept:'',rank:'',kakao:null});
+}
+
+// ══════════════════════════════════════════
+// 유틸
+// ══════════════════════════════════════════
+const pad=n=>String(n).padStart(2,'0');
+function now(){const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes());}
+function today(){return now().slice(0,10);}
+function nowDT(){return now().replace(' ','T').slice(0,16);}
+function toast(m,dur=2200){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),dur);}
+function closeDB(){document.querySelectorAll('.dbcard').forEach(c=>c.classList.remove('on'));}
+function closeM(id){document.getElementById(id).classList.remove('on');}
+function prevImg(inp,pid){if(inp.files&&inp.files[0]){const r=new FileReader();r.onload=e=>document.getElementById(pid).innerHTML=`<img src="${e.target.result}">`;r.readAsDataURL(inp.files[0]);}}
+function fillSel(id,arr){document.getElementById(id).innerHTML=arr.map(v=>`<option value="${v}">${v}</option>`).join('');}
+const SC=s=>s==='ok'?'#27ae60':s==='warn'?'#e67e22':'#c0392b';
+const SL=s=>s==='ok'?'양호':s==='warn'?'보수필요':'파손위험';
+function getAuthor(){const u=DB.g('currentUser')||{};return u.name||'미지정';}
+function getSelPills(id){return [...document.querySelectorAll(`#${id} .pill.on`)].map(p=>p.textContent);}
+function tPill(el){el.classList.toggle('on');}
+function sPill(el,wrId){document.querySelectorAll(`#${wrId} .pill`).forEach(p=>p.classList.remove('on'));el.classList.add('on');}
+function tChk(el){const b=el.querySelector('.chk-box');b.classList.toggle('on');el.classList.toggle('on');}
+function chkIllegal(sel){document.getElementById('fineWrap').style.display=sel.value.includes('비법정')?'block':'none';}
+function chkPermit(sel){document.getElementById('permitNote').style.display=sel.value==='허가자 있음'?'block':'none';}
+function chkReporter(sel){document.getElementById('reporterWrap').style.display=sel.value==='y'?'block':'none';}
+
+// ══════════════════════════════════════════
+// 알림
+// ══════════════════════════════════════════
+function pushNoti(msg,ico,type='info',link=null){
+  const s=DB.g('notiSetting')||{};if(type!=='info'&&s[type]===false)return;
+  const ns=DB.g('notis')||[];ns.unshift({id:Date.now(),msg,ico,time:now(),read:false,link});
+  if(ns.length>80)ns.splice(80);DB.s('notis',ns);updateBell();
+}
+function updateBell(){
+  const cnt=(DB.g('notis')||[]).filter(n=>!n.read).length;
+  ['bellCnt','bellCntHome'].forEach(id=>{const e=document.getElementById(id);if(!e)return;e.textContent=cnt>9?'9+':cnt;e.classList.toggle('on',cnt>0);});
+}
+function openNoti(){
+  const ns=DB.g('notis')||[];
+  document.getElementById('notiList').innerHTML=ns.length
+    ?ns.map(n=>{
+      const hasLink=n.link&&n.link.app;
+      const linkStr=hasLink?`goNotiLink(${JSON.stringify(n.link).replace(/"/g,"'")})`:'';
+      return `<div class="ni ${n.read?'read':'unread'}" style="${hasLink?'cursor:pointer;':''}" ${hasLink?`onclick="${linkStr}"`:''}  >
+        <div class="ni-ico">${n.ico}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="ni-msg">${n.msg}</div>
+          <div class="ni-t">${n.time}${hasLink?' · <span style="color:#4fa8d0;font-size:10px;">탭하여 이동 →</span>':''}</div>
+        </div>
+      </div>`;
+    }).join('')
+    :'<div class="noti-empty">✅ 새 알림 없음</div>';
+  DB.s('notis',(ns).map(n=>({...n,read:true})));updateBell();
+  document.getElementById('notiPanel').classList.add('on');document.getElementById('notiBg').classList.add('on');
+}
+function goNotiLink(link){
+  closeNoti();
+  if(!link||!link.app) return;
+  openApp(link.app);
+  if(link.tab) setTimeout(()=>switchTab(link.tab,document.getElementById('nv'+link.tab)),200);
+  if(link.id) setTimeout(()=>{
+    if(link.app==='rescue') openResPopup(link.id,'rescue');
+    else if(link.app==='inspect') openFacDetail(link.id);
+  },300);
+}
+function closeNoti(){document.getElementById('notiPanel').classList.remove('on');document.getElementById('notiBg').classList.remove('on');}
+function markAllRead(){DB.s('notis',(DB.g('notis')||[]).map(n=>({...n,read:true})));updateBell();openNoti();}
+function clearNotis(){DB.s('notis',[]);updateBell();closeNoti();toast('🗑️ 알림 삭제');}
+
+// ══════════════════════════════════════════
+// 카카오맵
+// ══════════════════════════════════════════
+let mapI,mapR,iOvs=[],rOvs=[],myOv=null,mapIType='hybrid',mapRType='hybrid';
+const DC={lat:38.1724,lng:128.4862};
+function initMaps(){
+  function doInit(){
+    const c=new kakao.maps.LatLng(DC.lat,DC.lng),opt={center:c,level:6};
+    mapI=new kakao.maps.Map(document.getElementById('mapInspect'),opt);
+    mapR=new kakao.maps.Map(document.getElementById('mapRescue'),opt);
+    mapI.setMapTypeId(kakao.maps.MapTypeId.HYBRID);
+    mapR.setMapTypeId(kakao.maps.MapTypeId.HYBRID);
+    kakao.maps.event.addListener(mapI,'click',closeDB);
+    kakao.maps.event.addListener(mapR,'click',closeDB);
+  }
+  if(window._KR)doInit();else window._KCB=doInit;
+}
+function rMaps(){setTimeout(()=>{try{if(mapI)mapI.relayout();}catch(e){}try{if(mapR)mapR.relayout();}catch(e){}},80);}
+function toggleMapType(m){
+  if(m==='inspect'){mapIType=mapIType==='hybrid'?'roadmap':'hybrid';mapI.setMapTypeId(mapIType==='hybrid'?kakao.maps.MapTypeId.HYBRID:kakao.maps.MapTypeId.ROADMAP);}
+  else{mapRType=mapRType==='hybrid'?'roadmap':'hybrid';mapR.setMapTypeId(mapRType==='hybrid'?kakao.maps.MapTypeId.HYBRID:kakao.maps.MapTypeId.ROADMAP);}
+  toast(m==='inspect'?(mapIType==='hybrid'?'위성':'일반'):(mapRType==='hybrid'?'위성':'일반'));
+}
+function gpsTo(mode){
+  if(!navigator.geolocation){toast('⚠️ GPS 미지원');return;}
+  toast('📍 GPS 수신 중...');
+  navigator.geolocation.getCurrentPosition(p=>{
+    const ll=new kakao.maps.LatLng(p.coords.latitude,p.coords.longitude);
+    const m=mode==='inspect'?mapI:mapR;
+    m.setCenter(ll);m.setLevel(4);
+    if(myOv)myOv.setMap(null);
+    const el=document.createElement('div');el.className='mpin p-me';el.innerHTML='🧑';
+    myOv=new kakao.maps.CustomOverlay({position:ll,content:el});myOv.setMap(m);
+    toast('✅ 내 위치');
+  },()=>toast('⚠️ GPS 실패. 위치 권한 확인'));
+}
+function gpsFromMap(id,mode){
+  try{const m=mode==='inspect'?mapI:mapR;const c=m.getCenter();document.getElementById(id).value=c.getLat().toFixed(5)+', '+c.getLng().toFixed(5);toast('🗺️ 지도 중심 좌표');}
+  catch(e){toast('⚠️ 지도를 먼저 여세요');}
+}
+function gpsFromPhone(id){
+  if(!navigator.geolocation){toast('⚠️ GPS 미지원');return;}
+  navigator.geolocation.getCurrentPosition(p=>{document.getElementById(id).value=p.coords.latitude.toFixed(5)+', '+p.coords.longitude.toFixed(5);toast('📍 현재 위치');},()=>toast('⚠️ GPS 실패'));
+}
+
+// ══════════════════════════════════════════
+// 네비게이션
+// ══════════════════════════════════════════
+let curApp='';
+function showV(id){document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));document.getElementById(id).classList.add('on');}
+function goHome(){showV('v-home');document.getElementById('appHdr').style.display='none';document.getElementById('bnav').style.display='none';closeDB();updateSummary();}
+function openApp(mode){
+  curApp=mode;
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
+  document.getElementById('appHdr').style.display='block';
+  const bn=document.getElementById('bnav');
+  function setNv(){[1,2,3].forEach(i=>document.getElementById('nv'+i).classList.remove('on'));document.getElementById('nv1').classList.add('on');}
+  if(mode==='rescue'){
+    document.getElementById('topTitle').textContent='재난/구조 관리';
+    document.getElementById('nvl2').textContent='목록';
+    showV('v-rescue-map');bn.style.display='flex';setNv();
+    rMaps();setTimeout(()=>{try{renderRescueMap();if(mapR)mapR.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));}catch(e){document.getElementById('nomapR').style.display='block';renderResList();}},130);
+  } else if(mode==='inspect'){
+    document.getElementById('topTitle').textContent='시설물 점검';
+    document.getElementById('nvl2').textContent='목록';
+    showV('v-inspect-map');bn.style.display='flex';setNv();
+    rMaps();setTimeout(()=>{try{renderInspectMap();if(mapI)mapI.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));}catch(e){document.getElementById('nomapI').style.display='block';renderFacList();}},130);
+  } else if(mode==='wiki'){
+    document.getElementById('topTitle').textContent='설악위키';
+    bn.style.display='none';showV('v-wiki');renderHotSearch();renderWikiList('');
+  } else if(mode==='admin'){
+    document.getElementById('topTitle').textContent='관리자 전용';
+    bn.style.display='none';showV('v-admin');admTab('ctrl',document.querySelector('.adm-tab'));
+  } else if(mode==='settings'){
+    document.getElementById('topTitle').textContent='내 설정';
+    bn.style.display='none';showV('v-settings');renderSettings();
+  } else if(mode==='stats'){
+    document.getElementById('topTitle').textContent='전체 통계';
+    bn.style.display='none';showV('v-stats');renderFullStats();
+  }
+}
+function switchTab(idx,el){
+  [1,2,3].forEach(i=>document.getElementById('nv'+i).classList.remove('on'));if(el)el.classList.add('on');closeDB();
+  if(curApp==='rescue'){
+    if(idx===1){showV('v-rescue-map');rMaps();}
+    else if(idx===2){showV('v-rescue-list');renderResList();}
+    else{showV('v-rescue-stats');renderRescueStats();}
+  } else if(curApp==='inspect'){
+    if(idx===1){showV('v-inspect-map');rMaps();}
+    else if(idx===2){showV('v-inspect-list');renderFacList();}
+    else{showV('v-inspect-stats');renderInspectStats();}
+  }
+}
+
+// ══════════════════════════════════════════
+// 카카오 로그인 (준비)
+// ══════════════════════════════════════════
+function openKakaoLogin(){
+  toast('💬 카카오 개발자 콘솔에서 카카오 로그인 활성화 후 연동 가능합니다.');
+  // 실제 연동 시: Kakao.Auth.login({ success: onKakaoSuccess })
+}
+function onKakaoSuccess(authObj){
+  Kakao.API.request({url:'/v2/user/me',success:res=>{
+    const u=DB.g('currentUser')||{};
+    u.kakao={id:res.id,name:res.kakao_account?.profile?.nickname||''};
+    if(u.kakao.name&&!u.name)u.name=u.kakao.name;
+    DB.s('currentUser',u);updateUserUI();toast('✅ 카카오 로그인');
+  }});
+}
+
+// ══════════════════════════════════════════
+// 작성자 관리
+// ══════════════════════════════════════════
+function openChangeUser(){
+  const u=DB.g('currentUser')||{};
+  document.getElementById('uNameIn').value=u.name||'';
+  const ds=document.getElementById('uDeptIn');if(ds&&u.dept)ds.value=u.dept;
+  if(u.rank){document.querySelectorAll('#rankPills .pill').forEach(p=>{if(p.textContent===u.rank)p.classList.add('on');});}
+  const ms=DB.g('members')||[];
+  document.getElementById('memberPillWrap').innerHTML=ms.map(m=>`<div class="pill ${u.name===m?'on':''}" onclick="selectMPill(this,'${m}')">${m}</div>`).join('');
+  const banner=document.getElementById('kakaoUserBanner');
+  if(banner)banner.style.display=u.kakao?'block':'none';
+  document.getElementById('modalUser').classList.add('on');
+}
+function selectMPill(el,n){document.querySelectorAll('#memberPillWrap .pill').forEach(p=>p.classList.remove('on'));el.classList.add('on');document.getElementById('uNameIn').value=n;}
+function saveUser(){
+  const name=document.getElementById('uNameIn').value.trim();
+  if(!name){toast('⚠️ 이름 입력');return;}
+  const dept=document.getElementById('uDeptIn').value;
+  const rank=getSelPills('rankPills')[0]||'';
+  const existing=DB.g('currentUser')||{};
+  DB.s('currentUser',{...existing,name,dept,rank});
+  closeM('modalUser');updateUserUI();toast('✅ 저장: '+name);
+}
+function updateUserUI(){
+  const u=DB.g('currentUser')||{};
+  const ne=document.getElementById('myName');const se=document.getElementById('mySub');
+  if(ne)ne.textContent=u.name||'작성자를 선택하세요';
+  const parts=[];if(u.dept)parts.push(u.dept);if(u.rank)parts.push(u.rank);
+  if(se)se.textContent=parts.join(' · ')||'탭하여 설정';
+}
+
+// ══════════════════════════════════════════
+// 재난/구조 — 지도
+// ══════════════════════════════════════════
+let selResId=null,curResId=null,resFilter='전체';
+function renderRescueMap(){
+  if(!mapR){document.getElementById('nomapR').style.display='block';return;}
+  rOvs.forEach(o=>{try{o.setMap(null);}catch(e){}});rOvs=[];
+  // 구조 이력 핀
+  (DB.g('rescues')||[]).forEach(r=>{
+    if(!r.lat||!r.lng)return;
+    const isOg=r.status==='ongoing';const ti=RES_TYPES[r.type]||RES_TYPES['기타'];
+    const el=document.createElement('div');el.className=`mpin ${ti.pc}${isOg?' blink':' p-done'}`;el.innerHTML=ti.ico;
+    el.onclick=e=>{e.stopPropagation();openResPopup(r.id,'rescue');};
+    const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(r.lat,r.lng),content:el,clickable:true});
+    ov.setMap(mapR);rOvs.push(ov);
+  });
+  // 위험상황 핀
+  (DB.g('hazards')||[]).forEach(h=>{
+    if(!h.lat||!h.lng)return;
+    const done=h.hazStatus&&h.hazStatus!=='미조치'&&h.hazStatus!=='조치중';
+    const el=document.createElement('div');el.className=`mpin p-haz${done?' p-done':''}`;el.innerHTML='⚠️';
+    el.onclick=e=>{e.stopPropagation();openResPopup(h.id,'hazard');};
+    const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(h.lat,h.lng),content:el,clickable:true});
+    ov.setMap(mapR);rOvs.push(ov);
+  });
+  updateSummary();
+}
+
+// ══════════════════════════════════════════
+// 재난 목록 + 필터
+// ══════════════════════════════════════════
+function renderResList(){
+  const res=DB.g('rescues')||[];const haz=DB.g('hazards')||[];
+  const filters=['전체','구조(진행중)','구조(종료)','⚠️위험상황','🪨낙석','🌲위험수목','🔥화재'];
+  document.getElementById('resFBar').innerHTML=filters.map(f=>`<div class="ftag ${f===resFilter?'on':''}" onclick="setResF('${f}')">${f}</div>`).join('');
+  let html='';
+  const showHaz=['전체','⚠️위험상황','🪨낙석','🌲위험수목','🔥화재'].includes(resFilter);
+  const showRes=['전체','구조(진행중)','구조(종료)'].includes(resFilter)||!resFilter.startsWith('⚠️');
+  if(showRes){
+    const fr=res.filter(r=>{
+      if(resFilter==='구조(진행중)')return r.status==='ongoing';
+      if(resFilter==='구조(종료)')return r.status==='done';
+      if(resFilter==='전체')return true;
+      return false;
+    });
+    html+=fr.slice().reverse().map(r=>{
+      const isOg=r.status==='ongoing';const ti=RES_TYPES[r.type]||RES_TYPES['기타'];
+      const totalPh=(r.reports||[]).length+1;
+      return `<div class="lcard" onclick="openResListDetail(${r.id})">
+        <div class="lico" style="background:${isOg?ti.color:'#1a3a1a'};border:none;color:#fff;">${ti.ico}</div>
+        <div class="linfo"><div class="lname">🚨 ${r.title}</div>
+          <div class="lmeta">${r.type} · ${r.date}</div>
+          <div class="lmeta">작성: ${r.author||'-'} · ${totalPh}보 기록 · 사고자: ${r.vName||'미상'}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;">
+          <span class="lbadge" style="background:${isOg?'rgba(192,57,43,.15)':'rgba(39,174,96,.15)'};color:${isOg?'#c0392b':'#27ae60'};">${isOg?'진행중':'종료'}</span>
+          <span style="font-size:9px;color:#4fa8d0;">${totalPh}보 보기 →</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  if(showHaz){
+    const fh=haz.filter(h=>{
+      if(resFilter==='전체'||resFilter==='⚠️위험상황')return true;
+      if(resFilter==='🪨낙석')return h.hazType&&h.hazType.includes('낙석');
+      if(resFilter==='🌲위험수목')return h.hazType&&h.hazType.includes('위험수목');
+      if(resFilter==='🔥화재')return h.hazType&&h.hazType.includes('화재');
+      return false;
+    });
+    html+=fh.slice().reverse().map(h=>{
+      const done=h.hazStatus&&h.hazStatus!=='미조치'&&h.hazStatus!=='조치중';
+      return `<div class="haz-card ${done?'haz-removed':''}" onclick="openHazDetail(${h.id})">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="font-size:22px;">${h.hazType?.split(' ')[0]||'⚠️'}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:13px;color:#e0edf8;font-weight:600;">${h.hazType||'위험상황'} · ${h.loc||'-'}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.32);margin-top:2px;">${h.dt||'-'} · ${h.danger||'-'} · ${h.author||'-'}</div>
+            <div style="font-size:11px;color:#7a9cb8;margin-top:2px;">${(h.desc||'').slice(0,40)}${(h.desc||'').length>40?'...':''}</div>
+          </div>
+          <span class="lbadge ${done?'haz-badge-done':'haz-badge-active'}">${h.hazStatus||'미조치'}</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('resListWrap').innerHTML=html||'<div class="empty"><div class="empty-ico">📋</div><div class="empty-txt">해당 항목 없음</div></div>';
+}
+function setResF(f){resFilter=f;renderResList();}
+
+// ══════════════════════════════════════════
+// 재난 통계
+// ══════════════════════════════════════════
+function renderRescueStats(){
+  const res=DB.g('rescues')||[];const haz=DB.g('hazards')||[];
+  const og=res.filter(r=>r.status==='ongoing');
+  document.getElementById('st-tot').textContent=res.length;
+  document.getElementById('st-og').textContent=og.length;
+  document.getElementById('st-done').textContent=res.filter(r=>r.status==='done').length;
+  document.getElementById('st-mon').textContent=res.filter(r=>r.date&&r.date.startsWith(today().slice(0,7))).length;
+  document.getElementById('typeStatWrap').innerHTML=`
+    <div class="type-row" style="pointer-events:none;margin-bottom:6px;background:rgba(192,57,43,.06);">
+      <span class="t-ico">🚨</span><span class="t-lbl" style="font-weight:700;">구조 보고</span><span class="t-cnt">${res.length}건</span>
+    </div>
+    ${Object.keys(RES_TYPES).map(t=>{
+      const cnt=res.filter(r=>r.type===t).length;const ogc=res.filter(r=>r.type===t&&r.status==='ongoing').length;const ti=RES_TYPES[t];
+      return `<div class="type-row" onclick="openTypeDetail('${t}')"><span class="t-ico">${ti.ico}</span><span class="t-lbl">${t}</span><span class="t-cnt" style="color:${ti.color};">${cnt}건${ogc>0?` <small style="color:#c0392b;">(${ogc})</small>`:''}</span><span class="t-arr">›</span></div>`;
+    }).join('')}
+    <div style="height:8px;"></div>
+    <div class="type-row" style="pointer-events:none;background:rgba(230,126,34,.06);">
+      <span class="t-ico">⚠️</span><span class="t-lbl" style="font-weight:700;">위험상황 보고</span><span class="t-cnt">${haz.length}건</span>
+    </div>
+    <div class="type-row" style="pointer-events:none;"><span class="t-ico">✅</span><span class="t-lbl">제거/조치 완료</span><span class="t-cnt">${haz.filter(h=>h.hazStatus==='제거 완료'||h.hazStatus==='통제중').length}건</span></div>`;
+  document.getElementById('resAllWrap').innerHTML=res.slice().reverse().map(r=>{
+    const isOg=r.status==='ongoing';const ti=RES_TYPES[r.type]||RES_TYPES['기타'];
+    return `<div class="lcard"><div class="lico" style="background:${isOg?ti.color:'#1a3a1a'};border:none;color:#fff;">${ti.ico}</div><div class="linfo"><div class="lname">${r.title}</div><div class="lmeta">${r.type} · ${r.date}</div></div><span class="lbadge" style="background:${isOg?'rgba(192,57,43,.15)':'rgba(39,174,96,.15)'};color:${isOg?'#c0392b':'#27ae60'};">${isOg?'진행중':'종료'}</span></div>`;
+  }).join('');
+}
+
+function openTypeDetail(type){
+  document.getElementById('topTitle').textContent=type+' 세부통계';showV('v-type-detail');
+  const res=(DB.g('rescues')||[]).filter(r=>r.type===type);
+  const w=document.getElementById('typeDetailWrap');
+  if(!res.length){w.innerHTML='<div class="empty"><div class="empty-ico">📊</div><div class="empty-txt">이력 없음</div></div>';return;}
+  const injMap={},sevMap={},cauMap={};
+  res.forEach(r=>{(r.injuryParts||[]).forEach(p=>{injMap[p]=(injMap[p]||0)+1;});const sv=r.severity||'미기재';sevMap[sv]=(sevMap[sv]||0)+1;const ca=r.cause||'미기재';cauMap[ca]=(cauMap[ca]||0)+1;});
+  const typeRow=obj=>Object.entries(obj).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="type-row" style="pointer-events:none;"><span class="t-lbl">${k}</span><span class="t-cnt">${v}건</span></div>`).join('')||'<div class="muted" style="font-size:11px;padding:4px 0;">데이터 없음</div>';
+  w.innerHTML=`<div class="stat-grid" style="margin-bottom:9px;"><div class="stat-box"><div class="stat-num">${res.length}</div><div class="stat-lbl">총 발생</div></div><div class="stat-box" style="border-color:#c0392b;"><div class="stat-num bad">${res.filter(r=>r.status==='ongoing').length}</div><div class="stat-lbl">진행중</div></div></div>
+    <div class="scard" style="margin-bottom:8px;"><div class="stitle">🩺 중증도</div>${typeRow(sevMap)}</div>
+    <div class="scard" style="margin-bottom:8px;"><div class="stitle">🦵 부상 부위</div>${typeRow(injMap)}</div>
+    <div class="scard" style="margin-bottom:8px;"><div class="stitle">⚡ 사고 원인</div>${typeRow(cauMap)}</div>
+    <div class="sec-label">해당 유형 이력</div>
+    ${res.slice().reverse().map(r=>`<div class="lcard"><div class="lico" style="background:${RES_TYPES[type]?.color};border:none;color:#fff;">${RES_TYPES[type]?.ico}</div><div class="linfo"><div class="lname">${r.title}</div><div class="lmeta">${r.date} · ${r.severity||'-'}</div></div></div>`).join('')}
+    <button class="btn btn-ghost" style="width:100%;padding:9px;border-radius:8px;margin-top:6px;" onclick="switchTab(3,document.getElementById('nv3'));openApp('rescue');">← 통계로</button>`;
+}
+
+// ══════════════════════════════════════════
+// 팝업 & 상황 종료
+// ══════════════════════════════════════════
+function openResPopup(id,type='rescue'){
+  const data=type==='rescue'?(DB.g('rescues')||[]).find(x=>x.id===id):(DB.g('hazards')||[]).find(x=>x.id===id);if(!data)return;
+  selResId=id;
+  if(type==='rescue'){
+    const isOg=data.status==='ongoing';const ti=RES_TYPES[data.type]||RES_TYPES['기타'];
+    document.getElementById('resPopTitle').textContent=ti.ico+' '+data.title;
+    document.getElementById('resPopMeta').innerHTML=`${data.type} · ${isOg?'<span style="color:#c0392b;font-weight:700;">진행중</span>':'<span style="color:#27ae60;">종료</span>'}<br>발생: ${data.date}<br>위치: ${data.location||'-'}<br>사고자: ${data.vName||'미상'} · ${data.severity||'-'}<br>${(data.reports||[]).length+1}보`;
+    document.getElementById('btnAddRep').style.display=isOg?'block':'none';
+    document.getElementById('btnEndSit').style.display=isOg?'block':'none';
+    document.getElementById('btnViewRep').style.display='block';
+  } else {
+    document.getElementById('resPopTitle').textContent='⚠️ '+data.hazType+' 위험상황';
+    document.getElementById('resPopMeta').innerHTML=`위치: ${data.loc||'-'}<br>위험성: ${data.danger||'-'}<br>상태: ${data.hazStatus||'-'}<br>보고자: ${data.author||'-'}`;
+    document.getElementById('btnAddRep').style.display='none';
+    document.getElementById('btnEndSit').style.display='none';
+    document.getElementById('btnViewRep').style.display='none';
+  }
+  document.getElementById('facPopup').classList.remove('on');
+  document.getElementById('resPopup').classList.add('on');
+}
+
+function openHazDetail(id){
+  const h=(DB.g('hazards')||[]).find(x=>x.id===id);if(!h)return;
+  toast('⚠️ '+h.hazType+' — '+h.hazStatus);
+}
+
+// ══════════════════════════════════════════
+// 구조 보고서 (1보 ~ n보 타임라인)
+// ══════════════════════════════════════════
+function openNewRescue(){
+  curResId=null;
+  document.getElementById('topTitle').textContent='신규 구조 접수 (1보)';
+  document.getElementById('bnav').style.display='none';
+  showV('v-report');renderPhaseBar(0,1);render1BoForm();
+}
+function addPhase(){
+  const res=DB.g('rescues')||[];const r=res.find(x=>x.id===selResId);if(!r)return;
+  curResId=selResId;
+  const phaseNum=(r.reports||[]).length+1;
+  document.getElementById('addPhaseTitle').textContent=`${r.title} — ${phaseNum+1}보 추가`;
+  document.getElementById('r_repdt').value=nowDT();
+  document.getElementById('r_upd').value='';
+  document.getElementById('r_vChg').value='변화없음';
+  document.getElementById('r_addMem').value='';
+  document.getElementById('r_repAuthor').value=getAuthor();
+  // 이전 보 차이점 요약
+  const prevWrap=document.getElementById('prevDiffWrap');
+  const prevContent=document.getElementById('prevDiffContent');
+  if(r.reports&&r.reports.length>0){
+    const prev=r.reports[r.reports.length-1];
+    prevWrap.style.display='block';
+    prevContent.innerHTML=`<div class="tl-diff-t">📋 ${r.reports.length}보 기록</div>
+      <div class="tl-diff-row">🕐 ${prev.repTime}</div>
+      <div class="tl-diff-row">📝 ${(prev.update||'').slice(0,80)}${(prev.update||'').length>80?'...':''}</div>
+      <div class="tl-diff-row">👤 상태: ${prev.victimChange||'-'} · ${prev.author||'-'}</div>`;
+  } else {
+    prevWrap.style.display='block';
+    prevContent.innerHTML=`<div class="tl-diff-t">📋 1보 기록</div>
+      <div class="tl-diff-row">유형: ${r.type} · 사고자: ${r.vName||'미상'}</div>
+      <div class="tl-diff-row">위치: ${r.location||'-'}</div>
+      <div class="tl-diff-row">중증도: ${r.severity||'-'}</div>`;
+  }
+  document.getElementById('modalAddPhase').classList.add('on');closeDB();
+}
+function viewFullPrev(){
+  const res=DB.g('rescues')||[];const r=res.find(x=>x.id===curResId);if(!r)return;
+  const phNum=(r.reports||[]).length;
+  const prev=phNum>0?r.reports[phNum-1]:null;
+  document.getElementById('prevRepTitle').textContent=phNum>0?`${phNum}보 전체 내용`:'1보 전체 내용';
+  if(prev){
+    document.getElementById('prevRepContent').innerHTML=`<div style="font-size:12px;color:#7a9cb8;line-height:2;">
+      <b>보고 시간:</b> ${prev.repTime}<br><b>상황 내용:</b> ${prev.update||'-'}<br>
+      <b>부상자 상태:</b> ${prev.victimChange||'-'}<br><b>추가 대원:</b> ${prev.addMem||'-'}<br><b>작성자:</b> ${prev.author||'-'}
+    </div>`;
+  } else {
+    document.getElementById('prevRepContent').innerHTML=`<div style="font-size:12px;color:#7a9cb8;line-height:2;">
+      <b>유형:</b> ${r.type}<br><b>발생:</b> ${r.date}<br><b>위치:</b> ${r.location||'-'}<br>
+      <b>사고자:</b> ${r.vName||'미상'} / ${r.vGender||'-'}<br><b>중증도:</b> ${r.severity||'-'}<br>
+      <b>부상부위:</b> ${(r.injuryParts||[]).join(', ')||'-'}<br><b>구조방법:</b> ${(r.rescueMethod||[]).join(', ')||'-'}
+    </div>`;
+  }
+  document.getElementById('modalPrevReport').classList.add('on');
+}
+function viewAllTimeline(){closeM('modalAddPhase');viewReport();}
+function viewReport(){
+  const res=DB.g('rescues')||[];const r=res.find(x=>x.id===selResId);if(!r)return;
+  curResId=selResId;
+  document.getElementById('topTitle').textContent=r.title+' 타임라인';
+  document.getElementById('bnav').style.display='none';
+  showV('v-report');closeDB();
+  const tot=(r.reports||[]).length+1;
+  renderPhaseBar(tot-1,tot);
+  renderTimeline(r,'brief');
+}
+function renderPhaseBar(active,total){
+  document.getElementById('phaseBar').innerHTML=Array.from({length:total},(_,i)=>
+    `<div class="ph ${i<active?'done':i===active?'active':''}"><div class="ph-dot"></div>${i+1}보</div>`).join('');
+}
+// 현재 보고서 ID 기억
+let _curViewResId=null;
+let _tlViewMode='brief'; // 'brief' | 'full'
+
+function renderTimeline(r,viewMode){
+  _curViewResId=r.id;
+  _tlViewMode=viewMode||'brief';
+  const all=[r,...(r.reports||[])];
+  const w=document.getElementById('repContent');
+
+  function renderPhaseContent(p,i,mode){
+    if(i===0){
+      // 1보
+      const brief=`<div class="tl-body">📍 ${r.location||'위치 미기재'}<br>🧑 ${r.vName||'미상'} · ${r.severity||'-'}<br>🩺 ${(r.injuryParts||[]).join(', ')||'-'}<br>🚑 ${(r.rescueMethod||[]).join(', ')||'-'}</div>`;
+      const full=`<div class="tl-body">
+        <b>위치:</b> ${r.location||'-'} (${r.loctype||'-'})<br>
+        <b>사고자:</b> ${r.vName||'미상'} / ${r.vGender||'-'} / ${r.vNation||'-'}<br>
+        <b>연락처:</b> ${r.vTel||'-'}<br>
+        <b>중증도:</b> ${r.severity||'-'}<br>
+        <b>사고 원인:</b> ${r.cause||'-'}<br>
+        <b>부상 부위:</b> ${(r.injuryParts||[]).join(', ')||'-'}<br>
+        <b>부상 유형:</b> ${(r.injuryTypes||[]).join(', ')||'-'}<br>
+        <b>구조 방법:</b> ${(r.rescueMethod||[]).join(', ')||'-'}<br>
+        <b>출동:</b> ${r.dispatch||'-'} → 도착: ${r.arrival||'-'}<br>
+        <b>출동 대원:</b> ${(r.members||[]).join(', ')||'-'}<br>
+        <b>119:</b> ${r.r119||'-'} · 기타: ${r.others||'-'}<br>
+        <b>병원 후송:</b> ${r.hospital||'-'}<br>
+        <b>기상:</b> ${r.weather||'-'} ${r.weatherAlert||''}<br>
+        <b>음주:</b> ${r.alcohol||'-'}<br>
+        ${r.situation?`<b>경위:</b> ${r.situation}<br>`:''}
+        ${r.extra?`<b>특이:</b> ${r.extra}`:''}
+      </div>`;
+      return mode==='full'?full:brief;
+    } else {
+      // n보
+      const brief=`<div class="tl-body">📝 ${(p.update||'내용없음').slice(0,60)}${(p.update||'').length>60?'...':''}<br>👤 ${p.victimChange||'-'}${p.addMem?` · 추가: ${p.addMem}`:''}</div>`;
+      const full=`<div class="tl-body"><b>상황:</b> ${p.update||'-'}<br><b>부상자 상태:</b> ${p.victimChange||'-'}${p.addMem?`<br><b>추가 대원:</b> ${p.addMem}`:''}</div>`;
+      return mode==='full'?full:brief;
+    }
+  }
+
+  // 댓글 렌더링
+  function renderComments(resId){
+    const cmts=(DB.g('comments_'+resId)||[]);
+    if(!cmts.length) return '<div style="font-size:11px;color:rgba(255,255,255,.25);padding:4px 0;">댓글 없음</div>';
+    return cmts.map(cm=>`<div style="background:#060d1a;border-radius:7px;padding:8px 10px;margin-bottom:5px;">
+      <div style="font-size:10px;color:#4fa8d0;font-weight:600;">${cm.author||'익명'} · ${cm.time}</div>
+      <div style="font-size:12px;color:#b8d4e8;margin-top:3px;line-height:1.5;">${cm.text}</div>
+    </div>`).join('');
+  }
+
+  const phaseBar=Array.from({length:all.length},(_,i)=>
+    `<div class="ph ${i<all.length-1?'done':'active'}"><div class="ph-dot"></div>${i+1}보</div>`).join('');
+
+  w.innerHTML=`
+    <!-- 헤더 -->
+    <div style="background:#0b1c30;border-radius:10px;padding:11px 12px;border:.5px solid rgba(255,255,255,.07);margin-bottom:10px;">
+      <div style="font-size:14px;font-weight:700;color:#e0edf8;">${r.title}</div>
+      <div style="font-size:11px;color:#3a6a8a;margin-top:3px;">${r.type} · ${r.status==='ongoing'?'<span style="color:#c0392b;font-weight:700;">진행중</span>':'<span style="color:#27ae60;font-weight:700;">종료</span>'} · ${r.date}</div>
+      <!-- 간편/전체 토글 -->
+      <div style="display:flex;gap:5px;margin-top:9px;">
+        <button onclick="renderTimeline(getRes(${r.id}),'brief')" style="flex:1;padding:6px;border-radius:7px;border:1px solid;font-size:11px;font-weight:600;cursor:pointer;background:${'brief'===_tlViewMode?'rgba(79,168,208,.15)':'transparent'};color:${'brief'===_tlViewMode?'#4fa8d0':'rgba(255,255,255,.35)'};border-color:${'brief'===_tlViewMode?'rgba(79,168,208,.5)':'rgba(255,255,255,.1)'};">간편보기</button>
+        <button onclick="renderTimeline(getRes(${r.id}),'full')" style="flex:1;padding:6px;border-radius:7px;border:1px solid;font-size:11px;font-weight:600;cursor:pointer;background:${'full'===_tlViewMode?'rgba(79,168,208,.15)':'transparent'};color:${'full'===_tlViewMode?'#4fa8d0':'rgba(255,255,255,.35)'};border-color:${'full'===_tlViewMode?'rgba(79,168,208,.5)':'rgba(255,255,255,.1)'};">전체보기</button>
+      </div>
+    </div>
+
+    <!-- 타임라인 -->
+    <div class="timeline">
+    ${all.map((p,i)=>`
+      <div class="tl-item">
+        <div class="tl-dot ${i<all.length-1?'done':r.status==='ongoing'?'active':'done'}"></div>
+        <div class="tl-time">${i===0?r.date:p.repTime||'-'} · ${i===0?r.author||'-':p.author||'-'}</div>
+        <div class="tl-box">
+          <div class="tl-title">${i+1}보 ${i===0?'— 초기 접수':'— 상황 업데이트'}</div>
+          ${renderPhaseContent(p,i,_tlViewMode)}
+        </div>
+      </div>`).join('')}
+    </div>
+
+    <!-- 댓글 -->
+    <div style="background:#0b1c30;border-radius:10px;padding:12px;border:.5px solid rgba(255,255,255,.07);margin-top:10px;">
+      <div style="font-size:11px;color:#4fa8d0;font-weight:700;margin-bottom:8px;">💬 댓글</div>
+      <div id="commentList_${r.id}">${renderComments(r.id)}</div>
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <input type="text" id="cmtInput_${r.id}" class="fi" placeholder="댓글 입력..." style="flex:1;">
+        <button onclick="submitComment(${r.id})" style="background:#1a4a6e;color:#fff;border:none;padding:0 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">등록</button>
+      </div>
+    </div>
+
+    <!-- 액션 버튼 -->
+    ${r.status==='ongoing'?`
+    <div style="display:flex;gap:7px;margin-top:10px;">
+      <button class="btn-submit" style="flex:2;background:#1a4a6e;color:#fff;" onclick="selResId=${r.id};curResId=${r.id};addPhase();">📋 다음 보 추가</button>
+      <button class="btn-submit" style="flex:1;background:#0d5040;color:#fff;" onclick="selResId=${r.id};endSit();">✅ 종료</button>
+    </div>`:'<div style="margin-top:10px;text-align:center;font-size:12px;color:#27ae60;padding:8px;">✅ 상황 종료됨</div>'}`;
+}
+function getRes(id){return (DB.g('rescues')||[]).find(r=>r.id===id)||{};}
+function submitComment(resId){
+  const inp=document.getElementById('cmtInput_'+resId);if(!inp)return;
+  const text=inp.value.trim();if(!text){toast('⚠️ 댓글을 입력하세요');return;}
+  const cmts=DB.g('comments_'+resId)||[];
+  const u=DB.g('currentUser')||{};
+  cmts.push({id:Date.now(),author:u.name||'익명',time:now(),text});
+  DB.s('comments_'+resId,cmts);
+  inp.value='';
+  // 댓글 목록만 갱신
+  const listEl=document.getElementById('commentList_'+resId);
+  if(listEl){
+    listEl.innerHTML=cmts.map(cm=>`<div style="background:#060d1a;border-radius:7px;padding:8px 10px;margin-bottom:5px;"><div style="font-size:10px;color:#4fa8d0;font-weight:600;">${cm.author} · ${cm.time}</div><div style="font-size:12px;color:#b8d4e8;margin-top:3px;line-height:1.5;">${cm.text}</div></div>`).join('');
+  }
+  toast('💬 댓글 등록');
+  // 관련 알림
+  pushNoti(`💬 댓글: ${text.slice(0,20)}...`,'💬','info',{app:'rescue',tab:2,id:resId});
+}
+
+function endSit(){
+  const res=DB.g('rescues')||[];const idx=res.findIndex(x=>x.id===selResId);if(idx===-1)return;
+  if(!confirm('상황을 종료 처리하겠습니까?'))return;
+  res[idx].status='done';DB.s('rescues',res);
+  pushNoti(`✅ 종료: ${res[idx].title}`,'✅','info',{app:'rescue',tab:2,id:res[idx].id});
+  try{renderRescueMap();}catch(e){}closeDB();toast('✅ 상황 종료');updateSummary();
+  // 타임라인 뷰에 있으면 갱신
+  if(document.getElementById('v-report').classList.contains('on')){
+    renderTimeline(res[idx],_tlViewMode||'brief');
+  }
+}
+
+function submitNBo(){
+  const res=DB.g('rescues')||[];const idx=res.findIndex(x=>x.id===curResId);if(idx===-1)return;
+  if(!res[idx].reports)res[idx].reports=[];
+  res[idx].reports.push({
+    repTime:document.getElementById('r_repdt').value.replace('T',' '),
+    update:document.getElementById('r_upd').value,
+    victimChange:document.getElementById('r_vChg').value,
+    addMem:document.getElementById('r_addMem').value,
+    author:document.getElementById('r_repAuthor').value,
+  });
+  DB.s('rescues',res);
+  const phNum=res[idx].reports.length;
+  renderPhaseBar(phNum,phNum+1);
+  pushNoti(`📋 ${phNum+1}보: ${res[idx].title}`,'📋','info',{app:'rescue',tab:2,id:res[idx].id});
+  closeM('modalAddPhase');toast(`✅ ${phNum+1}보 저장`);
+  // 타임라인 갱신
+  renderTimeline(res[idx]);
+}
+
+// ══════════════════════════════════════════
+// 1보 폼
+// ══════════════════════════════════════════
+function render1BoForm(){
+  const ms=DB.g('members')||[];
+  document.getElementById('repContent').innerHTML=`
+<div class="rsec"><div class="rsec-t">📋 1보 — 기본 접수</div>
+  <div class="fg"><span class="fl">사고 제목</span><input type="text" id="r_title" class="fi" placeholder="예: 비선대 실족 부상자 1명"></div>
+  <div class="fg"><span class="fl">사고 유형</span><select id="r_type" class="fsel"><option>안전사고</option><option>낙석</option><option>위험수목</option><option>화재</option><option>기타</option></select></div>
+  <div class="fg"><span class="fl">사고 일시</span><input type="datetime-local" id="r_accdt" class="fi" value="${nowDT()}"></div>
+  <div class="fg"><span class="fl">접수 경로</span><select id="r_recv" class="fsel"><option>119</option><option>본소</option><option>직원신고</option><option>목격자신고</option><option>현장접수</option></select></div>
+  <div class="fg"><span class="fl">기상</span><div class="pills" id="weatherPills">${['맑음','흐림','비','눈','강풍','폭우','폭설','안개'].map(p=>`<div class="pill" onclick="sPill(this,'weatherPills')">${p}</div>`).join('')}</div></div>
+  <div class="fg"><span class="fl">기상 특보</span><input type="text" id="r_wAlert" class="fi" placeholder="없음 또는 강풍주의보 등"></div>
+</div>
+<div class="rsec"><div class="rsec-t">📍 사고 위치</div>
+  <div class="fg"><span class="fl">좌표</span><div class="gps-row"><input type="text" id="r_gps" class="fi" placeholder="위도, 경도"><button class="sm-btn" onclick="gpsFromMap('r_gps','rescue')">🗺</button><button class="sm-btn" onclick="gpsFromPhone('r_gps')">📍</button></div></div>
+  <div class="fg"><span class="fl">사고 장소</span><input type="text" id="r_loc" class="fi" placeholder="예: 비선대 직상부 암릉 구간"></div>
+  <div class="fg"><span class="fl">장소 구분</span><select id="r_loctype" class="fsel" onchange="chkIllegal(this)"><option>법정탐방로</option><option>비법정탐방로</option><option>암벽</option><option>빙벽</option></select></div>
+  <div id="fineWrap" style="display:none;" class="fg"><span class="fl" style="color:#e67e22;">⚠️ 과태료 여부</span><select id="r_fine" class="fsel"><option>과태료 해당 없음</option><option>과태료 부과 예정</option><option>확인 필요</option></select></div>
+  <div class="fg"><span class="fl">암빙벽 허가</span><select id="r_permit" class="fsel" onchange="chkPermit(this)"><option>해당없음</option><option>허가자 있음</option><option>무허가</option></select></div>
+  <div id="permitNote" style="display:none;" class="fg"><input type="text" id="r_permitNote" class="fi" placeholder="허가번호, 소속 등"></div>
+</div>
+<div class="rsec"><div class="rsec-t">📞 신고자</div>
+  <div class="fg"><select id="r_hasRep" class="fsel" onchange="chkReporter(this)"><option value="n">신고자 없음</option><option value="y">신고자 있음</option></select></div>
+  <div id="reporterWrap" style="display:none;">
+    <div class="frow"><div class="fg"><span class="fl">성명</span><input type="text" id="r_repName" class="fi"></div><div class="fg"><span class="fl">연락처</span><input type="tel" id="r_repTel" class="fi"></div></div>
+  </div>
+</div>
+<div class="rsec"><div class="rsec-t">🚑 사고자 <button class="info-btn" onclick="openGuide('victim')">ℹ 안내</button></div>
+  <div class="frow"><div class="fg"><span class="fl">성명</span><input type="text" id="r_vName" class="fi"></div><div class="fg"><span class="fl">연락처</span><input type="tel" id="r_vTel" class="fi"></div></div>
+  <div class="frow"><div class="fg"><span class="fl">내/외국인</span><select id="r_vNat" class="fsel"><option>내국인</option><option>외국인</option></select></div><div class="fg"><span class="fl">성별</span><select id="r_vGender" class="fsel"><option>남</option><option>여</option></select></div></div>
+  <div class="frow"><div class="fg"><span class="fl">생년월일</span><input type="date" id="r_vBirth" class="fi"></div><div class="fg"><span class="fl">거주지</span><input type="text" id="r_vAddr" class="fi" placeholder="시/도"></div></div>
+  <div class="fg"><span class="fl">기저질환</span><input type="text" id="r_vDis" class="fi" placeholder="없음 또는 해당 질환"></div>
+  <div class="fg"><span class="fl">알레르기</span><input type="text" id="r_vAll" class="fi" placeholder="없음 또는 항목"></div>
+  <div class="fg"><span class="fl">복용약</span><input type="text" id="r_vMed" class="fi" placeholder="없음 또는 항목"></div>
+</div>
+<div class="rsec"><div class="rsec-t">🩺 부상 <button class="info-btn" onclick="openGuide('injury')">ℹ</button></div>
+  <div class="fg"><span class="fl">사고 원인</span><select id="r_cause" class="fsel"><option>실족</option><option>추락</option><option>낙석 피격</option><option>탈진/탈수</option><option>저체온</option><option>심혈관 이상</option><option>동물 피해</option><option>익수</option><option>기타</option></select></div>
+  <div class="fg"><span class="fl">부상 부위 (복수) <button class="info-btn" onclick="openGuide('bodypart')">ℹ</button></span>
+    <div class="pills" id="injParts">${['머리/두부','경추/목','흉부','복부','골반','척추','상지(팔)','하지(다리)','발목','무릎','손/손목','없음(무상)'].map(p=>`<div class="pill" onclick="tPill(this)">${p}</div>`).join('')}</div>
+  </div>
+  <div class="fg"><span class="fl">부상 유형 (복수)</span>
+    <div class="pills" id="injTypes">${['골절','염좌/탈구','열상(찢김)','타박상','뇌진탕','저체온증','심정지','의식불명','통증호소','기타'].map(p=>`<div class="pill" onclick="tPill(this)">${p}</div>`).join('')}</div>
+  </div>
+  <div class="fg"><span class="fl">중증도 <button class="info-btn" onclick="openGuide('severity')">ℹ KTAS</button></span>
+    <div class="pills" id="sevPills">${['KTAS 1 (소생)','KTAS 2 (긴급)','KTAS 3 (응급)','KTAS 4 (준응급)','KTAS 5 (비응급)'].map(p=>`<div class="pill" onclick="sPill(this,'sevPills')">${p}</div>`).join('')}</div>
+  </div>
+  <div class="fg"><span class="fl">음주</span><select id="r_alc" class="fsel"><option>없음</option><option>의심</option><option>확인됨</option></select></div>
+  <div class="fg"><span class="fl">사고 경위</span><textarea id="r_sit" class="fta" rows="3" placeholder="사고 발생 경위 상세 기술"></textarea></div>
+</div>
+<div class="rsec"><div class="rsec-t">📸 현장 사진</div>
+  <div class="frow">
+    <div class="fg"><span class="fl">부상 사진</span><div class="photo-slot" onclick="document.getElementById('fileInj').click()"><input type="file" id="fileInj" accept="image/*" capture="environment" style="display:none;" onchange="prevImg(this,'prevInj')"><div id="prevInj">📸</div></div></div>
+    <div class="fg"><span class="fl">이송 사진</span><div class="photo-slot" onclick="document.getElementById('fileTrans').click()"><input type="file" id="fileTrans" accept="image/*" capture="environment" style="display:none;" onchange="prevImg(this,'prevTrans')"><div id="prevTrans">📸</div></div></div>
+  </div>
+</div>
+<div class="rsec"><div class="rsec-t">🚁 구조 대응</div>
+  <div class="fg"><span class="fl">구조 방법 (복수)</span><div class="pills" id="rescMeth">${['들것','부축','헬기','차량','자력하산','로프구조','기타'].map(p=>`<div class="pill" onclick="tPill(this)">${p}</div>`).join('')}</div></div>
+  <div class="frow"><div class="fg"><span class="fl">출동</span><input type="datetime-local" id="r_disp" class="fi"></div><div class="fg"><span class="fl">도착</span><input type="datetime-local" id="r_arr" class="fi"></div></div>
+  <div class="frow"><div class="fg"><span class="fl">완료</span><input type="datetime-local" id="r_comp" class="fi"></div><div class="fg"><span class="fl">거리(km)</span><input type="number" id="r_dist" class="fi" step="0.1"></div></div>
+  <div class="fg"><span class="fl">출동 대원</span><div class="chk-grid" id="memChkGrid">${ms.map(m=>`<div class="chk-item" onclick="tChk(this)"><div class="chk-box"></div><span class="chk-txt">${m}</span></div>`).join('')}</div></div>
+  <div class="fg"><span class="fl">119 출동</span><input type="text" id="r_119" class="fi" placeholder="팀명, 인원"></div>
+  <div class="fg"><span class="fl">기타 동원</span><input type="text" id="r_others" class="fi" placeholder="경찰, 헬기 등"></div>
+  <div class="fg"><span class="fl">동원 장비</span><textarea id="r_equip" class="fta" rows="2" placeholder="들것, 로프, AED 등"></textarea></div>
+  <div class="fg"><span class="fl">병원 후송</span><select id="r_hosp" class="fsel"><option>후송 없음</option><option>후송 완료</option><option>후송 중</option><option>본인 귀가</option></select></div>
+</div>
+<div class="rsec"><div class="rsec-t">✍️ 작성 정보</div>
+  <div class="fg"><span class="fl">보고 작성자</span><input type="text" id="r_author" class="fi" value="${getAuthor()}"></div>
+  <div class="fg"><span class="fl">기타 특이사항</span><textarea id="r_extra" class="fta" rows="3"></textarea></div>
+</div>
+<button class="btn-submit" style="background:#7a1818;color:#fff;" onclick="submit1Bo()">🚨 1보 등록</button>`;
+}
+
+function submit1Bo(){
+  const title=document.getElementById('r_title').value.trim();
+  if(!title){toast('⚠️ 사고 제목 입력');return;}
+  const gps=document.getElementById('r_gps').value.split(',');
+  const lat=parseFloat(gps[0])||null,lng=parseFloat(gps[1])||null;
+  const members=[...document.querySelectorAll('#memChkGrid .chk-box.on')].map(b=>b.nextElementSibling.textContent);
+  const r={
+    id:Date.now(),title,type:document.getElementById('r_type').value,
+    date:document.getElementById('r_accdt').value.replace('T',' '),
+    reception:document.getElementById('r_recv').value,
+    weather:getSelPills('weatherPills')[0]||'',weatherAlert:document.getElementById('r_wAlert').value,
+    lat,lng,location:document.getElementById('r_loc').value,loctype:document.getElementById('r_loctype').value,
+    fine:document.getElementById('fineWrap').style.display!=='none'?document.getElementById('r_fine').value:'',
+    vName:document.getElementById('r_vName').value,vTel:document.getElementById('r_vTel').value,
+    vNation:document.getElementById('r_vNat').value,vGender:document.getElementById('r_vGender').value,
+    vBirth:document.getElementById('r_vBirth').value,vAddr:document.getElementById('r_vAddr').value,
+    vDisease:document.getElementById('r_vDis').value,vAllergy:document.getElementById('r_vAll').value,vMeds:document.getElementById('r_vMed').value,
+    cause:document.getElementById('r_cause').value,
+    injuryParts:getSelPills('injParts'),injuryTypes:getSelPills('injTypes'),
+    severity:getSelPills('sevPills')[0]||'',alcohol:document.getElementById('r_alc').value,
+    situation:document.getElementById('r_sit').value,rescueMethod:getSelPills('rescMeth'),
+    dispatch:document.getElementById('r_disp').value,arrival:document.getElementById('r_arr').value,
+    completion:document.getElementById('r_comp').value,distance:document.getElementById('r_dist').value,
+    members,r119:document.getElementById('r_119').value,others:document.getElementById('r_others').value,
+    equipment:document.getElementById('r_equip').value,hospital:document.getElementById('r_hosp').value,
+    author:document.getElementById('r_author').value,extra:document.getElementById('r_extra').value,
+    status:'ongoing',reports:[],
+  };
+  const res=DB.g('rescues')||[];res.push(r);DB.s('rescues',res);
+  pushNoti(`🚨 구조 1보: ${title} (${r.type})`,RES_TYPES[r.type]?.ico||'🚨',r.type,{app:'rescue',tab:2,id:r.id});
+  syncToSheets('rescue',{id:r.id,title,type:r.type,date:r.date,author:r.author});
+  openApp('rescue');toast('🚨 1보 등록 완료');
+}
+
+// ══════════════════════════════════════════
+// 위험상황 보고
+// ══════════════════════════════════════════
+function openNewHazard(){
+  document.getElementById('hz_dt').value=nowDT();
+  document.getElementById('hz_loc').value='';document.getElementById('hz_gps').value='';
+  document.getElementById('hz_desc').value='';document.getElementById('hz_author').value=getAuthor();
+  document.getElementById('prevHaz').innerHTML='📸 현장 사진';
+  ['hazTypePills','hazDangerPills','hazStatusPills'].forEach(id=>{document.querySelectorAll(`#${id} .pill`).forEach(p=>p.classList.remove('on'));});
+  document.querySelector('#hazStatusPills .pill').classList.add('on'); // 기본값: 미조치
+  document.getElementById('modalHazard').classList.add('on');
+}
+function submitHazard(){
+  const type=getSelPills('hazTypePills')[0];
+  if(!type){toast('⚠️ 유형 선택');return;}
+  const gps=document.getElementById('hz_gps').value.split(',');
+  const lat=parseFloat(gps[0])||null,lng=parseFloat(gps[1])||null;
+  const h={
+    id:Date.now(),hazType:type,
+    dt:document.getElementById('hz_dt').value.replace('T',' '),
+    loc:document.getElementById('hz_loc').value,lat,lng,
+    danger:getSelPills('hazDangerPills')[0]||'',
+    desc:document.getElementById('hz_desc').value,
+    hazStatus:getSelPills('hazStatusPills')[0]||'미조치',
+    author:document.getElementById('hz_author').value,
+  };
+  const haz=DB.g('hazards')||[];haz.push(h);DB.s('hazards',haz);
+  pushNoti(`⚠️ 위험상황: ${type} · ${h.loc||'-'}`,'⚠️','낙석',{app:'rescue',tab:2});
+  closeM('modalHazard');try{renderRescueMap();}catch(e){}toast('⚠️ 위험상황 등록');updateSummary();
+}
+
+// ══════════════════════════════════════════
+// 시설물
+// ══════════════════════════════════════════
+let selFacId=null,facStatusF='전체',facTypeF='전체';
+function renderInspectMap(){
+  if(!mapI){document.getElementById('nomapI').style.display='block';return;}
+  iOvs.forEach(o=>{try{o.setMap(null);}catch(e){}});iOvs=[];
+  (DB.g('facilities')||[]).forEach(f=>{
+    if(!f.lat||!f.lng)return;
+    const el=document.createElement('div');el.className=`mpin p-${f.status}${f.status==='bad'?' blink':''}`;el.innerHTML=f.type.split(' ')[0];
+    el.onclick=e=>{e.stopPropagation();openFacDetail(f.id);};
+    const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(f.lat,f.lng),content:el,clickable:true});
+    ov.setMap(mapI);iOvs.push(ov);
+  });
+}
+function renderFacList(){
+  const facs=DB.g('facilities')||[];
+  const sfs=['전체','양호','요주의','위험'];
+  const types=['전체',...new Set(facs.map(f=>f.type.split(' ').slice(1).join(' ')||f.type))].slice(0,6);
+  const fStyle=on=>`padding:5px 12px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid ${on?'rgba(79,168,208,.65)':'rgba(255,255,255,.1)'};color:${on?'#4fa8d0':'rgba(255,255,255,.38)'};background:${on?'rgba(79,168,208,.09)':'transparent'};white-space:nowrap;flex-shrink:0;`;
+  document.getElementById('facFBar').innerHTML=
+    sfs.map(f=>`<div style="${fStyle(f===facStatusF)}" onclick="setFacF('s','${f}')">${f}</div>`).join('')+
+    '<div style="width:1px;background:rgba(255,255,255,.1);flex-shrink:0;margin:0 2px;"></div>'+
+    types.map(f=>`<div style="${fStyle(f===facTypeF)}" onclick="setFacF('t','${f}')">${f}</div>`).join('');
+  const sMap={'전체':null,'양호':'ok','요주의':'warn','위험':'bad'};
+  const filtered=facs.filter(f=>{const sOk=!sMap[facStatusF]||f.status===sMap[facStatusF];const tOk=facTypeF==='전체'||f.type.includes(facTypeF);return sOk&&tOk;});
+  document.getElementById('facListWrap').innerHTML=filtered.length?filtered.map(f=>`
+    <div class="lcard" onclick="openFacDetail(${f.id})">
+      <div class="lico" style="border-color:${SC(f.status)};color:${SC(f.status)};">${f.type.split(' ')[0]}</div>
+      <div class="linfo"><div class="lname">${f.name}</div>
+        <div class="lmeta">${f.type} · ${f.loc||'-'}</div>
+        <div class="lmeta">설치: ${f.install||'-'} · ${f.author||'-'} · ${f.lat?'📍GPS':'GPS없음'}</div>
+      </div>
+      <span class="lbadge" style="background:${SC(f.status)}22;color:${SC(f.status)};">${SL(f.status)}</span>
+    </div>`).join(''):'<div class="empty"><div class="empty-ico">🛠️</div><div class="empty-txt">해당 조건 없음</div></div>';
+}
+function setFacF(t,v){if(t==='s')facStatusF=v;else facTypeF=v;renderFacList();}
+
+function renderInspectStats(){
+  const facs=DB.g('facilities')||[];const hist=(DB.g('history')||[]).slice().reverse().slice(0,8);
+  document.getElementById('fs-tot').textContent=facs.length;
+  document.getElementById('fs-bad').textContent=facs.filter(f=>f.status==='bad').length;
+  document.getElementById('fs-warn').textContent=facs.filter(f=>f.status==='warn').length;
+  document.getElementById('fs-ok').textContent=facs.filter(f=>f.status==='ok').length;
+  const tm={};facs.forEach(f=>{tm[f.type]=(tm[f.type]||0)+1;});
+  document.getElementById('facTypeStatWrap').innerHTML=Object.entries(tm).map(([k,v])=>
+    `<div class="type-row" style="pointer-events:none;"><span class="t-ico">${k.split(' ')[0]}</span><span class="t-lbl">${k.split(' ').slice(1).join(' ')}</span><span class="t-cnt">${v}개</span></div>`).join('');
+  document.getElementById('facRecentWrap').innerHTML=hist.length?hist.map(h=>
+    `<div style="background:#060d1a;border-radius:8px;padding:9px 11px;margin-bottom:5px;"><div style="font-size:10px;color:rgba(255,255,255,.25);">${h.date} · ${h.author||'-'}</div><div style="font-size:12px;font-weight:600;color:${SC(h.status)};margin-top:2px;">${h.facName} — ${SL(h.status)}</div>${h.note?`<div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:3px;">${h.note}</div>`:''}</div>`).join(''):'<div class="muted" style="font-size:12px;padding:5px 0;">점검 이력 없음</div>';
+}
+
+// 시설물 상세 (목록 탭에서 탭하면 모달로 상세 + 점검/이력 버튼)
+function openFacDetail(id){
+  const facs=DB.g('facilities')||[];const f=facs.find(x=>x.id===id);if(!f)return;
+  selFacId=id;
+  const hist=(DB.g('history')||[]).filter(h=>h.facId===id);
+  const lastInsp=hist.length?hist[hist.length-1]:null;
+  document.getElementById('facDetailTitle').textContent=f.name;
+  document.getElementById('facDetailContent').innerHTML=`
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+      <div style="font-size:32px;">${f.type.split(' ')[0]}</div>
+      <div><div style="font-size:14px;font-weight:700;color:#e0edf8;">${f.name}</div>
+        <div style="font-size:12px;color:${SC(f.status)};font-weight:600;margin-top:2px;">${SL(f.status)}</div>
+      </div>
+    </div>
+    <div style="background:#060d1a;border-radius:9px;padding:11px 12px;font-size:12px;color:#7a9cb8;line-height:2.1;">
+      <b style="color:#c0d8ec;">종류:</b> ${f.type}<br>
+      <b style="color:#c0d8ec;">위치:</b> ${f.loc||'-'}<br>
+      <b style="color:#c0d8ec;">좌표:</b> ${f.lat?f.lat.toFixed(5)+', '+f.lng.toFixed(5):'GPS 미등록'}<br>
+      <b style="color:#c0d8ec;">설치일:</b> ${f.install||'-'}<br>
+      <b style="color:#c0d8ec;">등록자:</b> ${f.author||'-'}<br>
+      <b style="color:#c0d8ec;">점검 횟수:</b> ${hist.length}회<br>
+      <b style="color:#c0d8ec;">최근 점검:</b> ${lastInsp?lastInsp.date+' ('+SL(lastInsp.status)+')':'없음'}<br>
+      ${f.note?`<b style="color:#c0d8ec;">비고:</b> ${f.note}`:''}
+    </div>`;
+  document.getElementById('modalFacDetail').classList.add('on');
+  // 지도 핀에서 왔을 때도 동일하게 작동
+  document.getElementById('facPopup').classList.remove('on');
+}
+function openFacPopup(id){openFacDetail(id);}
+
+function openInspModalFromDetail(){closeM('modalFacDetail');openInspModal();}
+function openHistModalFromDetail(){closeM('modalFacDetail');openHistModal();}
+
+function openInspModal(){
+  const f=(DB.g('facilities')||[]).find(x=>x.id===selFacId);if(!f)return;
+  document.getElementById('inspTarget').value=f.name;
+  document.getElementById('inspStatus').value=f.status;
+  document.getElementById('inspNote').value='';
+  document.getElementById('inspAuthor').value=getAuthor();
+  document.getElementById('prevInsp').innerHTML='📸 현장 사진';
+  document.getElementById('modalInsp').classList.add('on');closeDB();
+}
+function submitInsp(){
+  const facs=DB.g('facilities')||[];const idx=facs.findIndex(x=>x.id===selFacId);if(idx===-1)return;
+  const ns=document.getElementById('inspStatus').value;
+  const note=document.getElementById('inspNote').value;
+  const author=document.getElementById('inspAuthor').value;
+  facs[idx].status=ns;
+  const hist=DB.g('history')||[];
+  const h={id:Date.now(),facId:selFacId,facName:facs[idx].name,date:now(),status:ns,note,author};
+  hist.push(h);DB.s('facilities',facs);DB.s('history',hist);
+  if(ns==='bad')pushNoti(`점검 위험: ${facs[idx].name}`,'🚨','fac_bad',{app:'inspect',tab:2,id:selFacId});
+  else if(ns==='warn')pushNoti(`보수필요: ${facs[idx].name}`,'⚠️','fac_warn',{app:'inspect',tab:2,id:selFacId});
+  syncToSheets('inspection',h);
+  try{renderInspectMap();}catch(e){}closeM('modalInsp');toast('✅ 점검 저장');updateSummary();
+}
+function openHistModal(){
+  const f=(DB.g('facilities')||[]).find(x=>x.id===selFacId);if(!f)return;
+  const hist=(DB.g('history')||[]).filter(h=>h.facId===selFacId).reverse();
+  document.getElementById('histTitleEl').textContent=f.name+' · '+hist.length+'건';
+  document.getElementById('histContent').innerHTML=hist.length?hist.map(h=>`
+    <div style="background:#060d1a;border-radius:8px;padding:10px 11px;margin-bottom:5px;">
+      <div style="font-size:10px;color:rgba(255,255,255,.25);">${h.date} · ${h.author||'-'}</div>
+      <div style="font-size:12px;font-weight:600;color:${SC(h.status)};margin-top:2px;">${SL(h.status)}</div>
+      ${h.note?`<div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:3px;line-height:1.5;">${h.note}</div>`:''}
+    </div>`).join(''):'<div class="empty"><div class="empty-txt">점검 이력 없음</div></div>';
+  document.getElementById('modalHist').classList.add('on');closeDB();
+}
+function openAddFac(){
+  fillSel('facTypeSel',DB.g('catFac')||[]);
+  document.getElementById('facInstall').value=today();
+  ['facNameIn','facLocIn','facGpsIn','facNote'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('facAuthor').value=getAuthor();
+  document.getElementById('prevFac').innerHTML='📸 촬영 또는 앨범';
+  try{gpsFromMap('facGpsIn','inspect');}catch(e){}
+  document.getElementById('modalAddFac').classList.add('on');
+}
+function submitAddFac(){
+  const name=document.getElementById('facNameIn').value.trim();if(!name){toast('⚠️ 명칭 입력');return;}
+  const gs=document.getElementById('facGpsIn').value;
+  let lat=null,lng=null;
+  if(gs){const p=gs.split(',');lat=parseFloat(p[0]);lng=parseFloat(p[1]);if(isNaN(lat)||isNaN(lng)){lat=null;lng=null;}}
+  const status=document.getElementById('facInitSt').value;
+  const facs=DB.g('facilities')||[];
+  facs.push({id:Date.now(),type:document.getElementById('facTypeSel').value,name,loc:document.getElementById('facLocIn').value,status,lat,lng,install:document.getElementById('facInstall').value,note:document.getElementById('facNote').value,author:document.getElementById('facAuthor').value});
+  DB.s('facilities',facs);
+  if(status==='bad')pushNoti(`위험 시설물: ${name}`,'🚨','fac_bad',{app:'inspect',tab:2});
+  try{renderInspectMap();}catch(e){}closeM('modalAddFac');toast('✅ 시설물 등록');updateSummary();
+}
+
+// ══════════════════════════════════════════
+// 위키
+// ══════════════════════════════════════════
+let _editWikiId=null,_selCats=new Set();
+function onWikiSearch(val){renderWikiList(val);if(val&&val.length>=2)logHS(val);}
+function logHS(q){
+  const hs=DB.g('hotSearch')||{};const k=q.trim();if(!hs[k])hs[k]=[];
+  const cutoff=Date.now()-86400000;hs[k]=hs[k].filter(t=>t>cutoff);hs[k].push(Date.now());
+  if(!hs[k].length)delete hs[k];DB.s('hotSearch',hs);renderHotSearch();
+}
+function renderHotSearch(){
+  const hs=DB.g('hotSearch')||{};
+  const sorted=Object.entries(hs).map(([k,a])=>[k,a.filter(t=>t>Date.now()-86400000).length]).filter(([k,c])=>c>0).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const w=document.getElementById('hotSearchWrap');if(!w)return;
+  if(!sorted.length){w.innerHTML='';return;}
+  w.innerHTML=`<div class="hot-wrap"><div class="hot-title">🔥 24시간 인기검색어</div><div class="hot-tags">${sorted.map(([k,c],i)=>`<div class="hot-tag" onclick="document.getElementById('wikiSearch').value='${k}';onWikiSearch('${k}');"><span class="hot-rank">${i+1}</span>${k}<span style="font-size:9px;color:#3a6a8a;"> ${c}</span></div>`).join('')}</div></div>`;
+}
+function renderWikiList(filter=''){
+  document.getElementById('wikiPageWrap').style.display='none';document.getElementById('wikiListWrap').style.display='block';
+  const wikis=DB.g('wikis')||[];const list=filter?wikis.filter(w=>w.title.includes(filter)||w.body.includes(filter)):wikis;
+  document.getElementById('wikiListWrap').innerHTML=list.length?list.map(w=>`
+    <div class="lcard" onclick="openWikiPage(${w.id})">
+      <div style="font-size:20px;flex-shrink:0;">📄</div>
+      <div class="linfo"><div class="lname">${w.title}</div>
+        <div class="lmeta">${(w.cats||[]).map(c=>`<span style="background:rgba(79,168,208,.08);color:#4fa8d0;padding:1px 6px;border-radius:20px;font-size:9px;margin-right:2px;">${c}</span>`).join('')}</div>
+        <div class="lmeta">v${(w.versions||[]).length+1} · ${w.author||'-'}</div>
+      </div>
+    </div>`).join(''):'<div class="empty"><div class="empty-ico">📚</div><div class="empty-txt">검색 결과 없음</div></div>';
+}
+function openWikiPage(id){
+  const wikis=DB.g('wikis')||[];const w=wikis.find(x=>x.id===id);if(!w)return;
+  document.getElementById('wikiListWrap').style.display='none';document.getElementById('wikiPageWrap').style.display='block';
+  function linkify(txt){
+  return txt
+    .replace(/!\[([^\]]+)\]\((data:[^)]+)\)/g,'<img src="$2" style="max-width:100%;border-radius:8px;margin:6px 0;display:block;">')
+    .replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>')
+    .replace(/^> (.+)/gm,'<div class="wiki-quote">$1</div>')
+    .replace(/\[([^\]]+)\]/g,`<span class="wlink" onclick="jumpWiki('$1')">$1</span>`);
+}
+  function renderTable(lines){const rows=lines.filter(l=>l.trim().startsWith('|'));if(!rows.length)return'';let h='<table class="wiki-tbl">';rows.forEach((r,i)=>{if(r.includes('---'))return;const cs=r.split('|').filter(c=>c.trim());h+=`<tr>${cs.map(c=>`<${i===0?'th':'td'}>${linkify(c.trim())}</${i===0?'th':'td'}>`).join('')}</tr>`;});return h+'</table>';}
+  const lines=w.body.split('\n');const secs=[];let cur=null;
+  lines.forEach(l=>{
+    if(l.startsWith('### ')){if(cur)secs.push(cur);cur={level:3,title:l.slice(4),lines:[]};}
+    else if(l.startsWith('## ')){if(cur)secs.push(cur);cur={level:2,title:l.slice(3),lines:[]};}
+    else if(l.startsWith('# ')){if(cur)secs.push(cur);cur={level:1,title:l.slice(2),lines:[]};}
+    else if(cur)cur.lines.push(l);
+    else{if(!secs.length||secs[secs.length-1].level!==0)secs.push({level:0,title:'',lines:[]});secs[secs.length-1].lines.push(l);}
+  });if(cur)secs.push(cur);
+  function renderSecBody(sls){const out=[];let tb=[];sls.forEach(l=>{if(l.trim().startsWith('|')){tb.push(l);}else{if(tb.length){out.push(renderTable(tb));tb=[];}out.push(l);}});if(tb.length)out.push(renderTable(tb));return linkify(out.join('\n'));}
+  const tocItems=secs.filter(s=>s.title&&s.level>0).map(s=>{const prefix=s.level===1?'●':s.level===2?'◆':'▸';const indent=s.level===1?'0px':s.level===2?'10px':'20px';const cls=s.level===1?'wiki-toc-item':'wiki-toc-sub';return`<span class="${cls}" style="padding-left:${indent};" onclick="document.getElementById('ws_${encodeURIComponent(s.title)}')?.scrollIntoView({behavior:'smooth'})">${prefix} ${s.title}</span>`;}).join('');
+  const bodyHtml=secs.map(s=>{if(!s.title&&s.level===0)return`<div class="wiki-txt">${renderSecBody(s.lines)}</div>`;const cls=s.level===1?'wiki-h1':s.level===2?'wiki-h2':'wiki-h3';return`<div id="ws_${encodeURIComponent(s.title)}" class="${cls}">${s.title}</div><div class="wiki-txt">${renderSecBody(s.lines)}</div>`;}).join('');
+  const verCount=(w.versions||[]).length;
+  document.getElementById('wikiPageWrap').innerHTML=`
+    <div class="wiki-page">
+      <div class="wiki-ph"><div class="wiki-ph-title">${w.title}</div>
+        <div class="wiki-ph-acts">
+          <button class="wiki-act" onclick="copyWikiDoc(${w.id})">📋복사</button>
+          <button class="wiki-act" onclick="openWikiEdit(${w.id})">✏️편집</button>
+          <button class="wiki-act del" onclick="deleteWiki(${w.id})">🗑️</button>
+        </div>
+      </div>
+      ${(w.cats&&w.cats.length)?`<div class="wiki-cats">${w.cats.map(c=>`<span class="wiki-cat">${c}</span>`).join('')}</div>`:''}
+      <div class="wiki-info-bar">v${verCount+1} · 작성: ${w.author||'-'}</div>
+      ${w.photo?`<img src="${w.photo}" class="wiki-img-el">`:''}
+      ${tocItems?`<div class="wiki-toc"><div class="wiki-toc-t">📋 목차</div>${tocItems}</div>`:''}
+      <div class="wiki-body">${bodyHtml}</div>
+      ${verCount?`<div class="wiki-ver-area"><div class="wiki-ver-t">버전 히스토리</div>${(w.versions||[]).slice().reverse().map((v,i)=>`<span class="wiki-ver-item" onclick="showVer(${w.id},${verCount-1-i})">v${verCount-i} · ${v.savedAt} · ${v.author||'-'}</span>`).join('')}</div>`:''}
+      <div class="wiki-bottom"><button class="wiki-act" onclick="showWikiList()">← 목록</button></div>
+    </div>`;
+}
+function showWikiList(){document.getElementById('wikiPageWrap').style.display='none';document.getElementById('wikiListWrap').style.display='block';}
+function jumpWiki(title){const w=(DB.g('wikis')||[]).find(x=>x.title===title);if(w)openWikiPage(w.id);else{document.getElementById('wikiSearch').value=title;renderWikiList(title);toast(`'${title}' 검색`);}}
+function copyWikiDoc(id){const wikis=DB.g('wikis')||[];const w=wikis.find(x=>x.id===id);if(!w)return;wikis.push({...w,id:Date.now(),title:w.title+' (복사본)',author:getAuthor(),versions:[]});DB.s('wikis',wikis);renderWikiList('');toast('📋 복사본 생성');showWikiList();}
+function showVer(wikiId,vIdx){const w=(DB.g('wikis')||[]).find(x=>x.id===wikiId);if(!w)return;const ver=(w.versions||[])[vIdx];if(!ver)return;document.getElementById('verContent').innerHTML=`<div style="font-size:11px;color:#4fa8d0;margin-bottom:10px;">${w.title} · ${ver.savedAt} · ${ver.author||'-'}</div><div style="font-size:12px;color:#7a9cb8;line-height:1.85;white-space:pre-wrap;">${ver.body}</div>`;document.getElementById('modalVer').classList.add('on');}
+function openWikiEdit(id=null){
+  _editWikiId=id;_selCats=new Set();
+  document.getElementById('wikiEditId').value=id||'';
+  document.getElementById('wikiTitleIn').value='';document.getElementById('wikiBodyIn').value='';
+  document.getElementById('wikiAuthorIn').value=getAuthor();
+  document.getElementById('prevWiki').innerHTML='📸 대표 이미지';
+  const cats=DB.g('wikiCats')||['지형','안전','장비','법령','응급','탐방로','시설'];
+  if(id){const w=(DB.g('wikis')||[]).find(x=>x.id===id);if(w){document.getElementById('wikiTitleIn').value=w.title;document.getElementById('wikiBodyIn').value=w.body;document.getElementById('wikiAuthorIn').value=w.author||getAuthor();(w.cats||[]).forEach(c=>_selCats.add(c));}}
+  renderCatTagsSel(cats);document.getElementById('modalWikiEdit').classList.add('on');
+}
+function renderCatTagsSel(cats){document.getElementById('catTagsWrap').innerHTML=cats.map(c=>`<div class="cat-tag-sel ${_selCats.has(c)?'on':''}" onclick="tCat(this,'${c}')">${c}</div>`).join('');}
+function tCat(el,c){if(_selCats.has(c)){_selCats.delete(c);el.classList.remove('on');}else{_selCats.add(c);el.classList.add('on');}}
+function addCatInput(e,inp){if(e.key!=='Enter')return;const v=inp.value.trim();if(!v)return;const cats=DB.g('wikiCats')||[];if(!cats.includes(v)){cats.push(v);DB.s('wikiCats',cats);}_selCats.add(v);inp.value='';renderCatTagsSel(cats);}
+function insertTemplate(){const ta=document.getElementById('wikiBodyIn');if(ta.value.trim()&&!confirm('현재 내용을 템플릿으로 대체할까요?'))return;ta.value='# 개요\n[이 문서에 대한 간략한 설명]\n\n# 발생/위치\n[주요 발생 구간 또는 위치 정보]\n\n## 주요 구간\n[구간 설명]\n\n## 주의사항\n[현장 대원 주의사항]\n\n# 특징\n## 현장 특성\n[특성 설명]\n\n### 세부 사항\n[더 상세한 설명]\n\n# 관련 문서\n[관련문서명]';toast('📋 템플릿 적용');}
+function submitWiki(){
+  const title=document.getElementById('wikiTitleIn').value.trim();const body=document.getElementById('wikiBodyIn').value.trim();
+  if(!title||!body){toast('⚠️ 제목과 본문 필수');return;}
+  const author=document.getElementById('wikiAuthorIn').value.trim()||getAuthor()||'익명';
+  const cats=[..._selCats];const editId=document.getElementById('wikiEditId').value;
+  const wikis=DB.g('wikis')||[];
+  if(editId){const idx=wikis.findIndex(x=>String(x.id)===String(editId));if(idx!==-1){if(!wikis[idx].versions)wikis[idx].versions=[];wikis[idx].versions.push({body:wikis[idx].body,savedAt:now(),author:wikis[idx].author});wikis[idx]={...wikis[idx],title,cats,body,author};}}
+  else{wikis.push({id:Date.now(),title,cats,body,photo:'',author,versions:[]});}
+  DB.s('wikis',wikis);closeM('modalWikiEdit');renderWikiList('');toast('✅ 위키 저장');updateSummary();
+}
+function deleteWiki(id){if(!confirm('삭제하겠습니까?'))return;DB.s('wikis',(DB.g('wikis')||[]).filter(w=>w.id!==id));showWikiList();renderWikiList('');toast('🗑️ 삭제');}
+function onWikiBodyInput(el){
+  const val=el.value,cur=el.selectionStart;const before=val.slice(0,cur);const match=before.match(/\[([^\]]*)$/);
+  const box=document.getElementById('wikiAC');if(!match){box.style.display='none';return;}
+  const kw=match[1];const cands=(DB.g('wikis')||[]).filter(w=>w.title.includes(kw));
+  if(!cands.length){box.style.display='none';return;}
+  box.style.display='block';box.innerHTML=cands.slice(0,5).map(w=>`<div class="ac-item" onclick="insWikiLink('${w.title}')">${w.title}</div>`).join('');
+}
+function insWikiLink(title){const ta=document.getElementById('wikiBodyIn');const v=ta.value,c=ta.selectionStart,ob=v.slice(0,c).lastIndexOf('[');ta.value=v.slice(0,ob)+'['+title+']'+v.slice(c);document.getElementById('wikiAC').style.display='none';ta.focus();}
+function wIns(b,a,newline=false){const ta=document.getElementById('wikiBodyIn');const s=ta.selectionStart,e=ta.selectionEnd;const prefix=newline&&s>0&&ta.value[s-1]!=='\n'?'\n':'';ta.value=ta.value.slice(0,s)+prefix+b+(ta.value.slice(s,e)||'텍스트')+a+ta.value.slice(e);ta.focus();}
+function insTable(){const ta=document.getElementById('wikiBodyIn');const s=ta.selectionStart;const tbl='\n| 항목 | 내용 |\n|---|---|\n| 값1 | 내용1 |\n| 값2 | 내용2 |\n';ta.value=ta.value.slice(0,s)+tbl+ta.value.slice(s);ta.focus();}
+function insList(){const ta=document.getElementById('wikiBodyIn');const s=ta.selectionStart;const lst='\n• 항목 1\n• 항목 2\n• 항목 3\n';ta.value=ta.value.slice(0,s)+lst+ta.value.slice(s);ta.focus();}
+function insBodyImg(inp){
+  if(!inp.files||!inp.files[0])return;
+  const r=new FileReader();
+  r.onload=e=>{
+    const b64=e.target.result;
+    const ta=document.getElementById('wikiBodyIn');
+    const s=ta.selectionStart;
+    const imgTag='\n![사진]('+b64+')\n';
+    ta.value=ta.value.slice(0,s)+imgTag+ta.value.slice(s);
+    ta.focus();
+    toast('📷 사진 삽입 완료');
+  };
+  r.readAsDataURL(inp.files[0]);
+}
+
+document.addEventListener('click',ev=>{if(!ev.target.closest('#wikiBodyIn')&&!ev.target.closest('#wikiAC')){const b=document.getElementById('wikiAC');if(b)b.style.display='none';}});
+
+// ══════════════════════════════════════════
+// 관리자
+// ══════════════════════════════════════════
+function admTab(tab,el){
+  document.querySelectorAll('.adm-tab').forEach(t=>{t.classList.remove('on');t.style.color='';t.style.borderBottomColor='';});
+  el.classList.add('on');if(tab==='ctrl'){el.style.color='#c0392b';el.style.borderBottomColor='#c0392b';}
+  document.querySelectorAll('.adm-sec').forEach(s=>s.classList.remove('on'));
+  document.getElementById('adm-'+tab).classList.add('on');
+  ({ctrl:renderAdmCtrl,members:renderAdmMembers,cat:renderAdmCat,sheets:renderAdmSheets,sys:renderAdmSys})[tab]?.();
+}
+function renderAdmCtrl(){
+  const facs=DB.g('facilities')||[];const res=DB.g('rescues')||[];const haz=DB.g('hazards')||[];
+  document.getElementById('admCtrlWrap').innerHTML=`
+    <div class="scard" style="margin-bottom:8px;">
+      <div class="stitle">📊 전체 현황</div>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="stat-num">${facs.length}</div><div class="stat-lbl">시설물</div></div>
+        <div class="stat-box"><div class="stat-num bad">${facs.filter(f=>f.status==='bad').length}</div><div class="stat-lbl">위험</div></div>
+        <div class="stat-box"><div class="stat-num">${res.length}</div><div class="stat-lbl">구조이력</div></div>
+        <div class="stat-box" style="border-color:#c0392b;"><div class="stat-num bad">${res.filter(r=>r.status==='ongoing').length}</div><div class="stat-lbl">진행중</div></div>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:#7a9cb8;">위험상황 보고 ${haz.length}건 (제거완료 ${haz.filter(h=>h.hazStatus==='제거 완료').length}건)</div>
+    </div>
+    <div class="sec-label">⚠️ 위험·요주의 시설물</div>
+    ${facs.filter(f=>f.status!=='ok').map(f=>`<div class="adm-row"><div class="adm-info"><div class="adm-name">${f.type.split(' ')[0]} ${f.name}</div><div class="adm-meta">${f.loc||'-'} · <span style="color:${SC(f.status)};">${SL(f.status)}</span></div></div><div class="adm-btns"><button class="abtn" onclick="admChangeFacSt(${f.id})">변경</button><button class="abtn del" onclick="admDelFac(${f.id})">삭제</button></div></div>`).join('')||'<div class="muted" style="font-size:12px;padding:5px 0;">위험/요주의 없음</div>'}
+    <div class="sec-label">🚨 진행중 구조</div>
+    ${res.filter(r=>r.status==='ongoing').map(r=>{const ti=RES_TYPES[r.type]||RES_TYPES['기타'];return`<div class="adm-row"><div class="adm-info"><div class="adm-name">${ti.ico} ${r.title}</div><div class="adm-meta">${r.type} · ${r.date} · ${r.vName||'미상'}</div></div><div class="adm-btns"><button class="abtn" onclick="admEndRes(${r.id})">종료</button><button class="abtn del" onclick="admDelRes(${r.id})">삭제</button></div></div>`;}).join('')||'<div class="muted" style="font-size:12px;padding:5px 0;">진행중 없음</div>'}
+    <div class="sec-label">📋 전체 시설물</div>
+    ${facs.map(f=>`<div class="adm-row"><div class="adm-info"><div class="adm-name">${f.type.split(' ')[0]} ${f.name}</div><div class="adm-meta"><span style="color:${SC(f.status)};">${SL(f.status)}</span> · ${f.author||'-'}</div></div><button class="abtn del" onclick="admDelFac(${f.id})">삭제</button></div>`).join('')}`;
+}
+function admChangeFacSt(id){const facs=DB.g('facilities')||[];const idx=facs.findIndex(x=>x.id===id);if(idx===-1)return;const ns=prompt(`상태 (ok/warn/bad)\n현재: ${facs[idx].status}`);if(!['ok','warn','bad'].includes(ns)){toast('⚠️ ok, warn, bad 중 입력');return;}facs[idx].status=ns;DB.s('facilities',facs);renderAdmCtrl();try{renderInspectMap();}catch(e){}toast('✅ 변경');updateSummary();}
+function admDelFac(id){if(!confirm('삭제?'))return;DB.s('facilities',(DB.g('facilities')||[]).filter(f=>f.id!==id));DB.s('history',(DB.g('history')||[]).filter(h=>h.facId!==id));renderAdmCtrl();try{renderInspectMap();}catch(e){}toast('🗑️ 삭제');updateSummary();}
+function admEndRes(id){const res=DB.g('rescues')||[];const i=res.findIndex(x=>x.id===id);if(i===-1)return;res[i].status='done';DB.s('rescues',res);renderAdmCtrl();try{renderRescueMap();}catch(e){}toast('✅ 종료');}
+function admDelRes(id){if(!confirm('삭제?'))return;DB.s('rescues',(DB.g('rescues')||[]).filter(r=>r.id!==id));renderAdmCtrl();try{renderRescueMap();}catch(e){}toast('🗑️ 삭제');updateSummary();}
+function renderAdmMembers(){
+  const ms=DB.g('members')||[];
+  document.getElementById('admMembersWrap').innerHTML=`<div style="font-size:10px;color:#3a6a8a;margin-bottom:7px;font-weight:600;">특수산악구조대원 (${ms.length}명)</div>${ms.map((m,i)=>`<div class="adm-row"><div class="adm-info"><div class="adm-name">👤 ${m}</div></div><button class="abtn del" onclick="delMember(${i})">삭제</button></div>`).join('')}<button class="btn btn-ghost" style="width:100%;padding:9px;border-radius:8px;margin-top:4px;font-size:12px;" onclick="addMember()">＋ 대원 추가</button>`;
+}
+function addMember(){const n=prompt('대원 이름:');if(!n?.trim())return;const ms=DB.g('members')||[];ms.push(n.trim());DB.s('members',ms);renderAdmMembers();toast('✅ 추가');}
+function delMember(i){if(!confirm('삭제?'))return;const ms=DB.g('members')||[];ms.splice(i,1);DB.s('members',ms);renderAdmMembers();}
+function renderAdmCat(){
+  const cats=DB.g('catFac')||[];
+  document.getElementById('admCatWrap').innerHTML=`<div style="font-size:10px;color:#3a6a8a;margin-bottom:7px;font-weight:600;">시설물 카테고리</div>${cats.map((c,i)=>`<div class="adm-row"><div class="adm-info"><div class="adm-name">${c}</div></div><button class="abtn del" onclick="delCat(${i})">삭제</button></div>`).join('')}<button class="btn btn-ghost" style="width:100%;padding:9px;border-radius:8px;margin-top:4px;font-size:12px;" onclick="addCat()">＋ 카테고리 추가</button>`;
+}
+function addCat(){const n=prompt('카테고리명 (이모지 포함)\n예: 🛖 야영시설');if(!n?.trim())return;const cs=DB.g('catFac')||[];cs.push(n.trim());DB.s('catFac',cs);renderAdmCat();toast('✅ 추가');}
+function delCat(i){if(!confirm('삭제?'))return;const cs=DB.g('catFac')||[];cs.splice(i,1);DB.s('catFac',cs);renderAdmCat();}
+function renderAdmSheets(){
+  const url=DB.g('sheetsUrl')||'';
+  const kakaoKey=DB.g('kakaoKey')||'';
+  document.getElementById('admSheetsWrap').innerHTML=`
+    <div style="background:rgba(79,168,208,.06);border:1px solid rgba(79,168,208,.15);border-radius:8px;padding:8px 11px;margin-bottom:8px;font-size:11px;color:#4fa8d0;">
+      💡 카카오 API 키는 <b>내 설정</b>에서 입력하세요
+    </div>
+    <div class="scard" style="margin-bottom:8px;">
+      <div class="stitle">🔑 카카오 API 키 현황</div>
+      <div style="font-size:12px;color:#b8d4e8;margin-bottom:8px;">${kakaoKey?`✅ 키 설정됨: ${kakaoKey.slice(0,8)}...`:'⚠️ 키 미설정 — 내 설정에서 입력 필요'}</div>
+      <button onclick="openApp('settings')" style="width:100%;background:#1a4a6e;color:#fff;border:none;padding:9px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">⚙️ 내 설정으로 이동</button>
+    </div>
+    <div class="scard" style="margin-bottom:8px;"><div class="stitle">🔗 Google Sheets 자동 동기화</div>
+      <div style="font-size:12px;color:#7a9cb8;line-height:1.6;margin-bottom:10px;">구조보고·시설점검 저장 시 자동으로 스프레드시트에 기록됩니다.</div>
+      <div class="fg"><span class="fl">Apps Script 배포 URL</span><input type="text" id="sheetsUrlIn" class="fi" placeholder="https://script.google.com/macros/s/..." value="${url}"></div>
+      <button onclick="saveSheetsUrl()" style="width:100%;background:${url?'#0c4838':'#1a4a6e'};color:#fff;border:none;padding:10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">${url?'✅ 저장됨 (재입력하여 변경)':'저장'}</button>
+    </div>
+    <div class="scard"><div class="stitle">📌 Google Sheets 설정 방법</div>
+      <div style="font-size:11px;color:#7a9cb8;line-height:1.8;">1. Google Sheets 열기<br>2. 확장 프로그램 → Apps Script<br>3. 코드 작성 → 배포 → 웹앱으로 배포<br>4. 생성된 URL을 위에 입력</div>
+    </div>`;
+}
+function saveSheetsUrl(){const url=document.getElementById('sheetsUrlIn')?.value?.trim();if(!url){toast('⚠️ URL 입력');return;}DB.s('sheetsUrl',url);toast('✅ URL 저장');renderAdmSheets();}
+function renderAdmSys(){
+  document.getElementById('admSysWrap').innerHTML=`
+    <div class="scard" style="margin-bottom:8px;"><div class="stitle">📊 데이터 현황</div>
+      <div style="font-size:12px;color:#b8d4e8;line-height:2.1;">시설물 <b>${(DB.g('facilities')||[]).length}개</b> · 점검이력 <b>${(DB.g('history')||[]).length}건</b><br>구조이력 <b>${(DB.g('rescues')||[]).length}건</b> · 위험상황 <b>${(DB.g('hazards')||[]).length}건</b><br>위키 <b>${(DB.g('wikis')||[]).length}건</b> · 대원 <b>${(DB.g('members')||[]).length}명</b></div>
+    </div>
+    <div class="scard"><div class="stitle" style="color:#c0392b;">⚠️ 위험 작업</div>
+      <div style="display:flex;flex-direction:column;gap:7px;">
+        <button onclick="resetAll()" style="width:100%;background:rgba(192,57,43,.1);color:#c0392b;border:1px solid rgba(192,57,43,.28);padding:10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">전체 데이터 초기화</button>
+        <button onclick="clearNotisOnly()" style="width:100%;background:rgba(255,255,255,.05);color:#b8d4e8;border:none;padding:10px;border-radius:8px;font-size:12px;cursor:pointer;">알림 이력만 삭제</button>
+      </div>
+    </div>`;
+}
+function resetAll(){if(!confirm('모든 데이터 초기화. 되돌릴 수 없습니다.'))return;['members','catFac','wikiCats','facilities','rescues','hazards','history','wikis','notis','hotSearch','notiSetting','currentUser','sheetsUrl'].forEach(k=>DB.d(k));initDB();toast('✅ 초기화');renderAdmSys();updateSummary();}
+function clearNotisOnly(){DB.s('notis',[]);updateBell();toast('🗑️ 알림 이력 삭제');renderAdmSys();}
+
+// ══════════════════════════════════════════
+// 내 설정 (일반직원용)
+// ══════════════════════════════════════════
+function renderSettings(){
+  const s=DB.g('notiSetting')||{};
+  const savedKey=DB.g('kakaoKey')||'';
+  const items=[{k:'안전사고',l:'안전사고',ico:'🤕',sub:'실족/추락/부상'},{k:'낙석',l:'낙석',ico:'🪨',sub:'낙석 발생'},{k:'위험수목',l:'위험수목',ico:'🌲',sub:'쓰러짐/낙목'},{k:'화재',l:'화재',ico:'🔥',sub:'산불/시설 화재'},{k:'기타',l:'기타',ico:'⚠️',sub:'기타 위험상황'},{k:'fac_bad',l:'위험 시설물',ico:'🚨',sub:'파손 심각 등록'},{k:'fac_warn',l:'보수 필요',ico:'⚙️',sub:'보수필요 판정'}];
+  document.getElementById('settingsWrap').innerHTML=`
+    <div class="scard" style="margin-bottom:8px;">
+      <div class="stitle">👤 내 계정</div>
+      <div style="font-size:12px;color:#b8d4e8;line-height:2.0;">${(()=>{const u=DB.g('currentUser')||{};return`이름: <b>${u.name||'미설정'}</b><br>소속: <b>${u.dept||'미설정'}</b><br>직위: <b>${u.rank||'미설정'}</b>`;})()}</div>
+      <button onclick="openChangeUser()" style="width:100%;background:#1a4a6e;color:#fff;border:none;padding:9px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;margin-top:8px;">✏️ 계정 수정</button>
+    </div>
+    <div class="scard" style="margin-bottom:8px;">
+      <div class="stitle">🗺️ 카카오맵 API 키</div>
+      <div style="font-size:11px;color:#7a9cb8;line-height:1.6;margin-bottom:8px;">
+        지도 기능을 사용하려면 카카오 API 키를 입력하세요.<br>
+        <span style="color:#4fa8d0;">developers.kakao.com → 내 애플리케이션 → JavaScript 키</span>
+      </div>
+      <input type="text" id="kakaoKeyIn" class="fi" placeholder="카카오 JavaScript API 키 입력" value="${savedKey}" style="margin-bottom:8px;">
+      <div style="display:flex;gap:6px;">
+        <button onclick="saveKakaoKey()" style="flex:1;background:#1a4a6e;color:#fff;border:none;padding:9px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">저장 후 적용</button>
+        ${savedKey?`<button onclick="testKakaoKey()" style="background:rgba(79,168,208,.1);color:#4fa8d0;border:1px solid rgba(79,168,208,.3);padding:9px 12px;border-radius:8px;font-size:12px;cursor:pointer;">키 테스트</button>`:''}
+      </div>
+      ${savedKey
+        ?`<div style="margin-top:6px;font-size:10px;color:#27ae60;">✅ 키 저장됨 — 테스트 버튼으로 지도 활성화 가능</div>`
+        :'<div style="margin-top:6px;font-size:10px;color:#e67e22;">⚠️ 키 미설정 — 지도 기능 비활성</div>'}
+      <div style="margin-top:8px;background:rgba(230,126,34,.07);border:1px solid rgba(230,126,34,.2);border-radius:7px;padding:8px 10px;font-size:10px;color:#e67e22;line-height:1.7;">
+        ⚠️ <b>키 오류가 뜨면</b><br>
+        kakao developers → 내 애플리케이션 → 플랫폼 → Web<br>
+        → 사이트 도메인에 <b>file://</b> 또는 사용 중인 URL 추가
+      </div>
+    </div>
+    <div class="scard" style="margin-bottom:8px;">
+      <div class="stitle">💬 카카오 로그인</div>
+      <div style="font-size:11px;color:#7a9cb8;margin-bottom:8px;">카카오 계정으로 로그인하면 작성자 정보가 자동 설정됩니다.</div>
+      <button onclick="openKakaoLogin()" style="width:100%;background:rgba(254,229,0,.12);color:#f0d900;border:1px solid rgba(254,229,0,.3);padding:9px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">💬 카카오 로그인 (준비중)</button>
+    </div>
+    <div class="scard">
+      <div class="stitle">🔔 알림 설정</div>
+      ${items.map(it=>`<div class="tog-row"><div><div class="tog-lbl">${it.ico} ${it.l}</div><div class="tog-sub">${it.sub}</div></div><div class="toggle ${s[it.k]!==false?'on':'off'}" onclick="togNotiSet('${it.k}',this)"></div></div>`).join('')}
+    </div>`;
+}
+function saveKakaoKey(){
+  const key=document.getElementById('kakaoKeyIn').value.trim();
+  if(!key){toast('⚠️ 키를 입력하세요');return;}
+  DB.s('kakaoKey',key);
+  toast('✅ 저장 완료 — 페이지 새로고침 후 지도 활성화');
+  renderSettings();
+  // 동적으로 카카오 스크립트 재로드 시도
+  setTimeout(()=>{
+    const s=document.createElement('script');
+    s.src='//dapi.kakao.com/v2/maps/sdk.js?appkey='+key+'&libraries=services&autoload=false';
+    s.onload=function(){kakao.maps.load(function(){window._KR=true;if(window._KCB)window._KCB();initMaps();toast('🗺️ 지도 활성화!');});};
+    document.head.appendChild(s);
+  },300);
+}
+function testKakaoKey(){
+  const key=DB.g('kakaoKey')||'';
+  if(!key){toast('⚠️ 키 없음');return;}
+  toast('🔍 키 테스트 중...');
+
+  // 기존 테스트 스크립트 제거
+  const old=document.getElementById('kakaoTestScript');
+  if(old)old.remove();
+
+  // 타임아웃: 5초 내 응답 없으면 실패로 판단
+  const timer=setTimeout(()=>{
+    toast('❌ 키 오류 또는 미등록 도메인 — 콘솔 확인');
+  },5000);
+
+  const s=document.createElement('script');
+  s.id='kakaoTestScript';
+  s.src='//dapi.kakao.com/v2/maps/sdk.js?appkey='+key+'&autoload=false';
+  s.onload=function(){
+    clearTimeout(timer);
+    kakao.maps.load(function(){
+      window._KR=true;
+      initMaps();
+      toast('✅ 키 정상! 지도 활성화 완료');
+      renderSettings(); // 설정 화면 갱신
+    });
+  };
+  s.onerror=function(){
+    clearTimeout(timer);
+    toast('❌ 키 오류 — 발급 키 확인 또는 도메인 등록 필요');
+  };
+  document.head.appendChild(s);
+}
+function togNotiSet(k,el){const s=DB.g('notiSetting')||{};const cur=s[k]!==false;s[k]=!cur;DB.s('notiSetting',s);el.className='toggle '+(!cur?'on':'off');toast(!cur?'✅ 알림 켜짐':'🔕 꺼짐');}
+
+// ══════════════════════════════════════════
+// Google Sheets
+// ══════════════════════════════════════════
+async function syncToSheets(type,data){const url=DB.g('sheetsUrl');if(!url)return;try{await fetch(url,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify({type,data,ts:new Date().toISOString()})});}catch(e){console.warn('Sheets:',e);}}
+
+// ══════════════════════════════════════════
+// 가이드
+// ══════════════════════════════════════════
+const GUIDES={
+  injury:{title:'부상 유형 안내',items:[{t:'골절',d:'뼈 파손. 변형·압통·부종. 부목 고정 후 이송.'},{t:'열상',d:'피부 찢김. 지혈 후 드레싱.'},{t:'뇌진탕',d:'두부 외상. 구토·기억상실 가능. 경과 관찰.'},{t:'저체온증',d:'체온 35°C 이하. 서서히 가온.'},{t:'심정지',d:'즉각 CPR. AED 확보.'}]},
+  bodypart:{title:'신체 부위 주의',items:[{t:'두부·경추',d:'이동 금지. 경추 고정 후 이송.'},{t:'흉복부',d:'내출혈 가능. 산소 공급.'},{t:'골반',d:'대출혈. 압박 금지.'},{t:'척추',d:'로그롤. 마비 위험.'}]},
+  severity:{title:'KTAS 중증도',items:[{t:'1 소생',d:'심정지·무호흡. 즉각 처치.'},{t:'2 긴급',d:'의식저하·호흡곤란. 15분 내.'},{t:'3 응급',d:'활력징후 안정. 30분 내.'},{t:'4 준응급',d:'경미 외상. 60분 내.'},{t:'5 비응급',d:'자력 이동. 120분 내.'}]},
+  victim:{title:'사고자 기록 안내',items:[{t:'기저질환',d:'고혈압·당뇨·심장병. 처치 방향에 영향.'},{t:'복용약',d:'항혈전제는 출혈 위험 증가.'},{t:'알레르기',d:'약물 알레르기 특히 중요.'}]},
+};
+function openGuide(key){const g=GUIDES[key];if(!g)return;document.getElementById('guideTitle').textContent=g.title;document.getElementById('guideContent').innerHTML=g.items.map(i=>`<div class="guide-item"><div class="guide-t">${i.t}</div><div class="guide-d">${i.d}</div></div>`).join('');document.getElementById('modalGuide').classList.add('on');}
+
+// ══════════════════════════════════════════
+// 홈 요약
+// ══════════════════════════════════════════
+function updateSummary(){
+  const res=DB.g('rescues')||[];const facs=DB.g('facilities')||[];
+  const og=res.filter(r=>r.status==='ongoing');const bad=facs.filter(f=>f.status==='bad');const warn=facs.filter(f=>f.status==='warn');const ok=facs.filter(f=>f.status==='ok');
+  const thisMonth=res.filter(r=>r.date&&r.date.startsWith(today().slice(0,7))).length;
+  function se(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
+  se('hs-og',og.length);se('hs-og-sub',og.length?og.map(r=>r.type).join(', '):'현재 없음');
+  se('hs-tot',res.length);se('hs-tot-sub','이번달 '+thisMonth+'건');
+  se('hs-fb',bad.length);se('hs-fw-sub','요주의 '+warn.length+'개');
+  se('hs-ft',facs.length);se('hs-ft-sub','양호 '+ok.length+'개');
+  function sd(id,v,col){const e=document.getElementById(id);if(!e)return;e.textContent=v;e.style.color=col||'';}
+  sd('hdR',og.length?`⚠️ ${og.length}건 진행중`:'구조보고·위험상황',og.length?'#ffaaaa':'');
+  sd('hdI',bad.length?`⚠️ 위험 ${bad.length}개`:'시설 관리·이력',bad.length?'#ffaaaa':'');
+  sd('hdW',`문서 ${(DB.g('wikis')||[]).length}건`,'');
+  updateBell();
+}
+const pad2=n=>String(n).padStart(2,'0');
+function tick(){const d=new Date();document.getElementById('nowTime').textContent=pad2(d.getHours())+':'+pad2(d.getMinutes());}
+tick();setInterval(tick,1000);
+// ══════════════════════════════════════════
+// 전체 통계 (일반직원도 열람 가능)
+// ══════════════════════════════════════════
+function renderFullStats(){
+  const res=DB.g('rescues')||[];const facs=DB.g('facilities')||[];
+  const haz=DB.g('hazards')||[];const wikis=DB.g('wikis')||[];
+  const hist=DB.g('history')||[];
+  const og=res.filter(r=>r.status==='ongoing');
+  const thisMonth=res.filter(r=>r.date&&r.date.startsWith(today().slice(0,7)));
+  const w=document.getElementById('statsWrap');
+  const typeCount=Object.keys(RES_TYPES).map(t=>{
+    const cnt=res.filter(r=>r.type===t).length;
+    const ti=RES_TYPES[t];
+    return `<div class="type-row" style="pointer-events:none;"><span class="t-ico">${ti.ico}</span><span class="t-lbl">${t}</span><span class="t-cnt" style="color:${ti.color};">${cnt}건</span></div>`;
+  }).join('');
+  const facByStatus=[
+    {l:'양호',s:'ok',c:'#27ae60'},{l:'요주의',s:'warn',c:'#e67e22'},{l:'위험',s:'bad',c:'#c0392b'}
+  ].map(x=>`<div class="type-row" style="pointer-events:none;"><span class="t-lbl">${x.l}</span><span class="t-cnt" style="color:${x.c};">${facs.filter(f=>f.status===x.s).length}개</span></div>`).join('');
+  const recentRes=res.slice().reverse().slice(0,5);
+  const recentHist=hist.slice().reverse().slice(0,5);
+  w.innerHTML=`
+    <div class="scard">
+      <div class="stitle">🚨 구조 현황</div>
+      <div class="stat-grid" style="margin-bottom:10px;">
+        <div class="stat-box"><div class="stat-num">${res.length}</div><div class="stat-lbl">총 발생</div></div>
+        <div class="stat-box" style="border-color:#c0392b;"><div class="stat-num bad">${og.length}</div><div class="stat-lbl">진행중</div></div>
+        <div class="stat-box" style="border-color:#27ae60;"><div class="stat-num ok">${res.filter(r=>r.status==='done').length}</div><div class="stat-lbl">종료</div></div>
+        <div class="stat-box" style="border-color:#e67e22;"><div class="stat-num warn">${thisMonth.length}</div><div class="stat-lbl">이번달</div></div>
+      </div>
+      <div class="sec-label">유형별</div>${typeCount}
+    </div>
+    <div class="scard">
+      <div class="stitle">⚠️ 위험상황 현황</div>
+      <div class="stat-grid" style="margin-bottom:8px;">
+        <div class="stat-box"><div class="stat-num">${haz.length}</div><div class="stat-lbl">총 보고</div></div>
+        <div class="stat-box" style="border-color:#27ae60;"><div class="stat-num ok">${haz.filter(h=>h.hazStatus==='제거 완료').length}</div><div class="stat-lbl">제거 완료</div></div>
+      </div>
+    </div>
+    <div class="scard">
+      <div class="stitle">🛠️ 시설물 현황</div>
+      <div class="stat-grid" style="margin-bottom:8px;">
+        <div class="stat-box"><div class="stat-num">${facs.length}</div><div class="stat-lbl">전체</div></div>
+        <div class="stat-box"><div class="stat-num">${hist.length}</div><div class="stat-lbl">총 점검</div></div>
+      </div>
+      ${facByStatus}
+    </div>
+    <div class="scard">
+      <div class="stitle">📋 최근 구조 이력</div>
+      ${recentRes.map(r=>{const ti=RES_TYPES[r.type]||RES_TYPES['기타'];const isOg=r.status==='ongoing';return`<div class="type-row" style="pointer-events:none;"><span class="t-ico">${ti.ico}</span><span class="t-lbl">${r.title.slice(0,14)}${r.title.length>14?'...':''}</span><span class="t-cnt" style="color:${isOg?'#c0392b':'#27ae60'};">${isOg?'진행':'종료'}</span></div>`;}).join('')||'<div class="muted" style="font-size:12px;">이력 없음</div>'}
+    </div>
+    <div class="scard">
+      <div class="stitle">🛠️ 최근 점검 이력</div>
+      ${recentHist.map(h=>`<div class="type-row" style="pointer-events:none;"><span class="t-lbl">${h.facName||'-'}</span><span class="t-cnt" style="color:${SC(h.status)};">${SL(h.status)}</span></div>`).join('')||'<div class="muted" style="font-size:12px;">이력 없음</div>'}
+    </div>
+    <div class="scard">
+      <div class="stitle">📚 위키 현황</div>
+      <div class="stat-grid">
+        <div class="stat-box"><div class="stat-num">${wikis.length}</div><div class="stat-lbl">총 문서</div></div>
+        <div class="stat-box"><div class="stat-num">${[...new Set(wikis.flatMap(w=>w.cats||[]))].length}</div><div class="stat-lbl">카테고리</div></div>
+      </div>
+    </div>`;
+}
+
+function openResListDetail(id){
+  const res=DB.g('rescues')||[];const r=res.find(x=>x.id===id);if(!r)return;
+  selResId=id;curResId=id;
+  const all=[r,...(r.reports||[])];
+  document.getElementById('phaseSelectTitle').textContent=r.title;
+  document.getElementById('phaseSelectList').innerHTML=all.map((p,i)=>{
+    const isFirst=i===0;
+    const timeStr=isFirst?r.date:p.repTime||'-';
+    const authorStr=isFirst?r.author||'-':p.author||'-';
+    const summary=isFirst
+      ?`${r.type} · ${r.vName||'미상'} · ${r.severity||'-'}`
+      :`${(p.update||'').slice(0,40)}${(p.update||'').length>40?'...':''}`;
+    return `<div class="lcard" onclick="viewSinglePhase(${id},${i});closeM('modalPhaseSelect')">
+      <div style="width:32px;height:32px;border-radius:50%;background:${i===all.length-1?'#1a4a6e':'#0b1c30'};border:2px solid ${i===all.length-1?'#4fa8d0':'rgba(79,168,208,.3)'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#4fa8d0;flex-shrink:0;">${i+1}보</div>
+      <div class="linfo">
+        <div class="lname">${i+1}보 — ${isFirst?'초기 접수':'업데이트'}</div>
+        <div class="lmeta">${timeStr} · ${authorStr}</div>
+        <div class="lmeta">${summary}</div>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('modalPhaseSelect').classList.add('on');
+}
+function viewSinglePhase(resId,phaseIdx){
+  const res=DB.g('rescues')||[];const r=res.find(x=>x.id===resId);if(!r)return;
+  selResId=resId;curResId=resId;
+  document.getElementById('topTitle').textContent=r.title+' · '+(phaseIdx+1)+'보';
+  document.getElementById('bnav').style.display='none';
+  showV('v-report');
+  const all=[r,...(r.reports||[])];
+  renderPhaseBar(phaseIdx,all.length);
+  // 단일 보 내용만 표시
+  const p=all[phaseIdx];const isFirst=phaseIdx===0;
+  const w=document.getElementById('repContent');
+  const content=isFirst?`
+    <div class="rsec"><div class="rsec-t">📋 1보 — 초기 접수</div>
+      <div style="font-size:12px;color:#7a9cb8;line-height:2.0;">
+        <b>유형:</b> ${r.type}<br><b>발생:</b> ${r.date}<br><b>위치:</b> ${r.location||'-'} (${r.loctype||'-'})<br>
+        <b>사고자:</b> ${r.vName||'미상'} / ${r.vGender||'-'} / ${r.vNation||'-'}<br>
+        <b>연락처:</b> ${r.vTel||'-'}<br><b>중증도:</b> ${r.severity||'-'}<br>
+        <b>사고 원인:</b> ${r.cause||'-'}<br><b>부상 부위:</b> ${(r.injuryParts||[]).join(', ')||'-'}<br>
+        <b>구조 방법:</b> ${(r.rescueMethod||[]).join(', ')||'-'}<br>
+        <b>출동 대원:</b> ${(r.members||[]).join(', ')||'-'}<br>
+        <b>병원 후송:</b> ${r.hospital||'-'}<br><b>작성자:</b> ${r.author||'-'}
+      </div>
+    </div>`:
+    `<div class="rsec"><div class="rsec-t">📋 ${phaseIdx+1}보 — 상황 업데이트</div>
+      <div style="font-size:12px;color:#7a9cb8;line-height:2.0;">
+        <b>보고 시간:</b> ${p.repTime||'-'}<br>
+        <b>상황 내용:</b> ${p.update||'-'}<br>
+        <b>부상자 상태:</b> ${p.victimChange||'-'}<br>
+        ${p.addMem?`<b>추가 대원:</b> ${p.addMem}<br>`:''}
+        <b>작성자:</b> ${p.author||'-'}
+      </div>
+    </div>`;
+  w.innerHTML=content+`
+    <div style="display:flex;gap:6px;margin-top:6px;">
+      <button class="btn btn-ghost" style="flex:1;" onclick="openResListDetail(${resId})">← 보 목록</button>
+      <button class="btn btn-blue" style="flex:1;" onclick="renderTimeline(getRes(${resId}))">📊 전체 타임라인</button>
+    </div>`;
+}
+function openFullTimeline(){
+  const res=DB.g('rescues')||[];const r=res.find(x=>x.id===selResId);if(!r)return;
+  closeM('modalPhaseSelect');
+  document.getElementById('topTitle').textContent=r.title+' 타임라인';
+  document.getElementById('bnav').style.display='none';
+  showV('v-report');
+  renderPhaseBar((r.reports||[]).length,(r.reports||[]).length+1);
+  renderTimeline(r,'brief');
+}
+
+window.onload=function(){
+  initDB();
+  // 저장된 카카오 키가 있으면 자동 적용 (HTML 기본키보다 우선)
+  const savedKey=DB.g('kakaoKey');
+  if(savedKey&&savedKey!=='YOUR_KAKAO_KEY_HERE'){
+    const s=document.createElement('script');
+    s.src='//dapi.kakao.com/v2/maps/sdk.js?appkey='+savedKey+'&libraries=services&autoload=false';
+    s.onload=function(){kakao.maps.load(function(){window._KR=true;if(window._KCB)window._KCB();});};
+    document.head.appendChild(s);
+  } else {
+    initMaps(); // HTML에 있는 기본 키로 시도
+  }
+  updateSummary();updateUserUI();renderHotSearch();
+  const d=new Date();const days=['일','월','화','수','목','금','토'];
+  document.getElementById('homeDate').textContent=d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+days[d.getDay()]+')';
+};
+
+</script>
+</body>
+</html>
