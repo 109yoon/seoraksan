@@ -3238,6 +3238,9 @@ function removeExtraDispatch(i){
 // ══════════════════════════════════════════
 // 타임라인 시간순 정렬 + 편집
 // ══════════════════════════════════════════
+let _ttInlineEntries = [];
+let _ttInlineSelectedStage = '';
+let _ttInlineFoundVictim = false;
 // _ttInlineEntries 시간순 정렬
 function sortTTByTime(entries){
   return [...entries].sort((a,b)=>{
