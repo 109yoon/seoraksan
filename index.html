@@ -3250,8 +3250,7 @@ function sortTTByTime(entries){
 // renderTTInline 교체: 편집 버튼 추가 + 시간순 정렬
 function renderTTInline(){
   const listEl = document.getElementById('ttEntryList');
-  const btnEl  = document.getElementById('ttStageButtons');
-  if(!listEl || !btnEl) return;
+    if(!listEl) return;
 
   // 시간순 정렬 (원본 배열도 갱신)
   _ttInlineEntries = sortTTByTime(_ttInlineEntries);
@@ -3275,13 +3274,6 @@ function renderTTInline(){
       </div>`).join('')
     : '<div style="font-size:11px;color:rgba(255,255,255,.25);padding:6px 0 10px;">아직 기록 없음 — 아래에서 단계 선택</div>';
 
-  // 단계 버튼
-  const stages = _ttInlineFoundVictim ? TT_STAGES_POST : TT_STAGES_PRE;
-  const allowDup = ['지점통과','휴식','차량대기','헬기대기중'];
-  const filtered = stages.filter(s=>allowDup.includes(s)||!_ttInlineEntries.find(e=>e.stage===s));
-  btnEl.innerHTML = filtered.map(s=>
-    `<div class="pill" onclick="selectTTInline('${s}')" style="cursor:pointer;">${s}</div>`
-  ).join('');
 }
 
 // 편집: 해당 항목 데이터를 입력 영역에 채우고 인덱스 기억
