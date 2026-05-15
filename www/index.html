@@ -1832,7 +1832,7 @@ function selAgencyCat(el,cat){
       <div>
         <div style="font-size:10px;color:#4a7090;margin-bottom:3px;">지역</div>
         <div style="display:flex;gap:4px;flex-wrap:wrap;" id="agSubLocPills">
-          ${['양양','인제','속초','기타'].map(l=>`<div class="pill" onclick="selAgencySubLoc(this,'${l}')" style="font-size:11px;cursor:pointer;">${l}</div>`).join('')}
+          ${['양양','인제','속초'].map(l=>`<div class="pill" onclick="selAgencySubLoc(this,'${l}')" style="font-size:11px;cursor:pointer;">${l}</div>`).join('')}
         </div>
       </div>${typeRow}`;
   } else {
@@ -1855,9 +1855,8 @@ function selAgencySubType(el,type){
     _agSubLoc='양양';
     document.querySelectorAll('#agSubLocPills .pill').forEach(p=>{
       p.classList.toggle('on',p.textContent==='양양');
-      const active=p.textContent==='양양'||p.textContent==='기타';
-      p.style.opacity=active?'1':'0.3';
-      p.style.pointerEvents=active?'':'none';
+      p.style.opacity=p.textContent==='양양'?'1':'0.3';
+      p.style.pointerEvents=p.textContent==='양양'?'':'none';
     });
   } else {
     document.querySelectorAll('#agSubLocPills .pill').forEach(p=>{p.style.opacity='1';p.style.pointerEvents='';});
