@@ -444,7 +444,7 @@ body.guest-mode .guest-hide{display:none!important;}
     👁 게스트로 보기
   </button>
   <div class="ls-guest-note">게스트 모드: 등록·수정·삭제 불가</div>
-  <button class="ls-btn ls-dev" onclick="devLogin()" style="margin-top:8px;background:#2a2a3a;color:#7ec8e3;border:1px solid #3a4a5a;font-size:13px;">
+  <button class="ls-btn ls-dev" onclick="devLogin()" style="margin-top:8px;background:#1a2a1a;color:#7ec8a0;border:1px solid #2a4a2a;font-size:12px;padding:10px;">
     🛠 개발자 모드
   </button>
 </div>
@@ -1463,6 +1463,27 @@ function applyAuthState(){
 }
 function openKakaoLogin(){ kakaoLogin(); }
 
+// 추가팀 체크박스
+function tChkAt(el){
+  el.classList.toggle('on');
+  const box=el.querySelector('.chk-box');
+  if(box) box.classList.toggle('on',el.classList.contains('on'));
+}
+function toggleAddTeam(){
+  const wrap=document.getElementById('addTeamWrap');
+  const btn=document.getElementById('addTeamBtn');
+  if(!wrap) return;
+  const show=wrap.style.display==='none';
+  wrap.style.display=show?'block':'none';
+  if(btn) btn.style.color=show?'#7ec8a0':'rgba(126,200,163,.5)';
+}
+function getAddTeamMembers(){
+  return [...document.querySelectorAll('#addTeamGrid .chk-item.on')].map(el=>{
+    const t=el.querySelector('.chk-txt');
+    return t?t.textContent.trim().split(' ')[0]:'';
+  }).filter(Boolean);
+}
+
 // 환동해산악구조대 당직팀 계산 (기준: 2026-05-15 = 2팀, 9시~익일9시)
 function getHwandonghaTeam(){
   const now=new Date();
@@ -1481,9 +1502,8 @@ function getAgencies(){
     hwTeam: parseInt(document.getElementById('hwTeamSel')?.value||'1'),
     fireOther: document.getElementById('r_fire_other')?.value||'',
     police: document.getElementById('agPoliceChk')?.classList.contains('on')||false,
-    policeNote: document.getElementById('r_police_note')?.value||'',
     forestry: document.getElementById('agForestChk')?.classList.contains('on')||false,
-    forestryNote: document.getElementById('r_forestry_note')?.value||'',
+    agenciesNote: document.getElementById('r_agencies_note')?.value||'',
     other: document.getElementById('r_agency_other')?.value||'',
   };
 }
@@ -1749,11 +1769,12 @@ function addPhase(){
 function submitNBoFromForm(){
   const res=DB.g('rescues')||[];const idx=res.findIndex(x=>x.id===curResId);if(idx===-1)return;
   if(!res[idx].reports)res[idx].reports=[];
-  const members=[...document.querySelectorAll('#memChkGrid .chk-box.on')].map(b=>{
+  const members=[...document.querySelectorAll('#memChkGrid .chk-grid .chk-box.on')].map(b=>{
     const txt=b.closest('.chk-item')?.querySelector('.chk-txt');
     return txt?txt.textContent.trim().split(' ')[0]:'';
   }).filter(Boolean);
   const extraMembers=[..._extraDispatch];
+  const addTeam=getAddTeamMembers();
   const phaseData={
     repTime: now(),
     type: document.getElementById('r_type')?.value||res[idx].type,
@@ -1780,7 +1801,7 @@ function submitNBoFromForm(){
     situation: document.getElementById('r_sit')?.value||'',
     alcohol: document.getElementById('r_alc')?.value||res[idx].alcohol,
     rescueMethod: getSelPills('rescMeth'),
-    members,
+    members, addTeam,
     agencies: getAgencies(),
     r119: document.getElementById('r_119')?.value||res[idx].r119||'',
     equipment: document.getElementById('r_equip')?.value||res[idx].equipment||'',
@@ -1970,21 +1991,26 @@ function renderTimeline(r,viewMode){
     </div>
 
     <!-- 액션 버튼 -->
-    <!-- 추가 출동 인원 표시 -->
-    ${(r.extraMembers&&r.extraMembers.length)?`
+    <!-- 출동 인원 표시 -->
     <div style="background:#0b1c30;border-radius:10px;padding:11px 12px;border:.5px solid rgba(79,168,208,.12);margin-top:8px;">
-      <div style="font-size:11px;color:#4fa8d0;font-weight:700;margin-bottom:7px;">👥 전체 출동 인원</div>
-      <div style="font-size:11px;color:#b8d4e8;margin-bottom:6px;">
-        <span style="color:#4a7090;">소속 직원:</span> ${(r.members||[]).join(', ')||'없음'}
+      <div style="font-size:11px;color:#4fa8d0;font-weight:700;margin-bottom:7px;">👥 출동 인원</div>
+      <div style="font-size:11px;color:#b8d4e8;margin-bottom:4px;">
+        <span style="color:#4a7090;font-weight:600;">초동팀:</span> ${(r.members||[]).join(', ')||'미기재'}
       </div>
-      ${r.extraMembers.map(d=>`<div style="font-size:11px;color:#b8d4e8;padding:3px 0;">
-        <span style="background:rgba(79,168,208,.1);color:#4fa8d0;padding:1px 6px;border-radius:10px;font-size:10px;margin-right:5px;">${d.type}</span>
-        ${d.name}${d.note?' · '+d.note:''}
-      </div>`).join('')}
-    </div>`:`
-    <div style="background:#0b1c30;border-radius:10px;padding:10px 12px;border:.5px solid rgba(79,168,208,.08);margin-top:8px;font-size:11px;color:#b8d4e8;">
-      <span style="color:#4a7090;">👥 출동 직원:</span> ${(r.members||[]).join(', ')||'미기재'}
-    </div>`}
+      ${(r.addTeam&&r.addTeam.length)?`<div style="font-size:11px;color:#b8d4e8;margin-bottom:4px;">
+        <span style="color:#7ec8a0;font-weight:600;">추가팀:</span> ${r.addTeam.join(', ')}
+      </div>`:''}
+      ${(r.agencies)?(()=>{
+        const ag=r.agencies; const parts=[];
+        if(ag.hwandongha) parts.push(`🚒 환동해 ${ag.hwTeam||'?'}팀`);
+        if(ag.fireOther) parts.push(`🚒 ${ag.fireOther}`);
+        if(ag.police) parts.push('🚔 경찰');
+        if(ag.forestry) parts.push('🌲 산림청');
+        if(ag.other) parts.push(ag.other);
+        if(ag.agenciesNote) parts.push(`(${ag.agenciesNote})`);
+        return parts.length?`<div style="font-size:11px;color:#b8d4e8;margin-top:2px;"><span style="color:#4a7090;">유관기관:</span> ${parts.join(' · ')}</div>`:'';
+      })():''}
+    </div>
 
     ${r.status==='ongoing'?`
     <div style="display:flex;gap:7px;margin-top:10px;">
@@ -2304,57 +2330,51 @@ function render1BoForm(prefill=null){
               </div>`).join('');
           })()}
         </div>
+        <!-- 추가팀 -->
+        <button onclick="toggleAddTeam()" id="addTeamBtn" style="width:100%;margin-top:10px;padding:8px;background:rgba(126,200,163,.08);border:1px dashed rgba(126,200,163,.3);color:#7ec8a0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">＋ 추가팀 출동</button>
+        <div id="addTeamWrap" style="display:none;margin-top:8px;padding:10px;background:#060d1a;border-radius:8px;border:1px solid rgba(126,200,163,.2);">
+          <div style="font-size:10px;color:#7ec8a0;font-weight:700;margin-bottom:8px;">➕ 추가팀 (초동팀과 별도 저장)</div>
+          <div id="addTeamGrid" class="chk-grid">
+            ${ms.map(s=>{
+              const checked=(p.addTeam||[]).includes(s.name);
+              return `<div class="chk-item${checked?' on':''}" onclick="tChkAt(this)">
+                <div class="chk-box${checked?' on':''}"></div>
+                <span class="chk-txt">${s.name}<span style="font-size:9px;color:#4a7090;margin-left:3px;">${s.rank}</span></span>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
       </div>
 
-      <!-- 유관기관 -->
+      <!-- 유관기관 (압축) -->
       <div class="rsec" style="margin-top:12px;">
-        <div class="rsec-t">🤝 유관기관 출동</div>
-
-        <!-- 소방(항공대) -->
-        <div class="fg">
-          <span class="fl">🚒 소방(항공대)</span>
-          <div style="display:flex;flex-direction:column;gap:6px;">
-            <div style="display:flex;align-items:center;gap:8px;background:#060d1a;border-radius:8px;padding:8px 10px;border:1px solid rgba(79,168,208,.15);">
-              <div class="chk-item${(p.agencies||{}).hwandongha?' on':''}" onclick="tChk(this)" id="agHwChk" style="flex:1;">
-                <div class="chk-box${(p.agencies||{}).hwandongha?' on':''}"></div>
-                <span class="chk-txt" style="font-size:13px;">환동해산악구조대 <span style="font-size:10px;color:#7ec8e3;">(환동해)</span></span>
-              </div>
-              <div style="font-size:11px;color:#4a7090;">
-                <span style="color:#4fa8d0;">당직팀:</span>
-                <select id="hwTeamSel" class="fsel" style="width:60px;padding:2px 4px;font-size:11px;display:inline-block;">
-                  ${[1,2,3].map(t=>`<option value="${t}"${((p.agencies||{}).hwTeam||hdTeam)===t?' selected':''}>${t}팀</option>`).join('')}
-                </select>
-              </div>
-            </div>
-            <input type="text" id="r_fire_other" class="fi" placeholder="기타 소방서 (수기입력)" value="${(p.agencies||{}).fireOther||''}">
+        <div class="rsec-t">🤝 유관기관</div>
+        <!-- 환동해 -->
+        <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#060d1a;border-radius:8px;border:1px solid rgba(79,168,208,.12);margin-bottom:6px;">
+          <div class="chk-item${(p.agencies||{}).hwandongha?' on':''}" onclick="tChk(this)" id="agHwChk" style="flex:1;">
+            <div class="chk-box${(p.agencies||{}).hwandongha?' on':''}"></div>
+            <span class="chk-txt">🚒 환동해</span>
           </div>
+          <span style="font-size:10px;color:#4a7090;flex-shrink:0;">당직</span>
+          <select id="hwTeamSel" class="fsel" style="width:52px;padding:2px 4px;font-size:11px;">
+            ${[1,2,3].map(t=>`<option value="${t}"${((p.agencies||{}).hwTeam||hdTeam)===t?' selected':''}>${t}팀</option>`).join('')}
+          </select>
         </div>
-
-        <!-- 경찰 -->
-        <div class="fg">
-          <span class="fl">🚔 경찰</span>
+        <!-- 경찰 / 산림청 -->
+        <div class="chk-grid" style="margin-bottom:6px;">
           <div class="chk-item${(p.agencies||{}).police?' on':''}" onclick="tChk(this)" id="agPoliceChk">
             <div class="chk-box${(p.agencies||{}).police?' on':''}"></div>
-            <span class="chk-txt">경찰 출동</span>
+            <span class="chk-txt">🚔 경찰</span>
           </div>
-          <input type="text" id="r_police_note" class="fi" style="margin-top:5px;" placeholder="경찰서명, 인원 등 (선택)" value="${(p.agencies||{}).policeNote||''}">
-        </div>
-
-        <!-- 산림청(항공대) -->
-        <div class="fg">
-          <span class="fl">🌲 산림청(항공대)</span>
           <div class="chk-item${(p.agencies||{}).forestry?' on':''}" onclick="tChk(this)" id="agForestChk">
             <div class="chk-box${(p.agencies||{}).forestry?' on':''}"></div>
-            <span class="chk-txt">산림청 출동</span>
+            <span class="chk-txt">🌲 산림청</span>
           </div>
-          <input type="text" id="r_forestry_note" class="fi" style="margin-top:5px;" placeholder="항공대, 인원 등 (선택)" value="${(p.agencies||{}).forestryNote||''}">
         </div>
-
-        <!-- 기타 -->
-        <div class="fg">
-          <span class="fl">📋 기타</span>
-          <input type="text" id="r_agency_other" class="fi" placeholder="기타 유관기관 (수기입력)" value="${(p.agencies||{}).other||''}">
-        </div>
+        <!-- 수기 입력 -->
+        <input type="text" id="r_fire_other" class="fi" placeholder="기타 소방서" value="${(p.agencies||{}).fireOther||''}" style="margin-bottom:5px;">
+        <input type="text" id="r_agencies_note" class="fi" placeholder="경찰·산림청·기타 메모 (선택)" value="${(p.agencies||{}).agenciesNote||''}" style="margin-bottom:5px;">
+        <input type="text" id="r_agency_other" class="fi" placeholder="기타 유관기관" value="${(p.agencies||{}).other||''}">
       </div>
 
       <!-- 동원 장비 -->
@@ -2420,11 +2440,12 @@ function submit1Bo(){
   const title=document.getElementById('r_title').value.trim()||autoGenTitle(true);
   const gps=(document.getElementById('r_gps')?.value||'').split(',');
   const lat=parseFloat(gps[0])||null, lng=parseFloat(gps[1])||null;
-  const members=[...document.querySelectorAll('#memChkGrid .chk-box.on')].map(b=>{
+  const members=[...document.querySelectorAll('#memChkGrid .chk-grid .chk-box.on')].map(b=>{
     const txt=b.closest('.chk-item')?.querySelector('.chk-txt');
     return txt?txt.textContent.trim().split(' ')[0]:'';
   }).filter(Boolean);
   const extraMembers=[..._extraDispatch];
+  const addTeam=getAddTeamMembers();
   // 현재 날짜/시간
   const nowStr=now();
   const r={
@@ -2456,7 +2477,7 @@ function submit1Bo(){
     alcohol:document.getElementById('r_alc')?.value||'알수없음',
     situation:document.getElementById('r_sit')?.value||'',
     rescueMethod:getSelPills('rescMeth'),
-    members, extraMembers,
+    members, extraMembers, addTeam,
     agencies:getAgencies(),
     r119:document.getElementById('r_119')?.value||'',
     equipment:document.getElementById('r_equip')?.value||'',
@@ -3735,7 +3756,15 @@ function selectTTInline(stage){
   if(timeIn)timeIn.value = new Date().toISOString().slice(0,16);
   const noteIn = document.getElementById('ttNoteIn');
   if(noteIn) noteIn.value='';
+  // 접수경로 표시 (상황전파일 때만)
+  const rw=document.getElementById('ttRecvWrap');
+  if(rw) rw.style.display=stage==='상황전파'?'':'none';
+  // actor 초기화 후 단계별 기본값 설정
   document.querySelectorAll('#ttActorPills .pill').forEach(p=>p.classList.remove('on'));
+  const autoActor = stage==='요구조자 조우'||stage==='처치중'||stage==='처치완료'?'환자(요구조자)':
+    stage==='헬기출동'||stage==='헬기구조완료'?'환동해':
+    stage==='119인계'||stage==='병원이송'?'초동팀':'초동팀';
+  document.querySelectorAll('#ttActorPills .pill').forEach(p=>{if(p.textContent===autoActor)p.classList.add('on');});
 }
 
 function removeTTInline(i){
