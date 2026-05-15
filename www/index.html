@@ -2516,9 +2516,7 @@ function render1BoForm(prefill=null){
           <!-- 누가 -->
           <div class="fg" id="ttActorWrap">
             <span class="fl">누가</span>
-            <div style="display:flex;flex-wrap:wrap;gap:4px;" id="ttActorPills">
-              ${['초동팀','환자(요구조자)','추가팀','환동해','기타'].map(a=>`<div class="pill" onclick="selTTActor(this,'${a}')" style="cursor:pointer;font-size:11px;">${a}</div>`).join('')}
-            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;" id="ttActorPills"></div>
           </div>
           <!-- 상황전파 선택 시 접수경로 표시 -->
           <div id="ttRecvWrap" style="display:none;" class="fg">
