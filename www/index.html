@@ -1463,6 +1463,37 @@ function applyAuthState(){
 }
 function openKakaoLogin(){ kakaoLogin(); }
 
+// 환동해산악구조대 당직팀 계산 (기준: 2026-05-15 = 2팀, 9시~익일9시)
+function getHwandonghaTeam(){
+  const now=new Date();
+  const ref=new Date(now);
+  if(ref.getHours()<9) ref.setDate(ref.getDate()-1);
+  ref.setHours(0,0,0,0);
+  const base=new Date('2026-05-15T00:00:00');
+  const dayDiff=Math.round((ref-base)/(24*3600*1000));
+  return [2,3,1][((dayDiff%3)+3)%3];
+}
+
+// 유관기관 데이터 수집
+function getAgencies(){
+  return {
+    hwandongha: document.getElementById('agHwChk')?.classList.contains('on')||false,
+    hwTeam: parseInt(document.getElementById('hwTeamSel')?.value||'1'),
+    fireOther: document.getElementById('r_fire_other')?.value||'',
+    police: document.getElementById('agPoliceChk')?.classList.contains('on')||false,
+    policeNote: document.getElementById('r_police_note')?.value||'',
+    forestry: document.getElementById('agForestChk')?.classList.contains('on')||false,
+    forestryNote: document.getElementById('r_forestry_note')?.value||'',
+    other: document.getElementById('r_agency_other')?.value||'',
+  };
+}
+
+// 타임라인 누가 pill 선택
+function selTTActor(el,actor){
+  document.querySelectorAll('#ttActorPills .pill').forEach(p=>p.classList.remove('on'));
+  el.classList.add('on');
+}
+
 // ══════════════════════════════════════════
 // 작성자 관리
 // ══════════════════════════════════════════
