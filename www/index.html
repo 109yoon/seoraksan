@@ -1750,8 +1750,8 @@ function submitNBoFromForm(){
     alcohol: document.getElementById('r_alc')?.value||res[idx].alcohol,
     rescueMethod: getSelPills('rescMeth'),
     members,
+    agencies: getAgencies(),
     r119: document.getElementById('r_119')?.value||res[idx].r119||'',
-    others: document.getElementById('r_others')?.value||res[idx].others||'',
     equipment: document.getElementById('r_equip')?.value||res[idx].equipment||'',
     hospital: document.getElementById('r_hosp')?.value||res[idx].hospital,
     dispatch: document.getElementById('r_disp')?.value||'',
@@ -1911,7 +1911,7 @@ function renderTimeline(r,viewMode){
         ${r.timetable.map((e,ti)=>`
           <div style="position:relative;margin-bottom:10px;">
             <div style="position:absolute;left:-14px;top:4px;width:8px;height:8px;border-radius:50%;background:${e.stage==='요구조자 조우'?'#c0392b':e.stage==='처치완료'?'#27ae60':'#4fa8d0'};border:2px solid #0b1c30;"></div>
-            <div style="font-size:11px;font-weight:700;color:#e0edf8;">${e.stage}</div>
+            <div style="font-size:11px;font-weight:700;color:#e0edf8;">${e.actor?`<span style="font-size:10px;color:#7ec8e3;font-weight:600;margin-right:4px;">[${e.actor}]</span>`:''}${e.stage}</div>
             <div style="font-size:10px;color:#4a7090;">${e.time||'-'}${e.note?' · '+e.note:''}</div>
           </div>`).join('')}
       </div>
@@ -2017,6 +2017,8 @@ function submitNBo(){
 // ══════════════════════════════════════════
 function render1BoForm(prefill=null){
   const ms=sortStaff(getStaff());
+  const curUserName=(DB.g('currentUser')||{}).name||'';
+  const hdTeam=getHwandonghaTeam();
   const isNbo=prefill!==null;
   const p=prefill||{};
   const w=document.getElementById('repContent');
@@ -2026,7 +2028,7 @@ function render1BoForm(prefill=null){
     {id:'repSec1', icon:'📍', label:'위치·기상'},
     {id:'repSec2', icon:'🤕', label:'환자·부상'},
     {id:'repSec3', icon:'🧑', label:'인적사항'},
-    {id:'repSec4', icon:'🚁', label:'출동대원'},
+    {id:'repSec4', icon:'🚁', label:'출동·기관'},
     {id:'repSec5', icon:'📝', label:'기타'},
   ];
 
@@ -2056,28 +2058,29 @@ function render1BoForm(prefill=null){
         <div id="ttEntryList"></div>
         <div style="margin-top:10px;">
           <div style="font-size:10px;color:#4fa8d0;font-weight:700;margin-bottom:6px;">⚡ 자주 쓰는 항목</div>
-          <div style="display:flex;flex-wrap:wrap;gap:5px;" id="ttQuickBtns">
-            ${[
-              {label:'📢 상황전파',stage:'상황전파'},
-              {label:'🚗 구조출동',stage:'구조출동'},
-              {label:'🏃 현장도착',stage:'현장도착'},
-              {label:'🧑 요구조자조우',stage:'요구조자 조우'},
-              {label:'💉 처치중',stage:'처치중'},
-              {label:'✅ 처치완료',stage:'처치완료'},
-              {label:'🚶 하산시작',stage:'하산시작'},
-              {label:'🚁 헬기출동',stage:'헬기출동'},
-              {label:'🚁 헬기구조완료',stage:'헬기구조완료'},
-              {label:'🚑 119인계',stage:'119인계'},
-              {label:'🏥 병원이송',stage:'병원이송'},
-              {label:'🚗 차량대기',stage:'차량대기'},
-              {label:'☕ 휴식',stage:'휴식'},
-              {label:'📍 지점통과',stage:'지점통과'},
-              {label:'✔️ 상황종료',stage:'상황종료'},
-            ].map(q=>`<div class="pill" onclick="selectTTInline('${q.stage}')" style="cursor:pointer;font-size:11px;">${q.label}</div>`).join('')}
-          </div>
+          ${[
+            {cat:'출동',items:[{label:'📢 상황전파',stage:'상황전파'},{label:'🚗 구조출동',stage:'구조출동'},{label:'🏃 현장도착',stage:'현장도착'}]},
+            {cat:'환자',items:[{label:'🧑 요구조자조우',stage:'요구조자 조우'},{label:'💉 처치중',stage:'처치중'},{label:'✅ 처치완료',stage:'처치완료'}]},
+            {cat:'이동',items:[{label:'🚶 하산시작',stage:'하산시작'},{label:'📍 지점통과',stage:'지점통과'},{label:'🚗 차량대기',stage:'차량대기'}]},
+            {cat:'항공·소방',items:[{label:'🚁 헬기출동',stage:'헬기출동'},{label:'🚁 헬기구조완료',stage:'헬기구조완료'},{label:'🚑 119인계',stage:'119인계'},{label:'🏥 병원이송',stage:'병원이송'}]},
+            {cat:'종료',items:[{label:'✔️ 상황종료',stage:'상황종료'},{label:'☕ 휴식',stage:'휴식'}]},
+          ].map(g=>`
+            <div style="margin-bottom:7px;">
+              <div style="font-size:9px;color:#4a7090;font-weight:700;margin-bottom:4px;">${g.cat}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                ${g.items.map(q=>`<div class="pill" onclick="selectTTInline('${q.stage}')" style="cursor:pointer;font-size:11px;">${q.label}</div>`).join('')}
+              </div>
+            </div>`).join('')}
         </div>
         <div id="ttInputArea" style="display:none;margin-top:10px;background:#060d1a;border-radius:9px;padding:10px;border:1px solid rgba(79,168,208,.2);">
           <div style="font-size:11px;color:#4fa8d0;font-weight:700;margin-bottom:8px;" id="ttInputLabel"></div>
+          <!-- 누가 -->
+          <div class="fg">
+            <span class="fl">누가</span>
+            <div style="display:flex;flex-wrap:wrap;gap:4px;" id="ttActorPills">
+              ${['초동팀','환자(요구조자)','추가팀','환동해','기타'].map(a=>`<div class="pill" onclick="selTTActor(this,'${a}')" style="cursor:pointer;font-size:11px;">${a}</div>`).join('')}
+            </div>
+          </div>
           <!-- 상황전파 선택 시 접수경로 표시 -->
           <div id="ttRecvWrap" style="display:none;" class="fg">
             <span class="fl">접수 경로</span>
@@ -2245,23 +2248,86 @@ function render1BoForm(prefill=null){
       </div>
     </div>
 
-    <!-- ══ 섹터4: 출동대원 ══ -->
+    <!-- ══ 섹터4: 출동·유관기관 ══ -->
     <div id="repSec4" class="rep-sec" style="display:none;padding:12px;overflow-y:auto;">
+
+      <!-- 공단 초동 출동팀 -->
       <div class="rsec">
-        <div class="rsec-t">👥 출동 인원
-          <button onclick="openAddDispatch()" style="margin-left:auto;background:rgba(79,168,208,.1);border:1px solid rgba(79,168,208,.25);color:#4fa8d0;padding:3px 10px;border-radius:6px;font-size:10px;font-weight:600;cursor:pointer;">＋ 추가 출동</button>
+        <div class="rsec-t">🏔️ 공단 초동 출동팀</div>
+        <div id="memChkGrid" style="display:flex;flex-direction:column;gap:10px;">
+          ${(()=>{
+            const groups={};
+            ms.forEach(s=>{if(!groups[s.dept])groups[s.dept]=[];groups[s.dept].push(s);});
+            return Object.entries(groups).map(([dept,staff])=>`
+              <div>
+                <div style="font-size:10px;color:#4a7090;font-weight:700;margin-bottom:5px;">${dept}</div>
+                <div class="chk-grid">
+                  ${staff.map(s=>{
+                    const checked=(p.members!=null?(p.members||[]).includes(s.name):s.name===curUserName);
+                    return `<div class="chk-item${checked?' on':''}" onclick="tChk(this)">
+                      <div class="chk-box${checked?' on':''}"></div>
+                      <span class="chk-txt">${s.name}<span style="font-size:9px;color:#4a7090;margin-left:3px;">${s.rank}</span></span>
+                    </div>`;
+                  }).join('')}
+                </div>
+              </div>`).join('');
+          })()}
         </div>
-        <div class="fg"><span class="fl">직원 선택 (복수)</span>
-          <div class="chk-grid" id="memChkGrid">
-            ${ms.map(s=>`<div class="chk-item${(p.members||[]).includes(s.name)?' on':''}" onclick="tChk(this)">
-              <div class="chk-box${(p.members||[]).includes(s.name)?' on':''}"></div>
-              <span class="chk-txt">${s.name}<span style="font-size:9px;color:#4a7090;margin-left:3px;">${s.rank}</span></span>
-            </div>`).join('')}
+      </div>
+
+      <!-- 유관기관 -->
+      <div class="rsec" style="margin-top:12px;">
+        <div class="rsec-t">🤝 유관기관 출동</div>
+
+        <!-- 소방(항공대) -->
+        <div class="fg">
+          <span class="fl">🚒 소방(항공대)</span>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div style="display:flex;align-items:center;gap:8px;background:#060d1a;border-radius:8px;padding:8px 10px;border:1px solid rgba(79,168,208,.15);">
+              <div class="chk-item${(p.agencies||{}).hwandongha?' on':''}" onclick="tChk(this)" id="agHwChk" style="flex:1;">
+                <div class="chk-box${(p.agencies||{}).hwandongha?' on':''}"></div>
+                <span class="chk-txt" style="font-size:13px;">환동해산악구조대 <span style="font-size:10px;color:#7ec8e3;">(환동해)</span></span>
+              </div>
+              <div style="font-size:11px;color:#4a7090;">
+                <span style="color:#4fa8d0;">당직팀:</span>
+                <select id="hwTeamSel" class="fsel" style="width:60px;padding:2px 4px;font-size:11px;display:inline-block;">
+                  ${[1,2,3].map(t=>`<option value="${t}"${((p.agencies||{}).hwTeam||hdTeam)===t?' selected':''}>${t}팀</option>`).join('')}
+                </select>
+              </div>
+            </div>
+            <input type="text" id="r_fire_other" class="fi" placeholder="기타 소방서 (수기입력)" value="${(p.agencies||{}).fireOther||''}">
           </div>
         </div>
-        <div id="extraDispatchList"></div>
+
+        <!-- 경찰 -->
+        <div class="fg">
+          <span class="fl">🚔 경찰</span>
+          <div class="chk-item${(p.agencies||{}).police?' on':''}" onclick="tChk(this)" id="agPoliceChk">
+            <div class="chk-box${(p.agencies||{}).police?' on':''}"></div>
+            <span class="chk-txt">경찰 출동</span>
+          </div>
+          <input type="text" id="r_police_note" class="fi" style="margin-top:5px;" placeholder="경찰서명, 인원 등 (선택)" value="${(p.agencies||{}).policeNote||''}">
+        </div>
+
+        <!-- 산림청(항공대) -->
+        <div class="fg">
+          <span class="fl">🌲 산림청(항공대)</span>
+          <div class="chk-item${(p.agencies||{}).forestry?' on':''}" onclick="tChk(this)" id="agForestChk">
+            <div class="chk-box${(p.agencies||{}).forestry?' on':''}"></div>
+            <span class="chk-txt">산림청 출동</span>
+          </div>
+          <input type="text" id="r_forestry_note" class="fi" style="margin-top:5px;" placeholder="항공대, 인원 등 (선택)" value="${(p.agencies||{}).forestryNote||''}">
+        </div>
+
+        <!-- 기타 -->
+        <div class="fg">
+          <span class="fl">📋 기타</span>
+          <input type="text" id="r_agency_other" class="fi" placeholder="기타 유관기관 (수기입력)" value="${(p.agencies||{}).other||''}">
+        </div>
       </div>
-      <div class="rsec"><div class="rsec-t">🛠️ 동원 장비</div>
+
+      <!-- 동원 장비 -->
+      <div class="rsec" style="margin-top:12px;"><div class="rsec-t">🛠️ 동원 장비</div>
         <div class="fg"><span class="fl">구조 방법 (복수)</span>
           <div class="pills" id="rescMeth">${['들것','부축','헬기','차량','자력하산','로프구조','기타'].map(o=>`<div class="pill${(p.rescueMethod||[]).includes(o)?' on':''}" onclick="tPill(this)">${o}</div>`).join('')}</div>
         </div>
@@ -2270,9 +2336,6 @@ function render1BoForm(prefill=null){
         </div>
         <div class="fg"><span class="fl">병원 후송</span>
           <select id="r_hosp" class="fsel">${['미정','후송 없음','후송 완료','후송 중','본인 귀가'].map(o=>`<option${(p.hospital||'미정')===o?' selected':''}>${o}</option>`).join('')}</select>
-        </div>
-        <div class="fg"><span class="fl">기타 동원</span>
-          <input type="text" id="r_others" class="fi" placeholder="경찰, 소방 등" value="${p.others||''}">
         </div>
       </div>
     </div>
@@ -2363,8 +2426,8 @@ function submit1Bo(){
     situation:document.getElementById('r_sit')?.value||'',
     rescueMethod:getSelPills('rescMeth'),
     members, extraMembers,
+    agencies:getAgencies(),
     r119:document.getElementById('r_119')?.value||'',
-    others:document.getElementById('r_others')?.value||'',
     equipment:document.getElementById('r_equip')?.value||'',
     hospital:document.getElementById('r_hosp')?.value||'미정',
     author:document.getElementById('r_author')?.value||getAuthor(),
@@ -3572,7 +3635,7 @@ function renderTTInline(){
           e.stage==='하산시작'?'#4fa8d0':'#4a7090'
         };flex-shrink:0;margin-top:2px;"></div>
         <div style="flex:1;min-width:0;">
-          <div style="font-size:12px;font-weight:700;color:#e0edf8;">${e.stage}</div>
+          <div style="font-size:12px;font-weight:700;color:#e0edf8;">${e.actor?`<span style="font-size:10px;color:#7ec8e3;font-weight:600;margin-right:5px;">[${e.actor}]</span>`:''}${e.stage}</div>
           <div style="font-size:10px;color:#4a7090;">${e.time||'시간미기재'}${e.note?' · '+e.note:''}</div>
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0;">
@@ -3598,6 +3661,9 @@ function editTTInline(i){
   if(timeIn)timeIn.value = _ttInlineEntries[i].time
     ? _ttInlineEntries[i].time.replace(' ','T') : '';
   if(noteIn)noteIn.value = _ttInlineEntries[i].note||'';
+  document.querySelectorAll('#ttActorPills .pill').forEach(p=>{
+    p.classList.toggle('on', p.textContent===(_ttInlineEntries[i].actor||''));
+  });
 }
 
 // confirmTTInline 재정의: 수정 or 신규 추가
@@ -3612,12 +3678,13 @@ function confirmTTInline(){
     const recv=document.getElementById('r_recv')?.value||'';
     if(recv) finalNote=(recv+(note?' · '+note:''));
   }
+  const actor = document.querySelector('#ttActorPills .pill.on')?.textContent||'';
   if(_editTTIdx >= 0){
-    _ttInlineEntries[_editTTIdx] = {stage: finalStage, time, note: finalNote};
+    _ttInlineEntries[_editTTIdx] = {stage: finalStage, time, note: finalNote, actor};
     _editTTIdx = -1;
     toast('✅ 수정 완료');
   } else {
-    _ttInlineEntries.push({stage: finalStage, time, note: finalNote});
+    _ttInlineEntries.push({stage: finalStage, time, note: finalNote, actor});
     if(finalStage==='요구조자 조우') _ttInlineFoundVictim=true;
     toast('✅ '+finalStage+' 기록');
   }
@@ -3637,6 +3704,7 @@ function selectTTInline(stage){
   if(timeIn)timeIn.value = new Date().toISOString().slice(0,16);
   const noteIn = document.getElementById('ttNoteIn');
   if(noteIn) noteIn.value='';
+  document.querySelectorAll('#ttActorPills .pill').forEach(p=>p.classList.remove('on'));
 }
 
 function removeTTInline(i){
