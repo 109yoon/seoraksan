@@ -2,6 +2,9 @@
   "appId": "kr.go.nps.seoraksan",
   "appName": "설악산 현장관리",
   "webDir": "www",
+  "server": {
+    "allowNavigation": ["109yoon.github.io", "accounts.kakao.com", "kauth.kakao.com"]
+  },
   "android": {
     "allowMixedContent": true
   },
