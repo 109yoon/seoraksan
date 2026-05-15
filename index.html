@@ -1719,14 +1719,14 @@ function confirmAgencySection(){
   if(hw&&hw.classList.contains('on')){
     const team=document.getElementById('hwTeamSel')?.value||'';
     const cnt=document.getElementById('hwMemberCount')?.value||'5';
-    parts.push(`🚒 환동해특수대응단 ${cnt}명${team?'('+team+'팀)':''}`);
+    parts.push(`🚒 환동해특수대응단 ${cnt}명(${team}팀)`);
   }
-  _fireAgencies.forEach(a=>parts.push('🚒 '+a.name));
-  if(document.getElementById('agPoliceChk')?.classList.contains('on')) parts.push('🚔 경찰');
-  if(document.getElementById('agForestChk')?.classList.contains('on')) parts.push('🌲 산림청');
-  const other=document.getElementById('r_agency_other')?.value;
-  if(other) parts.push(other);
-  const html=parts.length?`<b style="color:#4fa8d0;">유관기관:</b> ${parts.join(' · ')}`:'<span style="color:#4a7090;">(없음)</span>';
+  _fireAgencies.forEach(a=>{
+    parts.push(`${a.cat} ${a.name}${a.count?' '+a.count+'명':''}`);
+  });
+  const html=parts.length
+    ?`<b style="color:#4fa8d0;">유관기관</b><br>${parts.map(s=>`<span style="color:#c0d8ec;">· ${s}</span>`).join('<br>')}`
+    :'<span style="color:#4a7090;">(없음)</span>';
   _collapseSection('agencyFullSection','agencySummary','agencyEditBtn',html);
 }
 function editAgencySection(){_expandSection('agencyFullSection','agencySummary','agencyEditBtn');}
@@ -1791,17 +1791,31 @@ function toggleExtraTeamMember(teamIdx,name,el){
 }
 function getExtraTeams(){ return _extraTeams.filter(t=>t.members.length>0); }
 
-// 소방 유관기관 동적
-let _fireAgencies=[]; // [{name}]
+// 유관기관 동적 (카테고리+기관명+인원수)
+let _fireAgencies=[]; // [{cat, name, count}]
+let _agSelectedCat='';
 function initFireAgencies(prefill){
-  _fireAgencies=(prefill&&prefill.agencies&&prefill.agencies.fireAgencies)?[...prefill.agencies.fireAgencies]:[];
+  const raw=(prefill&&prefill.agencies&&prefill.agencies.fireAgencies)||[];
+  // 이전 포맷({name}) → 새 포맷({cat,name,count}) 호환
+  _fireAgencies=raw.map(a=>typeof a==='string'?{cat:'🚒 소방',name:a,count:0}:{cat:a.cat||'🏢 기타',name:a.name||'',count:a.count||0});
+  _agSelectedCat='';
   renderFireAgencies();
 }
-function addFireAgency(name){
-  const n=name==='기타소방'?prompt('소방 기관명 입력:')||'':name;
-  if(!n) return;
-  if(_fireAgencies.find(a=>a.name===n)) return;
-  _fireAgencies.push({name:n});
+function selAgencyCat(el,cat){
+  document.querySelectorAll('#agCatPills .pill').forEach(p=>p.classList.remove('on'));
+  el.classList.add('on');
+  _agSelectedCat=cat;
+}
+function addAgencyEntry(){
+  const cat=_agSelectedCat||'🏢 기타';
+  const name=(document.getElementById('agNameIn')?.value||'').trim();
+  const count=parseInt(document.getElementById('agCountIn')?.value||'0')||0;
+  if(!name){toast('기관명을 입력하세요');return;}
+  _fireAgencies.push({cat,name,count});
+  document.getElementById('agNameIn').value='';
+  document.getElementById('agCountIn').value='';
+  document.querySelectorAll('#agCatPills .pill').forEach(p=>p.classList.remove('on'));
+  _agSelectedCat='';
   renderFireAgencies();
 }
 function removeFireAgency(idx){
@@ -1811,10 +1825,13 @@ function removeFireAgency(idx){
 function renderFireAgencies(){
   const el=document.getElementById('fireAgencyList');
   if(!el) return;
+  if(!_fireAgencies.length){el.innerHTML='';return;}
   el.innerHTML=_fireAgencies.map((a,i)=>`
-    <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:#060d1a;border-radius:6px;margin-bottom:4px;border:1px solid rgba(79,168,208,.1);">
-      <span style="font-size:12px;flex:1;color:#e0edf8;">🚒 ${a.name}</span>
-      <button onclick="removeFireAgency(${i})" style="background:none;border:none;color:#c0392b;font-size:13px;cursor:pointer;">×</button>
+    <div style="display:flex;align-items:center;gap:6px;padding:7px 10px;background:#0b1c30;border-radius:7px;margin-bottom:4px;border:1px solid rgba(79,168,208,.1);">
+      <span style="font-size:10px;color:#4a7090;flex-shrink:0;">${a.cat}</span>
+      <span style="font-size:12px;flex:1;color:#e0edf8;font-weight:600;">${a.name}</span>
+      ${a.count?`<span style="font-size:11px;color:#7a9cb8;flex-shrink:0;">${a.count}명</span>`:''}
+      <button onclick="removeFireAgency(${i})" style="background:none;border:none;color:#c0392b;font-size:15px;cursor:pointer;padding:0 2px;">×</button>
     </div>`).join('');
 }
 
@@ -1836,10 +1853,6 @@ function getAgencies(){
     hwTeam: parseInt(document.getElementById('hwTeamSel')?.value||'1'),
     hwMemberCount: parseInt(document.getElementById('hwMemberCount')?.value||'5'),
     fireAgencies: _fireAgencies,
-    police: document.getElementById('agPoliceChk')?.classList.contains('on')||false,
-    forestry: document.getElementById('agForestChk')?.classList.contains('on')||false,
-    agenciesNote: document.getElementById('r_agencies_note')?.value||'',
-    other: document.getElementById('r_agency_other')?.value||'',
   };
 }
 
@@ -2717,39 +2730,38 @@ function render1BoForm(prefill=null){
           <span id="agencySummaryText" style="font-size:12px;color:#c0d8ec;line-height:1.6;"></span>
         </div>
         <!-- 전체 (펼쳐진 상태) -->
-        <div id="agencyFullSection" style="overflow:hidden;transition:max-height .3s ease,opacity .25s ease;max-height:1000px;opacity:1;">
-          <!-- 환동해 -->
-          <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#060d1a;border-radius:8px;border:1px solid rgba(79,168,208,.12);margin-bottom:6px;">
-            <div class="chk-item${(p.agencies||{}).hwandongha?' on':''}" onclick="tChk(this)" id="agHwChk" style="flex:1;">
+        <div id="agencyFullSection" style="overflow:hidden;transition:max-height .3s ease,opacity .25s ease;max-height:2000px;opacity:1;">
+          <!-- 환동해특수대응단 고정 -->
+          <div style="display:flex;align-items:center;gap:6px;padding:8px 10px;background:#060d1a;border-radius:8px;border:1px solid rgba(79,168,208,.12);margin-bottom:10px;">
+            <div class="chk-item${(p.agencies||{}).hwandongha?' on':''}" onclick="tChk(this)" id="agHwChk" style="flex:1;min-width:0;">
               <div class="chk-box${(p.agencies||{}).hwandongha?' on':''}"></div>
-              <span class="chk-txt">🚒 환동해특수대응단</span>
+              <span class="chk-txt" style="font-size:11px;">🚒 환동해특수대응단</span>
             </div>
             <span style="font-size:10px;color:#4a7090;flex-shrink:0;">당직</span>
-            <select id="hwTeamSel" class="fsel" style="width:52px;padding:2px 4px;font-size:11px;">
+            <select id="hwTeamSel" class="fsel" style="width:50px;padding:2px 4px;font-size:11px;flex-shrink:0;">
               ${[1,2,3].map(t=>`<option value="${t}"${((p.agencies||{}).hwTeam||hdTeam)===t?' selected':''}>${t}팀</option>`).join('')}
             </select>
-            <input type="number" id="hwMemberCount" class="fi" value="${(p.agencies||{}).hwMemberCount||5}" min="1" max="30" style="width:44px;padding:2px 4px;font-size:11px;text-align:center;" placeholder="명">
-          </div>
-          <!-- 소방 동적 목록 -->
-          <div id="fireAgencyList" style="margin-bottom:6px;"></div>
-          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px;" id="firePresets">
-            ${['양양항공대','양양구조','양양구급','속초구조','속초구급','기타소방'].map(n=>`
-              <div class="pill" onclick="addFireAgency('${n}')" style="font-size:11px;cursor:pointer;">＋${n}</div>`).join('')}
-          </div>
-          <!-- 경찰 / 산림청 -->
-          <div class="chk-grid" style="margin-bottom:6px;">
-            <div class="chk-item${(p.agencies||{}).police?' on':''}" onclick="tChk(this)" id="agPoliceChk">
-              <div class="chk-box${(p.agencies||{}).police?' on':''}"></div>
-              <span class="chk-txt">🚔 경찰</span>
-            </div>
-            <div class="chk-item${(p.agencies||{}).forestry?' on':''}" onclick="tChk(this)" id="agForestChk">
-              <div class="chk-box${(p.agencies||{}).forestry?' on':''}"></div>
-              <span class="chk-txt">🌲 산림청</span>
+            <div style="display:flex;align-items:center;gap:2px;flex-shrink:0;">
+              <input type="number" id="hwMemberCount" class="fi" value="${(p.agencies||{}).hwMemberCount||5}" min="1" max="30" style="width:36px;padding:2px 4px;font-size:11px;text-align:center;">
+              <span style="font-size:11px;color:#4a7090;">명</span>
             </div>
           </div>
-          <input type="text" id="r_agencies_note" class="fi" placeholder="경찰·산림청·기타 메모 (선택)" value="${(p.agencies||{}).agenciesNote||''}" style="margin-bottom:5px;">
-          <input type="text" id="r_agency_other" class="fi" placeholder="기타 유관기관" value="${(p.agencies||{}).other||''}">
-          <button onclick="confirmAgencySection()" style="width:100%;margin-top:10px;padding:8px;background:rgba(79,168,208,.1);border:1px solid rgba(79,168,208,.3);color:#4fa8d0;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">✅ 확인</button>
+          <!-- 유관기관 추가 폼 -->
+          <div style="background:#060d1a;border-radius:8px;border:1px solid rgba(255,255,255,.07);padding:10px;margin-bottom:8px;">
+            <div style="font-size:10px;color:#4a7090;font-weight:700;margin-bottom:8px;">＋ 유관기관 추가</div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px;" id="agCatPills">
+              ${['🚒 소방','🚔 경찰','🌲 산림청','⚓ 해경','🪖 군','🏢 기타'].map(c=>`<div class="pill" onclick="selAgencyCat(this,'${c}')" style="font-size:11px;cursor:pointer;">${c}</div>`).join('')}
+            </div>
+            <input type="text" id="agNameIn" class="fi" placeholder="기관명 (예: 양양소방서)" style="margin-bottom:5px;">
+            <div style="display:flex;gap:6px;align-items:center;">
+              <input type="number" id="agCountIn" class="fi" placeholder="인원" min="1" style="width:70px;text-align:center;">
+              <span style="font-size:11px;color:#4a7090;flex-shrink:0;">명</span>
+              <button onclick="addAgencyEntry()" style="flex:1;padding:8px;background:rgba(79,168,208,.15);border:1px solid rgba(79,168,208,.3);color:#4fa8d0;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">추가</button>
+            </div>
+          </div>
+          <!-- 추가된 유관기관 목록 -->
+          <div id="fireAgencyList" style="margin-bottom:8px;"></div>
+          <button onclick="confirmAgencySection()" style="width:100%;margin-top:2px;padding:8px;background:rgba(79,168,208,.1);border:1px solid rgba(79,168,208,.3);color:#4fa8d0;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">✅ 확인</button>
         </div>
       </div>
 
@@ -2761,15 +2773,15 @@ function render1BoForm(prefill=null){
         <div class="fg"><span class="fl">동원 장비</span>
           <textarea id="r_equip" class="fta" rows="2" placeholder="들것, 로프, AED, 헬기 등">${p.equipment||''}</textarea>
         </div>
-        <div class="fg"><span class="fl">병원 후송</span>
-          <select id="r_hosp" class="fsel">${['미정','후송 없음','후송 완료','후송 중','본인 귀가','기타'].map(o=>`<option${(p.hospital||'미정')===o?' selected':''}>${o}</option>`).join('')}</select>
-        </div>
       </div>
     </div>
 
     <!-- ══ 섹터5: 기타 ══ -->
     <div id="repSec5" class="rep-sec" style="display:none;padding:12px;overflow-y:auto;">
-      <div class="rsec"><div class="rsec-t">📋 사고 제목 및 작성 정보</div>
+      <div class="rsec"><div class="rsec-t">🚑 병원 후송</div>
+        <select id="r_hosp" class="fsel">${['미정','후송 없음','후송 완료','후송 중','본인 귀가','기타'].map(o=>`<option${(p.hospital||'미정')===o?' selected':''}>${o}</option>`).join('')}</select>
+      </div>
+      <div class="rsec" style="margin-top:12px;"><div class="rsec-t">📋 사고 제목 및 작성 정보</div>
         <div class="fg">
           <span class="fl">사고 제목 <span style="font-size:9px;color:#4a7090;font-weight:400;">(자동생성 — 수정 가능)</span></span>
           <input type="text" id="r_title" class="fi" placeholder="위치·기상 탭 입력 시 자동생성" value="${p.title||''}">
