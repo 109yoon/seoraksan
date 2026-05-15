@@ -1632,6 +1632,51 @@ function removeExtraTeam(idx){
   _extraTeams.splice(idx,1);
   renderExtraTeams();
 }
+function _collapseSection(fullId,summaryId,editBtnId,summaryHtml){
+  const full=document.getElementById(fullId);
+  const summary=document.getElementById(summaryId);
+  const btn=document.getElementById(editBtnId);
+  if(full){full.style.maxHeight='0';full.style.opacity='0';setTimeout(()=>{full.style.display='none';},300);}
+  if(summary){
+    const txt=summary.querySelector('span');
+    if(txt) txt.innerHTML=summaryHtml;
+    summary.style.display='block';summary.style.opacity='0';
+    setTimeout(()=>{summary.style.opacity='1';summary.style.transition='opacity .25s';},20);
+  }
+  if(btn) btn.style.display='block';
+}
+function _expandSection(fullId,summaryId,editBtnId){
+  const full=document.getElementById(fullId);
+  const summary=document.getElementById(summaryId);
+  const btn=document.getElementById(editBtnId);
+  if(full){full.style.display='block';full.style.maxHeight='0';full.style.opacity='0';requestAnimationFrame(()=>requestAnimationFrame(()=>{full.style.maxHeight='2000px';full.style.opacity='1';}));}
+  if(summary) summary.style.display='none';
+  if(btn) btn.style.display='none';
+}
+function confirmMemberSection(){
+  const names=[...document.querySelectorAll('#memChkGrid .chk-item.on')].map(el=>{
+    const t=el.querySelector('.chk-txt');return t?t.textContent.trim().split(' ')[0]:'';
+  }).filter(Boolean);
+  const html=names.length?`<b style="color:#4fa8d0;">공단 초동:</b> ${names.join(', ')}`:'<span style="color:#4a7090;">(미선택)</span>';
+  _collapseSection('memberFullSection','memberSummary','memberEditBtn',html);
+}
+function editMemberSection(){_expandSection('memberFullSection','memberSummary','memberEditBtn');}
+function confirmAgencySection(){
+  const parts=[];
+  const hw=document.getElementById('agHwChk');
+  if(hw&&hw.classList.contains('on')){
+    const team=document.getElementById('hwTeamSel')?.value||'';
+    parts.push(`🚒 환동해${team?'('+team+'팀)':''}`);
+  }
+  _fireAgencies.forEach(a=>parts.push('🚒 '+a.name));
+  if(document.getElementById('agPoliceChk')?.classList.contains('on')) parts.push('🚔 경찰');
+  if(document.getElementById('agForestChk')?.classList.contains('on')) parts.push('🌲 산림청');
+  const other=document.getElementById('r_agency_other')?.value;
+  if(other) parts.push(other);
+  const html=parts.length?`<b style="color:#4fa8d0;">유관기관:</b> ${parts.join(' · ')}`:'<span style="color:#4a7090;">(없음)</span>';
+  _collapseSection('agencyFullSection','agencySummary','agencyEditBtn',html);
+}
+function editAgencySection(){_expandSection('agencyFullSection','agencySummary','agencyEditBtn');}
 function renderExtraTeams(){
   const wrap=document.getElementById('extraTeamsWrap');
   if(!wrap) return;
@@ -2545,66 +2590,86 @@ function render1BoForm(prefill=null){
 
       <!-- 공단 초동 출동팀 -->
       <div class="rsec">
-        <div class="rsec-t">🏔️ 공단 초동 출동팀</div>
-        <div id="memChkGrid" style="display:flex;flex-direction:column;gap:10px;">
-          ${(()=>{
-            const groups={};
-            ms.forEach(s=>{if(!groups[s.dept])groups[s.dept]=[];groups[s.dept].push(s);});
-            return Object.entries(groups).map(([dept,staff])=>`
-              <div>
-                <div style="font-size:10px;color:#4a7090;font-weight:700;margin-bottom:5px;">${dept}</div>
-                <div class="chk-grid">
-                  ${staff.map(s=>{
-                    const checked=(p.members!=null?(p.members||[]).includes(s.name):s.name===curUserName);
-                    return `<div class="chk-item${checked?' on':''}" onclick="tChk(this)">
-                      <div class="chk-box${checked?' on':''}"></div>
-                      <span class="chk-txt">${s.name}<span style="font-size:9px;color:#4a7090;margin-left:3px;">${s.rank}</span></span>
-                    </div>`;
-                  }).join('')}
-                </div>
-              </div>`).join('');
-          })()}
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div class="rsec-t" style="margin-bottom:0;">🏔️ 공단 초동 출동팀</div>
+          <button id="memberEditBtn" onclick="editMemberSection()" style="display:none;background:rgba(79,168,208,.12);border:1px solid rgba(79,168,208,.25);color:#4fa8d0;border-radius:6px;font-size:11px;padding:4px 10px;cursor:pointer;">✏️ 인원 수정</button>
+        </div>
+        <!-- 요약 줄 (접힌 상태) -->
+        <div id="memberSummary" style="display:none;padding:8px 10px;background:#060d1a;border-radius:8px;border:1px solid rgba(79,168,208,.15);margin-bottom:6px;">
+          <span id="memberSummaryText" style="font-size:12px;color:#c0d8ec;line-height:1.6;"></span>
+        </div>
+        <!-- 전체 선택 (펼쳐진 상태) -->
+        <div id="memberFullSection" style="overflow:hidden;transition:max-height .3s ease,opacity .25s ease;max-height:1000px;opacity:1;">
+          <div id="memChkGrid" style="display:flex;flex-direction:column;gap:10px;">
+            ${(()=>{
+              const groups={};
+              ms.forEach(s=>{if(!groups[s.dept])groups[s.dept]=[];groups[s.dept].push(s);});
+              return Object.entries(groups).map(([dept,staff])=>`
+                <div>
+                  <div style="font-size:10px;color:#4a7090;font-weight:700;margin-bottom:5px;">${dept}</div>
+                  <div class="chk-grid">
+                    ${staff.map(s=>{
+                      const checked=(p.members!=null?(p.members||[]).includes(s.name):s.name===curUserName);
+                      return `<div class="chk-item${checked?' on':''}" onclick="tChk(this)">
+                        <div class="chk-box${checked?' on':''}"></div>
+                        <span class="chk-txt">${s.name}<span style="font-size:9px;color:#4a7090;margin-left:3px;">${s.rank}</span></span>
+                      </div>`;
+                    }).join('')}
+                  </div>
+                </div>`).join('');
+            })()}
+          </div>
+          <button onclick="confirmMemberSection()" style="width:100%;margin-top:10px;padding:8px;background:rgba(79,168,208,.1);border:1px solid rgba(79,168,208,.3);color:#4fa8d0;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">✅ 확인</button>
         </div>
         <!-- 추가팀 (복수) -->
         <div id="extraTeamsWrap" style="margin-top:8px;"></div>
         <button onclick="addExtraTeam()" style="width:100%;margin-top:8px;padding:8px;background:rgba(126,200,163,.08);border:1px dashed rgba(126,200,163,.3);color:#7ec8a0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">＋ 추가팀 추가</button>
       </div>
 
-      <!-- 유관기관 (압축) -->
+      <!-- 유관기관 -->
       <div class="rsec" style="margin-top:12px;">
-        <div class="rsec-t">🤝 유관기관</div>
-        <!-- 환동해 -->
-        <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#060d1a;border-radius:8px;border:1px solid rgba(79,168,208,.12);margin-bottom:6px;">
-          <div class="chk-item${(p.agencies||{}).hwandongha?' on':''}" onclick="tChk(this)" id="agHwChk" style="flex:1;">
-            <div class="chk-box${(p.agencies||{}).hwandongha?' on':''}"></div>
-            <span class="chk-txt">🚒 환동해</span>
-          </div>
-          <span style="font-size:10px;color:#4a7090;flex-shrink:0;">당직</span>
-          <select id="hwTeamSel" class="fsel" style="width:52px;padding:2px 4px;font-size:11px;">
-            ${[1,2,3].map(t=>`<option value="${t}"${((p.agencies||{}).hwTeam||hdTeam)===t?' selected':''}>${t}팀</option>`).join('')}
-          </select>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <div class="rsec-t" style="margin-bottom:0;">🤝 유관기관</div>
+          <button id="agencyEditBtn" onclick="editAgencySection()" style="display:none;background:rgba(79,168,208,.12);border:1px solid rgba(79,168,208,.25);color:#4fa8d0;border-radius:6px;font-size:11px;padding:4px 10px;cursor:pointer;">✏️ 수정</button>
         </div>
-
-        <!-- 소방 동적 목록 -->
-        <div id="fireAgencyList" style="margin-bottom:6px;"></div>
-        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px;" id="firePresets">
-          ${['양양항공대','양양구조','양양구급','속초구조','속초구급','기타소방'].map(n=>`
-            <div class="pill" onclick="addFireAgency('${n}')" style="font-size:11px;cursor:pointer;">＋${n}</div>`).join('')}
+        <!-- 요약 줄 (접힌 상태) -->
+        <div id="agencySummary" style="display:none;padding:8px 10px;background:#060d1a;border-radius:8px;border:1px solid rgba(79,168,208,.15);margin-bottom:6px;">
+          <span id="agencySummaryText" style="font-size:12px;color:#c0d8ec;line-height:1.6;"></span>
         </div>
-
-        <!-- 경찰 / 산림청 -->
-        <div class="chk-grid" style="margin-bottom:6px;">
-          <div class="chk-item${(p.agencies||{}).police?' on':''}" onclick="tChk(this)" id="agPoliceChk">
-            <div class="chk-box${(p.agencies||{}).police?' on':''}"></div>
-            <span class="chk-txt">🚔 경찰</span>
+        <!-- 전체 (펼쳐진 상태) -->
+        <div id="agencyFullSection" style="overflow:hidden;transition:max-height .3s ease,opacity .25s ease;max-height:1000px;opacity:1;">
+          <!-- 환동해 -->
+          <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#060d1a;border-radius:8px;border:1px solid rgba(79,168,208,.12);margin-bottom:6px;">
+            <div class="chk-item${(p.agencies||{}).hwandongha?' on':''}" onclick="tChk(this)" id="agHwChk" style="flex:1;">
+              <div class="chk-box${(p.agencies||{}).hwandongha?' on':''}"></div>
+              <span class="chk-txt">🚒 환동해</span>
+            </div>
+            <span style="font-size:10px;color:#4a7090;flex-shrink:0;">당직</span>
+            <select id="hwTeamSel" class="fsel" style="width:52px;padding:2px 4px;font-size:11px;">
+              ${[1,2,3].map(t=>`<option value="${t}"${((p.agencies||{}).hwTeam||hdTeam)===t?' selected':''}>${t}팀</option>`).join('')}
+            </select>
           </div>
-          <div class="chk-item${(p.agencies||{}).forestry?' on':''}" onclick="tChk(this)" id="agForestChk">
-            <div class="chk-box${(p.agencies||{}).forestry?' on':''}"></div>
-            <span class="chk-txt">🌲 산림청</span>
+          <!-- 소방 동적 목록 -->
+          <div id="fireAgencyList" style="margin-bottom:6px;"></div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px;" id="firePresets">
+            ${['양양항공대','양양구조','양양구급','속초구조','속초구급','기타소방'].map(n=>`
+              <div class="pill" onclick="addFireAgency('${n}')" style="font-size:11px;cursor:pointer;">＋${n}</div>`).join('')}
           </div>
+          <!-- 경찰 / 산림청 -->
+          <div class="chk-grid" style="margin-bottom:6px;">
+            <div class="chk-item${(p.agencies||{}).police?' on':''}" onclick="tChk(this)" id="agPoliceChk">
+              <div class="chk-box${(p.agencies||{}).police?' on':''}"></div>
+              <span class="chk-txt">🚔 경찰</span>
+            </div>
+            <div class="chk-item${(p.agencies||{}).forestry?' on':''}" onclick="tChk(this)" id="agForestChk">
+              <div class="chk-box${(p.agencies||{}).forestry?' on':''}"></div>
+              <span class="chk-txt">🌲 산림청</span>
+            </div>
+          </div>
+          <input type="text" id="r_agencies_note" class="fi" placeholder="경찰·산림청·기타 메모 (선택)" value="${(p.agencies||{}).agenciesNote||''}" style="margin-bottom:5px;">
+          <input type="text" id="r_agency_other" class="fi" placeholder="기타 유관기관" value="${(p.agencies||{}).other||''}">
+          <button onclick="confirmAgencySection()" style="width:100%;margin-top:10px;padding:8px;background:rgba(79,168,208,.1);border:1px solid rgba(79,168,208,.3);color:#4fa8d0;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">✅ 확인</button>
         </div>
-        <input type="text" id="r_agencies_note" class="fi" placeholder="경찰·산림청·기타 메모 (선택)" value="${(p.agencies||{}).agenciesNote||''}" style="margin-bottom:5px;">
-        <input type="text" id="r_agency_other" class="fi" placeholder="기타 유관기관" value="${(p.agencies||{}).other||''}">
       </div>
 
       <!-- 동원 장비 -->
