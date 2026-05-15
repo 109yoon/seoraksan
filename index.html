@@ -1868,7 +1868,7 @@ function _updateAgencyNameAuto(){
   if(!nameEl) return;
   if(_agSelectedCat==='🚒 소방'){
     let name=_agSubLoc||'';
-    if(_agSubType) name+=(name?' ':'')+_agSubType+'대';
+    if(_agSubType) name+=(name?' ':'')+_agSubType+(['구조','구급'].includes(_agSubType)?'대':'');
     nameEl.value=name;
   } else if(_agSelectedCat==='🚔 경찰'){
     nameEl.value=(_agSubLoc?_agSubLoc+'경찰':'');
