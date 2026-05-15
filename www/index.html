@@ -4214,13 +4214,16 @@ function selectTTInline(stage, pillEl){
   // 누가 pills: 실제 선택된 대원 이름 기반으로 구성
   const actorPillsEl=document.getElementById('ttActorPills');
   if(actorPillsEl && stage!=='상황전파'){
-    const mainMembers=[...document.querySelectorAll('#memChkGrid .chk-item.on')].map(el=>{
+    const DEPT_SHORT={'특수산악구조대':'특구대','대청분소':'대청','백담분소':'백담'};
+    const staffList=typeof staff!=='undefined'?staff:[];
+    const deptMap={};staffList.forEach(s=>{deptMap[s.name]=s.dept;});
+    const mainNames=[...document.querySelectorAll('#memChkGrid .chk-item.on')].map(el=>{
       const t=el.querySelector('.chk-txt');return t?(t.childNodes[0]?.textContent||'').trim():'';
     }).filter(Boolean);
-    const extraMembers=[];
-    (_extraTeams||[]).forEach(t=>{t.members.forEach(n=>{if(!mainMembers.includes(n)&&!extraMembers.includes(n))extraMembers.push(n);});});
+    const mainDepts=[...new Set(mainNames.map(n=>DEPT_SHORT[deptMap[n]]||deptMap[n]||'공단'))];
+    const extraTeamNames=(_extraTeams||[]).filter(t=>t.members&&t.members.length>0).map(t=>t.teamName||'추가팀');
     const hwChecked=document.getElementById('agHwChk')?.classList.contains('on');
-    const allActors=[...mainMembers,...extraMembers,...(hwChecked?['환동해특수대응단']:[]),'요구조자','기타'];
+    const allActors=[...mainDepts,...extraTeamNames,...(hwChecked?['환동해특수대응단']:[]),'요구조자','기타'];
     actorPillsEl.innerHTML=allActors.map(a=>`<div class="pill tt-actor-pill" onclick="selTTActor(this,'${a}')" style="cursor:pointer;font-size:11px;">${a}</div>`).join('');
     const autoActor=stage==='요구조자 조우'||stage==='처치중'||stage==='처치완료'?'요구조자':
       stage==='헬기이륙/출발'||stage==='헬기구조완료'?'환동해특수대응단':null;
