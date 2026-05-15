@@ -2757,7 +2757,7 @@ function render1BoForm(prefill=null){
           <div style="background:#060d1a;border-radius:8px;border:1px solid rgba(255,255,255,.07);padding:10px;margin-bottom:8px;">
             <div style="font-size:10px;color:#4a7090;font-weight:700;margin-bottom:8px;">＋ 유관기관 추가</div>
             <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px;" id="agCatPills">
-              ${['🚒 소방','🚔 경찰','🌲 산림청','⚓ 해경','🪖 군','🏢 기타'].map(c=>`<div class="pill" onclick="selAgencyCat(this,'${c}')" style="font-size:11px;cursor:pointer;">${c}</div>`).join('')}
+              ${['🚒 소방','🚔 경찰','🌲 산림청','🏢 기타'].map(c=>`<div class="pill" onclick="selAgencyCat(this,'${c}')" style="font-size:11px;cursor:pointer;">${c}</div>`).join('')}
             </div>
             <input type="text" id="agNameIn" class="fi" placeholder="기관명 (예: 양양소방서)" style="margin-bottom:5px;">
             <div style="display:flex;gap:6px;align-items:center;">
