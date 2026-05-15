@@ -4195,9 +4195,27 @@ function selectTTInline(stage, pillEl){
   // 선택된 stage pill 시각 표시
   document.querySelectorAll('.tt-stage-pill').forEach(p=>p.classList.remove('on'));
   if(pillEl) pillEl.classList.add('on');
+  const area=document.getElementById('ttInputArea');
+  const label=document.getElementById('ttInputLabel');
+  const timeIn=document.getElementById('ttTimeIn');
+  const noteIn=document.getElementById('ttNoteIn');
+  const rw=document.getElementById('ttRecvWrap');
+  const actorWrap=document.getElementById('ttActorWrap');
+  if(!area) return;
+  area.style.display='block';
+  if(timeIn) timeIn.value=new Date().toISOString().slice(0,16);
+  if(rw) rw.style.display=stage==='상황전파'?'block':'none';
+  if(actorWrap) actorWrap.style.display=stage==='상황전파'?'none':'';
+  if(stage==='직접입력'){
+    if(label) label.innerHTML='✏️ 내용 직접 입력 <span style="font-size:10px;color:#7a9cb8;">(메모란에 입력)</span>';
+    if(noteIn){noteIn.placeholder='예: 헬기구조완료, 주민신고접수 등';noteIn.focus();}
+  } else {
+    if(label) label.textContent='📍 '+stage+' 시간 입력';
+    if(noteIn){noteIn.placeholder='지점명, 특이사항 등';noteIn.value='';}
+  }
   // 누가 pills: 실제 선택된 대원 이름 기반으로 구성
   const actorPillsEl=document.getElementById('ttActorPills');
-  if(actorPillsEl){
+  if(actorPillsEl && stage!=='상황전파'){
     const mainMembers=[...document.querySelectorAll('#memChkGrid .chk-item.on')].map(el=>{
       const t=el.querySelector('.chk-txt');return t?(t.childNodes[0]?.textContent||'').trim():'';
     }).filter(Boolean);
@@ -4206,21 +4224,6 @@ function selectTTInline(stage, pillEl){
     const hwChecked=document.getElementById('agHwChk')?.classList.contains('on');
     const allActors=[...mainMembers,...extraMembers,...(hwChecked?['환동해특수대응단']:[]),'요구조자','기타'];
     actorPillsEl.innerHTML=allActors.map(a=>`<div class="pill tt-actor-pill" onclick="selTTActor(this,'${a}')" style="cursor:pointer;font-size:11px;">${a}</div>`).join('');
-  }
-  const area=document.getElementById('ttInputArea');
-  const label=document.getElementById('ttInputLabel');
-  const timeIn=document.getElementById('ttTimeIn');
-  if(area) area.style.display='block';
-  if(label) label.textContent='📍 '+stage+' 시간 입력';
-  if(timeIn) timeIn.value=new Date().toISOString().slice(0,16);
-  const noteIn=document.getElementById('ttNoteIn');
-  if(noteIn) noteIn.value='';
-  const rw=document.getElementById('ttRecvWrap');
-  if(rw) rw.style.display=stage==='상황전파'?'':'none';
-  const actorWrap=document.getElementById('ttActorWrap');
-  if(actorWrap) actorWrap.style.display=stage==='상황전파'?'none':'';
-  document.querySelectorAll('#ttActorPills .pill').forEach(p=>p.classList.remove('on'));
-  if(stage!=='상황전파'){
     const autoActor=stage==='요구조자 조우'||stage==='처치중'||stage==='처치완료'?'요구조자':
       stage==='헬기이륙/출발'||stage==='헬기구조완료'?'환동해특수대응단':null;
     if(autoActor){
@@ -4307,36 +4310,6 @@ document.addEventListener('input',e=>{
   if(e.target.id==='r_title') e.target.dataset.userEdited='1';
 });
 
-// ══════════════════════════════════════════
-// 타임라인 selectTTInline - 직접입력 처리
-// ══════════════════════════════════════════
-const _origSelectTTInline=selectTTInline;
-
-// 직접입력 처리 오버라이드
-(function(){
-  const orig=selectTTInline;
-  window.selectTTInline=function(stage){
-    _ttInlineSelectedStage=stage;
-    _editTTIdx=-1;
-    const area=document.getElementById('ttInputArea');
-    const label=document.getElementById('ttInputLabel');
-    const timeIn=document.getElementById('ttTimeIn');
-    const noteIn=document.getElementById('ttNoteIn');
-    const recvWrap=document.getElementById('ttRecvWrap');
-    if(!area)return;
-    area.style.display='block';
-    // 상황전파 선택 시 접수경로 표시
-    if(recvWrap) recvWrap.style.display=stage==='상황전파'?'block':'none';
-    if(stage==='직접입력'){
-      if(label) label.innerHTML='✏️ 내용 직접 입력 <span style="font-size:10px;color:#7a9cb8;">(메모란에 입력)</span>';
-      if(noteIn){noteIn.placeholder='예: 헬기구조완료, 주민신고접수 등';noteIn.focus();}
-    } else {
-      if(label) label.textContent='📍 '+stage+' 시간 입력';
-      if(noteIn){noteIn.placeholder='지점명, 특이사항 등';noteIn.value='';}
-    }
-    if(timeIn) timeIn.value=new Date().toISOString().slice(0,16);
-  };
-})();
 
 window.onload=function(){
   // ── 로딩 화면 ──
