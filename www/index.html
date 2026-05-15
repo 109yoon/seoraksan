@@ -1619,8 +1619,10 @@ function closeChangelog(){
 
 // 추가팀 복수 지원
 let _extraTeams=[]; // [{teamName, members:[]}]
+let _extraTeamCollapsed=[];
 function initExtraTeams(prefill){
   _extraTeams=(prefill&&prefill.extraTeams)?prefill.extraTeams.map(t=>({...t})):[];
+  _extraTeamCollapsed=_extraTeams.map(()=>false);
   renderExtraTeams();
 }
 function addExtraTeam(){
@@ -1654,10 +1656,24 @@ function _expandSection(fullId,summaryId,editBtnId){
   if(btn) btn.style.display='none';
 }
 function confirmMemberSection(){
-  const names=[...document.querySelectorAll('#memChkGrid .chk-item.on')].map(el=>{
+  const staff=sortStaff(getStaff());
+  const deptMap={};staff.forEach(s=>{deptMap[s.name]=s.dept;});
+  const selected=[...document.querySelectorAll('#memChkGrid .chk-item.on')].map(el=>{
     const t=el.querySelector('.chk-txt');return t?t.textContent.trim().split(' ')[0]:'';
   }).filter(Boolean);
-  const html=names.length?`<b style="color:#4fa8d0;">공단 초동:</b> ${names.join(', ')}`:'<span style="color:#4a7090;">(미선택)</span>';
+  let html;
+  if(!selected.length){
+    html='<span style="color:#4a7090;">(미선택)</span>';
+  } else {
+    const byDept={};
+    selected.forEach(n=>{const d=deptMap[n]||'공단';if(!byDept[d])byDept[d]=[];byDept[d].push(n);});
+    const depts=Object.keys(byDept);
+    if(depts.length===1){
+      html=`<b style="color:#4fa8d0;">${depts[0]} ${selected.length}명 출동</b> (${selected.join(', ')})`;
+    } else {
+      html=`<b style="color:#4fa8d0;">공단 ${selected.length}명 출동</b><br>`+depts.map(d=>`<span style="color:#7a9cb8;">${d} ${byDept[d].length}명 (${byDept[d].join(', ')})</span>`).join('<br>');
+    }
+  }
   _collapseSection('memberFullSection','memberSummary','memberEditBtn',html);
 }
 function editMemberSection(){_expandSection('memberFullSection','memberSummary','memberEditBtn');}
@@ -1666,7 +1682,8 @@ function confirmAgencySection(){
   const hw=document.getElementById('agHwChk');
   if(hw&&hw.classList.contains('on')){
     const team=document.getElementById('hwTeamSel')?.value||'';
-    parts.push(`🚒 환동해${team?'('+team+'팀)':''}`);
+    const cnt=document.getElementById('hwMemberCount')?.value||'5';
+    parts.push(`🚒 환동해특수대응단 ${cnt}명${team?'('+team+'팀)':''}`);
   }
   _fireAgencies.forEach(a=>parts.push('🚒 '+a.name));
   if(document.getElementById('agPoliceChk')?.classList.contains('on')) parts.push('🚔 경찰');
@@ -1681,22 +1698,49 @@ function renderExtraTeams(){
   const wrap=document.getElementById('extraTeamsWrap');
   if(!wrap) return;
   const staff=sortStaff(getStaff());
-  wrap.innerHTML=_extraTeams.map((t,ti)=>`
-    <div style="margin-bottom:8px;padding:10px;background:#060d1a;border-radius:8px;border:1px solid rgba(126,200,163,.2);">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
-        <input type="text" value="${t.teamName}" oninput="_extraTeams[${ti}].teamName=this.value"
-          style="flex:1;background:transparent;border:none;border-bottom:1px solid rgba(126,200,163,.3);color:#7ec8a0;font-size:12px;font-weight:700;outline:none;padding:2px 0;">
-        <button onclick="removeExtraTeam(${ti})" style="background:rgba(192,57,43,.1);border:none;color:#c0392b;font-size:11px;padding:3px 8px;border-radius:5px;cursor:pointer;">삭제</button>
+  const deptMap={};staff.forEach(s=>{deptMap[s.name]=s.dept;});
+  wrap.innerHTML=_extraTeams.map((t,ti)=>{
+    const collapsed=!!_extraTeamCollapsed[ti];
+    const byDept={};
+    t.members.forEach(n=>{const d=deptMap[n]||'기타';if(!byDept[d])byDept[d]=[];byDept[d].push(n);});
+    const depts=Object.keys(byDept);
+    const summaryHtml=t.members.length===0?'<span style="color:#4a7090;">(미선택)</span>':
+      depts.length===1
+        ?`<b style="color:#7ec8a0;">${depts[0]} ${t.members.length}명 출동</b> (${t.members.join(', ')})`
+        :depts.map(d=>`<span style="color:#7ec8a0;font-weight:700;">${d} ${byDept[d].length}명</span> (${byDept[d].join(', ')})`).join(' · ');
+    return `<div style="margin-bottom:8px;padding:10px;background:#060d1a;border-radius:8px;border:1px solid rgba(126,200,163,.2);">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:${collapsed?0:8}px;">
+        ${collapsed
+          ?`<span style="font-size:11px;flex:1;">${summaryHtml}</span>`
+          :`<input type="text" value="${t.teamName}" oninput="_extraTeams[${ti}].teamName=this.value"
+              style="flex:1;background:transparent;border:none;border-bottom:1px solid rgba(126,200,163,.3);color:#7ec8a0;font-size:12px;font-weight:700;outline:none;padding:2px 0;">`
+        }
+        ${collapsed
+          ?`<button onclick="editExtraTeam(${ti})" style="background:rgba(79,168,208,.12);border:1px solid rgba(79,168,208,.25);color:#4fa8d0;border-radius:6px;font-size:11px;padding:4px 10px;cursor:pointer;">✏️ 수정</button>`
+          :`<button onclick="removeExtraTeam(${ti})" style="background:rgba(192,57,43,.1);border:none;color:#c0392b;font-size:11px;padding:3px 8px;border-radius:5px;cursor:pointer;">삭제</button>`
+        }
       </div>
-      <div class="chk-grid">
-        ${staff.map(s=>`
-          <div class="chk-item${t.members.includes(s.name)?' on':''}"
-            onclick="toggleExtraTeamMember(${ti},'${s.name}',this)">
-            <div class="chk-box${t.members.includes(s.name)?' on':''}"></div>
-            <span class="chk-txt">${s.name}<span style="font-size:9px;color:#4a7090;margin-left:3px;">${s.rank}</span></span>
-          </div>`).join('')}
-      </div>
-    </div>`).join('');
+      ${collapsed?'':`
+        <div class="chk-grid">
+          ${staff.map(s=>`
+            <div class="chk-item${t.members.includes(s.name)?' on':''}"
+              onclick="toggleExtraTeamMember(${ti},'${s.name}',this)">
+              <div class="chk-box${t.members.includes(s.name)?' on':''}"></div>
+              <span class="chk-txt">${s.name}<span style="font-size:9px;color:#4a7090;margin-left:3px;">${s.rank}</span></span>
+            </div>`).join('')}
+        </div>
+        <button onclick="confirmExtraTeam(${ti})" style="width:100%;margin-top:10px;padding:8px;background:rgba(79,168,208,.1);border:1px solid rgba(79,168,208,.3);color:#4fa8d0;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">✅ 확인</button>
+      `}
+    </div>`;
+  }).join('');
+}
+function confirmExtraTeam(ti){
+  _extraTeamCollapsed[ti]=true;
+  renderExtraTeams();
+}
+function editExtraTeam(ti){
+  _extraTeamCollapsed[ti]=false;
+  renderExtraTeams();
 }
 function toggleExtraTeamMember(teamIdx,name,el){
   el.classList.toggle('on');
@@ -1754,6 +1798,7 @@ function getAgencies(){
   return {
     hwandongha: document.getElementById('agHwChk')?.classList.contains('on')||false,
     hwTeam: parseInt(document.getElementById('hwTeamSel')?.value||'1'),
+    hwMemberCount: parseInt(document.getElementById('hwMemberCount')?.value||'5'),
     fireAgencies: _fireAgencies,
     police: document.getElementById('agPoliceChk')?.classList.contains('on')||false,
     forestry: document.getElementById('agForestChk')?.classList.contains('on')||false,
@@ -1764,8 +1809,7 @@ function getAgencies(){
 
 // 타임라인 누가 pill 선택
 function selTTActor(el,actor){
-  document.querySelectorAll('#ttActorPills .pill').forEach(p=>p.classList.remove('on'));
-  el.classList.add('on');
+  el.classList.toggle('on');
 }
 
 // ══════════════════════════════════════════
@@ -2399,13 +2443,13 @@ function render1BoForm(prefill=null){
             {cat:'출동',items:[{label:'📢 상황전파',stage:'상황전파'},{label:'🚗 구조출동',stage:'구조출동'},{label:'🏃 현장도착',stage:'현장도착'}]},
             {cat:'환자',items:[{label:'🧑 요구조자조우',stage:'요구조자 조우'},{label:'💉 처치중',stage:'처치중'},{label:'✅ 처치완료',stage:'처치완료'}]},
             {cat:'이동',items:[{label:'🚶 하산시작',stage:'하산시작'},{label:'📍 지점통과',stage:'지점통과'},{label:'🚗 차량대기',stage:'차량대기'}]},
-            {cat:'항공·소방',items:[{label:'🚁 헬기출동',stage:'헬기출동'},{label:'🚁 헬기구조완료',stage:'헬기구조완료'},{label:'🚑 119인계',stage:'119인계'},{label:'🏥 병원이송',stage:'병원이송'}]},
+            {cat:'항공·소방',items:[{label:'🚁 헬기이륙/출발',stage:'헬기이륙/출발'},{label:'🚁 헬기구조완료',stage:'헬기구조완료'},{label:'🚑 119인계',stage:'119인계'},{label:'🏥 병원이송',stage:'병원이송'}]},
             {cat:'종료',items:[{label:'✔️ 상황종료',stage:'상황종료'},{label:'☕ 휴식',stage:'휴식'}]},
           ].map(g=>`
             <div style="margin-bottom:7px;">
               <div style="font-size:9px;color:#4a7090;font-weight:700;margin-bottom:4px;">${g.cat}</div>
               <div style="display:flex;flex-wrap:wrap;gap:4px;">
-                ${g.items.map(q=>`<div class="pill" onclick="selectTTInline('${q.stage}')" style="cursor:pointer;font-size:11px;">${q.label}</div>`).join('')}
+                ${g.items.map(q=>`<div class="pill tt-stage-pill" data-stage="${q.stage}" onclick="selectTTInline('${q.stage}',this)" style="cursor:pointer;font-size:11px;">${q.label}</div>`).join('')}
               </div>
             </div>`).join('')}
         </div>
@@ -2623,7 +2667,7 @@ function render1BoForm(prefill=null){
         </div>
         <!-- 추가팀 (복수) -->
         <div id="extraTeamsWrap" style="margin-top:8px;"></div>
-        <button onclick="addExtraTeam()" style="width:100%;margin-top:8px;padding:8px;background:rgba(126,200,163,.08);border:1px dashed rgba(126,200,163,.3);color:#7ec8a0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">＋ 추가팀 추가</button>
+        <button onclick="addExtraTeam()" style="width:100%;margin-top:8px;padding:8px;background:rgba(126,200,163,.08);border:1px dashed rgba(126,200,163,.3);color:#7ec8a0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">＋ 추가팀</button>
       </div>
 
       <!-- 유관기관 -->
@@ -2642,12 +2686,13 @@ function render1BoForm(prefill=null){
           <div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:#060d1a;border-radius:8px;border:1px solid rgba(79,168,208,.12);margin-bottom:6px;">
             <div class="chk-item${(p.agencies||{}).hwandongha?' on':''}" onclick="tChk(this)" id="agHwChk" style="flex:1;">
               <div class="chk-box${(p.agencies||{}).hwandongha?' on':''}"></div>
-              <span class="chk-txt">🚒 환동해</span>
+              <span class="chk-txt">🚒 환동해특수대응단</span>
             </div>
             <span style="font-size:10px;color:#4a7090;flex-shrink:0;">당직</span>
             <select id="hwTeamSel" class="fsel" style="width:52px;padding:2px 4px;font-size:11px;">
               ${[1,2,3].map(t=>`<option value="${t}"${((p.agencies||{}).hwTeam||hdTeam)===t?' selected':''}>${t}팀</option>`).join('')}
             </select>
+            <input type="number" id="hwMemberCount" class="fi" value="${(p.agencies||{}).hwMemberCount||5}" min="1" max="30" style="width:44px;padding:2px 4px;font-size:11px;text-align:center;" placeholder="명">
           </div>
           <!-- 소방 동적 목록 -->
           <div id="fireAgencyList" style="margin-bottom:6px;"></div>
@@ -2681,7 +2726,7 @@ function render1BoForm(prefill=null){
           <textarea id="r_equip" class="fta" rows="2" placeholder="들것, 로프, AED, 헬기 등">${p.equipment||''}</textarea>
         </div>
         <div class="fg"><span class="fl">병원 후송</span>
-          <select id="r_hosp" class="fsel">${['미정','후송 없음','후송 완료','후송 중','본인 귀가'].map(o=>`<option${(p.hospital||'미정')===o?' selected':''}>${o}</option>`).join('')}</select>
+          <select id="r_hosp" class="fsel">${['미정','후송 없음','후송 완료','후송 중','본인 귀가','기타'].map(o=>`<option${(p.hospital||'미정')===o?' selected':''}>${o}</option>`).join('')}</select>
         </div>
       </div>
     </div>
@@ -2750,6 +2795,13 @@ function switchRepTab(secId,el){
     t.classList.remove('rep-tab-on');
   });
   if(el){el.style.color='#4fa8d0';el.style.borderBottomColor='#4fa8d0';el.classList.add('rep-tab-on');}
+  // 타임라인 탭 밖으로 나가면 footer를 '타임라인 작성'으로 복원
+  const footer=document.getElementById('rep1BoFooter');
+  if(footer&&footer.style.display!=='none'){
+    footer.innerHTML=`<button class="btn-submit" style="background:#7a3800;color:#fff;" onclick="openTimelineTab()">📋 타임라인 작성</button>`;
+  }
+  // 단계 pill 선택 초기화
+  document.querySelectorAll('.tt-stage-pill').forEach(p=>p.classList.remove('on'));
 }
 function initTTInline(existing,prevMembers,allStaff){
   _ttInlineEntries=[...(existing||[])];
@@ -4064,7 +4116,7 @@ function confirmTTInline(){
   if(_ttInlineSelectedStage==='상황전파'){
     actor=(DB.g('currentUser')||{}).name||getAuthor()||'';
   } else {
-    actor=document.querySelector('#ttActorPills .pill.on')?.textContent||'';
+    actor=[...document.querySelectorAll('#ttActorPills .pill.on')].map(p=>p.textContent).join(', ')||'';
   }
   if(_editTTIdx >= 0){
     _ttInlineEntries[_editTTIdx] = {stage: finalStage, time, note: finalNote, actor};
@@ -4080,13 +4132,16 @@ function confirmTTInline(){
 }
 
 // selectTTInline: 신규 선택 시 editIdx 초기화
-function selectTTInline(stage){
+function selectTTInline(stage, pillEl){
   _editTTIdx = -1;
   _ttInlineSelectedStage = stage;
+  // 선택된 pill 시각 표시
+  document.querySelectorAll('.tt-stage-pill').forEach(p=>p.classList.remove('on'));
+  if(pillEl) pillEl.classList.add('on');
   // 추가팀 목록으로 actor pills 갱신
   const actorPillsEl=document.getElementById('ttActorPills');
   if(actorPillsEl){
-    const baseActors=['초동팀','환자(요구조자)','환동해'];
+    const baseActors=['초동팀','환자(요구조자)','환동해특수대응단'];
     const extraActors=(_extraTeams||[]).map(t=>t.teamName);
     const allActors=[...baseActors,...extraActors,'기타'];
     actorPillsEl.innerHTML=allActors.map(a=>`<div class="pill" onclick="selTTActor(this,'${a}')" style="cursor:pointer;font-size:11px;">${a}</div>`).join('');
@@ -4099,18 +4154,15 @@ function selectTTInline(stage){
   if(timeIn)timeIn.value = new Date().toISOString().slice(0,16);
   const noteIn = document.getElementById('ttNoteIn');
   if(noteIn) noteIn.value='';
-  // 접수경로 표시 (상황전파일 때만)
   const rw=document.getElementById('ttRecvWrap');
   if(rw) rw.style.display=stage==='상황전파'?'':'none';
-  // 상황전파는 누가 항목 숨기고 작성자 이름 자동입력
   const actorWrap=document.getElementById('ttActorWrap');
   if(actorWrap) actorWrap.style.display=stage==='상황전파'?'none':'';
   document.querySelectorAll('#ttActorPills .pill').forEach(p=>p.classList.remove('on'));
   if(stage!=='상황전파'){
     const autoActor = stage==='요구조자 조우'||stage==='처치중'||stage==='처치완료'?'환자(요구조자)':
-      stage==='헬기출동'||stage==='헬기구조완료'?'환동해':
-      stage==='119인계'||stage==='병원이송'?'초동팀':
-      _extraTeams.length>0?'초동팀':'초동팀';
+      stage==='헬기이륙/출발'||stage==='헬기구조완료'?'환동해특수대응단':
+      stage==='119인계'||stage==='병원이송'?'초동팀':'초동팀';
     document.querySelectorAll('#ttActorPills .pill').forEach(p=>{if(p.textContent===autoActor)p.classList.add('on');});
   }
 }
