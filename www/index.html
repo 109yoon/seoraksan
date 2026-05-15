@@ -486,7 +486,7 @@ body.guest-mode .guest-hide{display:none!important;}
 
   <!-- 내 정보 카드 -->
   <div class="my-card" onclick="openChangeUser()" style="flex-shrink:0;margin-bottom:0;margin-top:10px;">
-    <div class="my-avatar">👤</div>
+    <div class="my-avatar" id="myAvatar">👤</div>
     <div class="my-info"><div class="my-name" id="myName">작성자를 선택하세요</div><div class="my-sub" id="mySub">탭하여 설정</div></div>
     <div class="my-change-btn">변경</div>
   </div>
@@ -1362,20 +1362,27 @@ async function handleKakaoCallback(code){
       Kakao.Auth.setAccessToken(data.access_token);
       Kakao.API.request({url:'/v2/user/me',
         success:function(res){
-          const nick=res.kakao_account?.profile?.nickname||res.properties?.nickname||'사용자';
+          const profile=res.kakao_account?.profile||{};
+          const nick=profile.nickname||res.properties?.nickname||'사용자';
+          const imgUrl=profile.profile_image_url||profile.thumbnail_image_url||'';
           const u=DB.g('currentUser')||{};
-          u.kakao={id:res.id,name:nick};
-          if(!u.name)u.name=nick;
+          // 카카오 정보로 덮어쓰기
+          u.kakao={id:res.id,name:nick,img:imgUrl};
+          u.name=nick;
+          if(imgUrl) u.kakaoImg=imgUrl;
           DB.s('currentUser',u);
           DB.s('authType','kakao');
           sessionStorage.setItem('_sess','1');
           history.replaceState({},'',location.pathname);
+          hideLoginScreen();
           applyAuthState();
           toast('✅ '+nick+'님 안녕하세요!');
         },
         fail:function(){
-          DB.s('authType','kakao');sessionStorage.setItem('_sess','1');
+          DB.s('authType','kakao');
+          sessionStorage.setItem('_sess','1');
           history.replaceState({},'',location.pathname);
+          hideLoginScreen();
           applyAuthState();
         }
       });
@@ -1457,10 +1464,23 @@ function saveUser(){
 }
 function updateUserUI(){
   const u=DB.g('currentUser')||{};
-  const ne=document.getElementById('myName');const se=document.getElementById('mySub');
+  const ne=document.getElementById('myName');
+  const se=document.getElementById('mySub');
+  const av=document.getElementById('myAvatar');
   if(ne)ne.textContent=u.name||'작성자를 선택하세요';
+  // 소속·직위 또는 카카오 계정 표시
   const parts=[];if(u.dept)parts.push(u.dept);if(u.rank)parts.push(u.rank);
-  if(se)se.textContent=parts.join(' · ')||'탭하여 설정';
+  const authType=DB.g('authType');
+  if(se)se.textContent=parts.join(' · ')||(authType==='kakao'?'카카오 계정':authType==='guest'?'게스트':'탭하여 설정');
+  // 아바타: 카카오 프로필 사진 or 이니셜
+  if(av){
+    if(u.kakaoImg){
+      av.innerHTML=`<img src="${u.kakaoImg}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;" onerror="this.parentElement.textContent='👤'">`;
+    } else {
+      const initial=u.name?u.name.charAt(0):'👤';
+      av.textContent=initial;
+    }
+  }
 }
 
 // ══════════════════════════════════════════
