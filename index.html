@@ -548,7 +548,7 @@ body.guest-mode .guest-hide{display:none!important;}
   <div class="mapwrap">
     <div id="mapRescue" class="kakaomap"></div>
     <!-- 십자선 조준점 -->
-    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:8;pointer-events:none;">
+    <div id="rescueCross" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:8;pointer-events:none;">
       <div style="position:relative;width:24px;height:24px;">
         <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:rgba(255,255,255,.55);transform:translateY(-50%);"></div>
         <div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(255,255,255,.55);transform:translateX(-50%);"></div>
@@ -1385,7 +1385,7 @@ function openApp(mode){
   if(mode==='rescue'){
     document.getElementById('topTitle').textContent='재난/구조 관리';
     document.getElementById('nvl2').textContent='목록';
-    showV('v-rescue-map');bn.style.display='flex';setNv();
+    showV('v-rescue-map');bn.style.display='flex';setNv();updateRescueCross();
     rMaps();setTimeout(()=>{try{renderRescueMap();if(mapR)mapR.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));}catch(e){document.getElementById('nomapR').style.display='block';renderResList();}},130);
   } else if(mode==='inspect'){
     document.getElementById('topTitle').textContent='시설물 점검';
@@ -1409,7 +1409,7 @@ function openApp(mode){
 function switchTab(idx,el){
   [1,2,3].forEach(i=>document.getElementById('nv'+i).classList.remove('on'));if(el)el.classList.add('on');closeDB();
   if(curApp==='rescue'){
-    if(idx===1){showV('v-rescue-map');rMaps();}
+    if(idx===1){showV('v-rescue-map');rMaps();updateRescueCross();}
     else if(idx===2){showV('v-rescue-list');renderResList();}
     else{showV('v-rescue-stats');renderRescueStats();}
   } else if(curApp==='inspect'){
@@ -1944,10 +1944,27 @@ function openHazDetail(id){
 // ══════════════════════════════════════════
 // 구조 보고서 (1보 ~ n보 타임라인)
 // ══════════════════════════════════════════
+function updateRescueCross(){
+  const el=document.getElementById('rescueCross');if(!el)return;
+  const bnavEl=document.getElementById('bnav');
+  const bnavH=(bnavEl&&bnavEl.style.display!=='none')?bnavEl.offsetHeight:0;
+  el.style.top='calc(50% - '+Math.round(bnavH/2)+'px)';
+}
 function openNewRescue(){
   curResId=null;
-  const center=mapR?mapR.getCenter():null;
-  const gpsPre=center?{lat:center.getLat(),lng:center.getLng()}:null;
+  let gpsPre=null;
+  if(mapR){
+    try{
+      const bnavEl=document.getElementById('bnav');
+      const bnavH=bnavEl?bnavEl.offsetHeight:0;
+      const mapEl=document.getElementById('mapRescue');
+      const proj=mapR.getProjection();
+      const coord=proj.coordsFromContainerPoint(new kakao.maps.Point(mapEl.offsetWidth/2,(mapEl.offsetHeight-bnavH)/2));
+      gpsPre={lat:coord.getLat(),lng:coord.getLng()};
+    }catch(e){
+      const c=mapR.getCenter();gpsPre={lat:c.getLat(),lng:c.getLng()};
+    }
+  }
   document.getElementById('topTitle').textContent='신규 구조 접수 (1보)';
   document.getElementById('bnav').style.display='none';
   showV('v-report');renderPhaseBar(0,1);render1BoForm(gpsPre);
@@ -2292,7 +2309,7 @@ function render1BoForm(prefill=null){
   const ms=sortStaff(getStaff());
   const curUserName=(DB.g('currentUser')||{}).name||'';
   const hdTeam=getHwandonghaTeam();
-  const isNbo=prefill!==null;
+  const isNbo=prefill!==null&&!!prefill._phaseNum;
   const p=prefill||{};
   const w=document.getElementById('repContent');
 
