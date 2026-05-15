@@ -437,10 +437,9 @@ body.guest-mode .guest-hide{display:none!important;}
   <div class="ls-title">설악산국립공원</div>
   <div class="ls-sub">SEORAKSAN FIELD MANAGEMENT</div>
   <div class="ls-divider"></div>
-  <div class="ls-desc">카카오 계정으로 로그인하면<br>작성자 정보가 자동 설정됩니다.<br>게스트는 <b style="color:#e0edf8;">보기 전용</b>으로 이용 가능합니다.</div>
-  <button class="ls-btn ls-kakao" onclick="kakaoLogin()">
-    💬 카카오로 로그인
-  </button>
+  <div class="ls-desc" style="margin-bottom:10px;">직원을 선택하여 로그인하세요</div>
+  <div id="loginStaffList" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:12px 0;max-width:320px;"></div>
+  <div class="ls-divider" style="margin:12px 0;"></div>
   <button class="ls-btn ls-guest" onclick="guestLogin()">
     👁 게스트로 보기
   </button>
@@ -1338,6 +1337,7 @@ function isLoggedIn(){ return !!DB.g('authType'); }
 function showLoginScreen(){
   const ls=document.getElementById('loginScreen');
   if(!ls) return;
+  renderLoginStaff();
   ls.style.display='flex';
 }
 function renderLoginStaff(){
