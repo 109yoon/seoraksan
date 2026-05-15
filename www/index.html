@@ -437,14 +437,16 @@ body.guest-mode .guest-hide{display:none!important;}
   <div class="ls-title">설악산국립공원</div>
   <div class="ls-sub">SEORAKSAN FIELD MANAGEMENT</div>
   <div class="ls-divider"></div>
-  <div class="ls-desc">카카오 계정으로 로그인하면<br>작성자 정보가 자동 설정됩니다.<br>게스트는 <b style="color:#e0edf8;">보기 전용</b>으로 이용 가능합니다.</div>
-  <button class="ls-btn ls-kakao" onclick="kakaoLogin()">
-    💬 카카오로 로그인
-  </button>
+  <div class="ls-desc" style="margin-bottom:10px;">직원을 선택하여 로그인하세요</div>
+  <div id="loginStaffList" style="display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:12px 0;max-width:320px;"></div>
+  <div class="ls-divider" style="margin:12px 0;"></div>
   <button class="ls-btn ls-guest" onclick="guestLogin()">
     👁 게스트로 보기
   </button>
   <div class="ls-guest-note">게스트 모드: 등록·수정·삭제 불가</div>
+  <button class="ls-btn ls-dev" onclick="devLogin()" style="margin-top:8px;background:#2a2a3a;color:#7ec8e3;border:1px solid #3a4a5a;font-size:13px;">
+    🛠 개발자 모드
+  </button>
 </div>
 
 <div id="app">
@@ -1335,7 +1337,26 @@ function isLoggedIn(){ return !!DB.g('authType'); }
 function showLoginScreen(){
   const ls=document.getElementById('loginScreen');
   if(!ls) return;
+  renderLoginStaff();
   ls.style.display='flex';
+}
+function renderLoginStaff(){
+  const wrap=document.getElementById('loginStaffList');
+  if(!wrap) return;
+  const staff=getStaff?getStaff():DB.g('staff')||[];
+  wrap.innerHTML=staff.map(s=>`
+    <button onclick="staffLogin('${s.name}','${s.dept}','${s.rank}')"
+      style="padding:10px 14px;background:#1a2a3a;color:#e0edf8;border:1px solid #2a4a6a;border-radius:10px;font-size:14px;cursor:pointer;text-align:left;min-width:120px;">
+      <div style="font-weight:600;">${s.name}</div>
+      <div style="font-size:11px;color:#7ec8e3;margin-top:2px;">${s.rank} · ${s.dept}</div>
+    </button>`).join('');
+}
+function staffLogin(name,dept,rank){
+  DB.s('currentUser',{name,dept,rank});
+  DB.s('authType','staff');
+  applyAuthState();
+  hideLoginScreen();
+  toast('✅ '+name+'님 안녕하세요!');
 }
 function hideLoginScreen(){
   const ls=document.getElementById('loginScreen');
@@ -1378,7 +1399,6 @@ async function handleKakaoCallback(code){
           if(imgUrl) u.kakaoImg=imgUrl;
           DB.s('currentUser',u);
           DB.s('authType','kakao');
-          sessionStorage.setItem('_sess','1');
           history.replaceState({},'',location.pathname);
           hideLoginScreen();
           applyAuthState();
@@ -1386,7 +1406,6 @@ async function handleKakaoCallback(code){
         },
         fail:function(){
           DB.s('authType','kakao');
-          sessionStorage.setItem('_sess','1');
           history.replaceState({},'',location.pathname);
           hideLoginScreen();
           applyAuthState();
@@ -1403,16 +1422,22 @@ async function handleKakaoCallback(code){
 }
 function guestLogin(){
   DB.s('authType','guest');
-  sessionStorage.setItem('_sess','1');
   applyAuthState();
   hideLoginScreen();
   toast('👁 게스트 모드 — 보기 전용입니다');
+}
+function devLogin(){
+  DB.s('authType','dev');
+  const u=DB.g('currentUser')||{};
+  if(!u.name){ u.name='개발자'; u.dept='개발'; u.rank='담당자'; DB.s('currentUser',u); }
+  applyAuthState();
+  hideLoginScreen();
+  toast('🛠 개발자 모드');
 }
 function doLogout(){
   if(!confirm('로그아웃 하시겠습니까?')) return;
   const type=DB.g('authType');
   DB.d('authType');
-  sessionStorage.removeItem('_sess');
   if(type==='kakao'&&window.Kakao&&Kakao.Auth){
     try{Kakao.Auth.logout(()=>{});}catch(e){}
   }
@@ -1426,6 +1451,11 @@ function applyAuthState(){
     document.body.classList.add('guest-mode');
   } else {
     document.body.classList.remove('guest-mode');
+  }
+  if(type==='dev'){
+    document.body.classList.add('dev-mode');
+  } else {
+    document.body.classList.remove('dev-mode');
   }
   const lb=document.getElementById('logoutBtn');
   if(lb) lb.style.display=type?'block':'none';
@@ -1477,7 +1507,7 @@ function updateUserUI(){
   // 소속·직위 또는 카카오 계정 표시
   const parts=[];if(u.dept)parts.push(u.dept);if(u.rank)parts.push(u.rank);
   const authType=DB.g('authType');
-  if(se)se.textContent=parts.join(' · ')||(authType==='kakao'?'카카오 계정':authType==='guest'?'게스트':'탭하여 설정');
+  if(se)se.textContent=parts.join(' · ')||(authType==='guest'?'게스트':authType==='dev'?'개발자':'탭하여 설정');
   // 아바타: 카카오 프로필 사진 or 이니셜
   if(av){
     if(u.kakaoImg){
@@ -3755,7 +3785,7 @@ window.onload=function(){
           handleKakaoCallback(kakaoCode);
           return;
         }
-        if(!DB.g('authType')||!sessionStorage.getItem('_sess')){
+        if(!DB.g('authType')){
           showLoginScreen();
         } else {
           applyAuthState();
