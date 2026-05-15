@@ -13,6 +13,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 
 <title>설악산 현장관리</title>
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <!-- 카카오 SDK (지도 + 로그인) -->
 <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js" crossorigin="anonymous"></script>
 <script>
@@ -1090,11 +1093,73 @@ body.guest-mode .guest-hide{display:none!important;}
 // ══════════════════════════════════════════
 // DB
 // ══════════════════════════════════════════
-const DB={
-  g(k){try{return JSON.parse(localStorage.getItem('v7_'+k)||'null');}catch{return null;}},
-  s(k,v){try{localStorage.setItem('v7_'+k,JSON.stringify(v));}catch{}},
-  d(k){localStorage.removeItem('v7_'+k);}
+// ── Firebase 설정 ──
+const _FB_CFG={
+  apiKey:"AIzaSyACBoT-h2h0aQXYJpPyznc3JBzprEhhUAw",
+  authDomain:"seoraksan.firebaseapp.com",
+  projectId:"seoraksan",
+  storageBucket:"seoraksan.firebasestorage.app",
+  messagingSenderId:"457414135264",
+  appId:"1:457414135264:web:4103268ba0702a95a12f85"
 };
+// 기기 간 공유할 키 목록
+const _SHARED=['rescues','hazards','history','wikis','facilities','staff','catFac','wikiCats'];
+const _fs={};   // Firestore 인메모리 캐시
+let _fdb=null;
+
+const DB={
+  g(k){
+    if(_SHARED.includes(k)) return (_fs[k]!==undefined)?_fs[k]:null;
+    try{return JSON.parse(localStorage.getItem('v7_'+k)||'null');}catch{return null;}
+  },
+  s(k,v){
+    if(_SHARED.includes(k)){
+      _fs[k]=v;
+      if(_fdb) _fdb.collection('appData').doc(k).set({d:JSON.stringify(v)}).catch(()=>{});
+    } else {
+      try{localStorage.setItem('v7_'+k,JSON.stringify(v));}catch{}
+    }
+  },
+  d(k){
+    if(_SHARED.includes(k)){
+      _fs[k]=null;
+      if(_fdb) _fdb.collection('appData').doc(k).delete().catch(()=>{});
+    } else {
+      localStorage.removeItem('v7_'+k);
+    }
+  }
+};
+
+function initFirebase(onReady){
+  try{
+    if(!firebase.apps.length) firebase.initializeApp(_FB_CFG);
+    _fdb=firebase.firestore();
+    _fdb.enablePersistence().catch(()=>{}); // 오프라인 캐시
+    const loaded=new Set();
+    _SHARED.forEach(k=>{
+      _fdb.collection('appData').doc(k).onSnapshot(snap=>{
+        _fs[k]=snap.exists?(()=>{try{return JSON.parse(snap.data().d);}catch{return null;}})():null;
+        if(!loaded.has(k)){
+          loaded.add(k);
+          if(loaded.size===_SHARED.length){ onReady&&onReady(); onReady=null; }
+        } else {
+          // 다른 기기에서 변경 시 UI 갱신
+          updateSummary();
+          if(window.curApp==='rescue') renderResList();
+          else if(window.curApp==='inspect'){renderFacList();renderInspectMap();}
+          else if(window.curApp==='wiki') renderWikiList('');
+          else if(window.curApp==='stats') renderFullStats();
+        }
+      },()=>{ // 오류 시 로컬 전용으로 폴백
+        if(!loaded.has(k)){ loaded.add(k); if(loaded.size===_SHARED.length){onReady&&onReady();onReady=null;} }
+      });
+    });
+    // 10초 안에 안 되면 강제 시작
+    setTimeout(()=>{if(onReady){onReady();onReady=null;}},10000);
+  }catch(e){
+    onReady&&onReady();
+  }
+}
 
 const RES_TYPES={
   '안전사고':{ico:'🤕',pc:'p-acc',color:'#c0392b'},
@@ -4116,16 +4181,13 @@ window.onload=function(){
     }
   }, false);
 
-  initDB();
-  // 카카오 SDK 로드 완료 후 지도 초기화
-  if(window._KR){
-    initMaps();
-  } else {
-    window._KCB=function(){ initMaps(); };
-  }
-  updateSummary();updateUserUI();renderHotSearch();
-  const d=new Date();const days=['일','월','화','수','목','금','토'];
-  document.getElementById('homeDate').textContent=d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+days[d.getDay()]+')';
+  initFirebase(function(){
+    initDB();
+    if(window._KR){ initMaps(); } else { window._KCB=function(){initMaps();}; }
+    updateSummary();updateUserUI();renderHotSearch();
+    const d=new Date();const days=['일','월','화','수','목','금','토'];
+    document.getElementById('homeDate').textContent=d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+days[d.getDay()]+')';
+  });
 };
 
 </script>
