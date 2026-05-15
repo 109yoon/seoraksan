@@ -179,7 +179,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .ph{flex:1;min-width:44px;padding:7px 2px;text-align:center;font-size:9px;color:rgba(255,255,255,.26);cursor:pointer;border-bottom:2px solid transparent;}
 .ph.done{color:#27ae60;border-bottom-color:#27ae60;}.ph.active{color:#4fa8d0;border-bottom-color:#4fa8d0;}
 .ph-dot{width:4px;height:4px;border-radius:50%;background:currentColor;margin:0 auto 3px;}
-.rcontent{flex:1;overflow-y:auto;padding:12px 12px 80px;}
+.rcontent{flex:1;overflow-y:auto;padding:12px;}
 .rsec{background:#0b1c30;border-radius:10px;padding:12px;margin-bottom:8px;border:.5px solid rgba(255,255,255,.07);}
 .rsec-t{font-size:11px;color:#4fa8d0;font-weight:700;margin-bottom:8px;}
 
@@ -597,6 +597,7 @@ body.guest-mode .guest-hide{display:none!important;}
 <div id="v-report" class="view" style="flex-direction:column;">
   <div class="phase-bar" id="phaseBar"></div>
   <div class="rcontent" id="repContent"></div>
+  <div id="rep1BoFooter" style="display:none;background:#040a16;padding:10px 12px 16px;border-top:.5px solid rgba(255,255,255,.08);flex-shrink:0;"></div>
 </div>
 
 <!-- ══ 유형 세부통계 ══ -->
@@ -2104,7 +2105,9 @@ function renderPhaseBar(active,total){
 let _curViewResId=null;
 let _tlViewMode='brief'; // 'brief' | 'full'
 
+function _hideRepFooter(){const f=document.getElementById('rep1BoFooter');if(f)f.style.display='none';}
 function renderTimeline(r,viewMode){
+  _hideRepFooter();
   _curViewResId=r.id;
   _tlViewMode=viewMode||'brief';
   const all=[r,...(r.reports||[])];
@@ -2634,12 +2637,19 @@ function render1BoForm(prefill=null){
       </div>
       ${isNbo
         ?`<button class="btn-submit" style="background:#1a4a6e;color:#fff;margin-top:6px;" onclick="submitNBoFromForm()">💾 ${p._phaseNum||2}보 저장</button>`
-        :`<div style="display:flex;gap:6px;margin-top:6px;">
-          <button class="btn-submit" style="background:#1a4a6e;color:#fff;flex:1;" onclick="submit1Bo()">💾 1보 등록</button>
-          <button class="btn-submit" style="background:#7a1818;color:#fff;flex:1;" onclick="submit1BoWithTimeline()">🚨 1보등록 / 타임라인 작성</button>
-        </div>`}
+        :''}
     </div>
   `;
+
+  const _footer=document.getElementById('rep1BoFooter');
+  if(_footer){
+    if(!isNbo){
+      _footer.style.display='block';
+      _footer.innerHTML=`<button class="btn-submit" style="background:#7a1818;color:#fff;" onclick="submit1BoWithTimeline()">🚨 1보 등록 / 타임라인 작성</button>`;
+    } else {
+      _footer.style.display='none';
+    }
+  }
 
   initTTInline(p.timetable||[],p.members||[],ms);
   initExtraDispatch(p);
@@ -3476,7 +3486,7 @@ function viewSinglePhase(resId,phaseIdx){
   selResId=resId;curResId=resId;
   document.getElementById('topTitle').textContent=r.title+' · '+(phaseIdx+1)+'보';
   document.getElementById('bnav').style.display='none';
-  showV('v-report');
+  _hideRepFooter();showV('v-report');
   const all=[r,...(r.reports||[])];
   renderPhaseBar(phaseIdx,all.length);
   // 단일 보 내용만 표시
@@ -3514,7 +3524,7 @@ function openFullTimeline(){
   closeM('modalPhaseSelect');
   document.getElementById('topTitle').textContent=r.title+' 타임라인';
   document.getElementById('bnav').style.display='none';
-  showV('v-report');
+  _hideRepFooter();showV('v-report');
   renderPhaseBar((r.reports||[]).length,(r.reports||[]).length+1);
   renderTimeline(r,'brief');
 }
