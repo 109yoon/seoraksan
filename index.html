@@ -254,6 +254,8 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .pill{transition:background .14s ease,color .14s ease,border-color .14s ease,transform .1s var(--qt);}
 .pill:active{transform:scale(.91);}
 .pill.on{background:rgba(79,168,208,.15);color:#4fa8d0;border-color:rgba(79,168,208,.4);}
+.tt-stage-pill.on{background:#1a4a6e !important;color:#fff !important;border-color:#4fa8d0 !important;box-shadow:0 0 0 2px rgba(79,168,208,.25);}
+.tt-actor-pill.on{background:#7a3800 !important;color:#fff !important;border-color:#c05000 !important;}
 /* ── 체크박스 / 체크아이템 ── */
 .chk-item{transition:transform .1s var(--qt),background .14s ease,border-color .14s ease;}
 .chk-item:active{transform:scale(.94);}
@@ -4190,24 +4192,28 @@ function confirmTTInline(){
 function selectTTInline(stage, pillEl){
   _editTTIdx = -1;
   _ttInlineSelectedStage = stage;
-  // 선택된 pill 시각 표시
+  // 선택된 stage pill 시각 표시
   document.querySelectorAll('.tt-stage-pill').forEach(p=>p.classList.remove('on'));
   if(pillEl) pillEl.classList.add('on');
-  // 추가팀 목록으로 actor pills 갱신
+  // 누가 pills: 실제 선택된 대원 이름 기반으로 구성
   const actorPillsEl=document.getElementById('ttActorPills');
   if(actorPillsEl){
-    const baseActors=['초동팀','환자(요구조자)','환동해특수대응단'];
-    const extraActors=(_extraTeams||[]).map(t=>t.teamName);
-    const allActors=[...baseActors,...extraActors,'기타'];
-    actorPillsEl.innerHTML=allActors.map(a=>`<div class="pill" onclick="selTTActor(this,'${a}')" style="cursor:pointer;font-size:11px;">${a}</div>`).join('');
+    const mainMembers=[...document.querySelectorAll('#memChkGrid .chk-item.on')].map(el=>{
+      const t=el.querySelector('.chk-txt');return t?(t.childNodes[0]?.textContent||'').trim():'';
+    }).filter(Boolean);
+    const extraMembers=[];
+    (_extraTeams||[]).forEach(t=>{t.members.forEach(n=>{if(!mainMembers.includes(n)&&!extraMembers.includes(n))extraMembers.push(n);});});
+    const hwChecked=document.getElementById('agHwChk')?.classList.contains('on');
+    const allActors=[...mainMembers,...extraMembers,...(hwChecked?['환동해특수대응단']:[]),'요구조자','기타'];
+    actorPillsEl.innerHTML=allActors.map(a=>`<div class="pill tt-actor-pill" onclick="selTTActor(this,'${a}')" style="cursor:pointer;font-size:11px;">${a}</div>`).join('');
   }
-  const area  = document.getElementById('ttInputArea');
-  const label = document.getElementById('ttInputLabel');
-  const timeIn= document.getElementById('ttTimeIn');
-  if(area)  area.style.display='block';
+  const area=document.getElementById('ttInputArea');
+  const label=document.getElementById('ttInputLabel');
+  const timeIn=document.getElementById('ttTimeIn');
+  if(area) area.style.display='block';
   if(label) label.textContent='📍 '+stage+' 시간 입력';
-  if(timeIn)timeIn.value = new Date().toISOString().slice(0,16);
-  const noteIn = document.getElementById('ttNoteIn');
+  if(timeIn) timeIn.value=new Date().toISOString().slice(0,16);
+  const noteIn=document.getElementById('ttNoteIn');
   if(noteIn) noteIn.value='';
   const rw=document.getElementById('ttRecvWrap');
   if(rw) rw.style.display=stage==='상황전파'?'':'none';
@@ -4215,10 +4221,11 @@ function selectTTInline(stage, pillEl){
   if(actorWrap) actorWrap.style.display=stage==='상황전파'?'none':'';
   document.querySelectorAll('#ttActorPills .pill').forEach(p=>p.classList.remove('on'));
   if(stage!=='상황전파'){
-    const autoActor = stage==='요구조자 조우'||stage==='처치중'||stage==='처치완료'?'환자(요구조자)':
-      stage==='헬기이륙/출발'||stage==='헬기구조완료'?'환동해특수대응단':
-      stage==='119인계'||stage==='병원이송'?'초동팀':'초동팀';
-    document.querySelectorAll('#ttActorPills .pill').forEach(p=>{if(p.textContent===autoActor)p.classList.add('on');});
+    const autoActor=stage==='요구조자 조우'||stage==='처치중'||stage==='처치완료'?'요구조자':
+      stage==='헬기이륙/출발'||stage==='헬기구조완료'?'환동해특수대응단':null;
+    if(autoActor){
+      document.querySelectorAll('#ttActorPills .pill').forEach(p=>{if(p.textContent===autoActor)p.classList.add('on');});
+    }
   }
 }
 
