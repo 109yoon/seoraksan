@@ -29,7 +29,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 #app{max-width:430px;margin:0 auto;height:100dvh;height:100vh;display:flex;flex-direction:column;background:#08111f;overflow:hidden;position:relative;}
 
 /* ─── 상태바·헤더 ─── */
-.sbar{background:#040a16;padding:8px 18px 5px;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:#3a6a8a;flex-shrink:0;}
+.sbar{display:none;}
 .ahdr{background:#040a16;padding:9px 14px 10px;flex-shrink:0;display:none;border-bottom:1px solid rgba(255,255,255,.05);}
 .ahdr-row{display:flex;justify-content:space-between;align-items:center;}
 .ahdr-title{font-size:14px;font-weight:700;color:#e0edf8;display:flex;align-items:center;gap:6px;}
@@ -470,19 +470,8 @@ body.guest-mode .guest-hide{display:none!important;}
       <span style="font-size:14px;font-weight:700;color:#e0edf8;">📋 변경이력</span>
       <button onclick="closeChangelog()" style="background:none;border:none;color:#4a7090;font-size:18px;cursor:pointer;">×</button>
     </div>
-    ${[
-      {ver:'v1.2',date:'2026.05.15',items:['카카오 로그인 / 게스트 / 개발자 모드','공단 초동 출동팀 자동체크 (본인 이름)','추가팀 복수 지원 (추가1팀·2팀·3팀)','소방 유관기관 동적 추가 기능','타임라인 누가 항목 자동선택','환동해산악구조대 당직팀 자동계산']},
-      {ver:'v1.1',date:'2026.05.10',items:['구조 타임라인 카테고리 정리','유관기관 출동 섹션 추가','APK 빌드 자동화 (GitHub Actions)','무한 로그인 버그 수정']},
-      {ver:'v1.0',date:'2026.05.01',items:['설악산 현장관리 앱 최초 출시','재난/구조 접수 및 보고 기능','시설물 점검 관리','설악위키 기능','카카오 지도 연동']},
-    ].map(v=>`
-      <div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,.06);">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-          <span style="background:#1a4a6e;color:#4fa8d0;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">${v.ver}</span>
-          <span style="font-size:10px;color:#4a7090;">${v.date}</span>
-        </div>
-        ${v.items.map(i=>`<div style="font-size:11px;color:#b8d4e8;padding:2px 0;">· ${i}</div>`).join('')}
-      </div>`).join('')}
-    <div style="font-size:10px;color:#2a3a4a;text-align:center;margin-top:4px;">개발: 윤태종 · 설악산국립공원</div>
+    <div id="changelogBody"></div>
+    <div style="font-size:10px;color:#2a3a4a;text-align:center;margin-top:8px;">개발: 윤태종 · 설악산국립공원</div>
   </div>
 </div>
 
@@ -1528,10 +1517,36 @@ function getAddTeamMembers(){
   }).filter(Boolean);
 }
 
-// 변경이력 모달
+// 변경이력
+const _CL=[
+  {ver:'v1.2',date:'2026.05.15',summary:'카카오 로그인·팀기능 개선·타임라인 자동선택 등 6건',items:['카카오 로그인 / 게스트 / 개발자 모드','공단 초동 출동팀 자동체크 (본인 이름)','추가팀 복수 지원 (추가1팀·2팀·3팀)','소방 유관기관 동적 추가 기능','타임라인 누가 항목 자동선택','환동해산악구조대 당직팀 자동계산']},
+  {ver:'v1.1',date:'2026.05.10',summary:'타임라인 개편·유관기관 추가·APK 자동화·버그 수정',items:['구조 타임라인 카테고리 정리','유관기관 출동 섹션 추가','APK 빌드 자동화 (GitHub Actions)','무한 로그인 버그 수정']},
+  {ver:'v1.0',date:'2026.05.01',summary:'설악산 현장관리 앱 최초 출시',items:['설악산 현장관리 앱 최초 출시','재난/구조 접수 및 보고 기능','시설물 점검 관리','설악위키 기능','카카오 지도 연동']},
+];
 function openChangelog(){
   const m=document.getElementById('changelogModal');
-  if(m){m.style.display='flex';}
+  if(!m) return;
+  document.getElementById('changelogBody').innerHTML=_CL.map((v,i)=>`
+    <div style="margin-bottom:5px;border-radius:10px;border:1px solid rgba(255,255,255,.07);overflow:hidden;">
+      <div onclick="toggleCL(${i})" style="display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;background:#0d1f35;user-select:none;">
+        <span style="background:#1a4a6e;color:#4fa8d0;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;flex-shrink:0;">${v.ver}</span>
+        <span style="font-size:10px;color:#4a7090;flex-shrink:0;">${v.date}</span>
+        <span style="font-size:10px;color:#7a9cb8;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${v.summary}</span>
+        <span id="clArr${i}" style="color:#4a7090;font-size:11px;flex-shrink:0;transition:transform .2s;">▾</span>
+      </div>
+      <div id="clBody${i}" style="display:none;padding:8px 12px 10px;background:#080f1c;">
+        ${v.items.map(it=>`<div style="font-size:11px;color:#b8d4e8;padding:2px 0 2px 4px;">· ${it}</div>`).join('')}
+      </div>
+    </div>`).join('');
+  m.style.display='flex';
+}
+function toggleCL(i){
+  const b=document.getElementById('clBody'+i);
+  const a=document.getElementById('clArr'+i);
+  if(!b) return;
+  const open=b.style.display==='block';
+  b.style.display=open?'none':'block';
+  if(a) a.style.transform=open?'':'rotate(-180deg)';
 }
 function closeChangelog(){
   const m=document.getElementById('changelogModal');
@@ -3216,8 +3231,6 @@ function updateSummary(){
   updateBell();
 }
 const pad2=n=>String(n).padStart(2,'0');
-function tick(){const d=new Date();document.getElementById('nowTime').textContent=pad2(d.getHours())+':'+pad2(d.getMinutes());}
-tick();setInterval(tick,1000);
 // ══════════════════════════════════════════
 // 전체 통계 (일반직원도 열람 가능)
 // ══════════════════════════════════════════
@@ -4087,6 +4100,23 @@ window.onload=function(){
     // 5초 강제 해제
     setTimeout(function(){if(window._hideLoading)window._hideLoading();},5000);
   })();
+
+  // 안드로이드 하드웨어 뒤로가기 처리
+  document.addEventListener('backbutton', function(e){
+    e.preventDefault();
+    const homeActive=document.getElementById('v-home').classList.contains('on');
+    if(homeActive){
+      if(confirm('앱을 종료하시겠습니까?')){
+        if(window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.App){
+          Capacitor.Plugins.App.exitApp();
+        } else if(navigator.app&&navigator.app.exitApp){
+          navigator.app.exitApp();
+        }
+      }
+    } else {
+      goHome();
+    }
+  }, false);
 
   initDB();
   // 카카오 SDK 로드 완료 후 지도 초기화
