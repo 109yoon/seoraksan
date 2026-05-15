@@ -1,0 +1,16 @@
+{
+  "appId": "kr.go.nps.seoraksan",
+  "appName": "설악산 현장관리",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": true,
+      "backgroundColor": "#060d1a",
+      "androidSplashResourceName": "splash",
+      "showSpinner": false
+    }
+  }
+}
