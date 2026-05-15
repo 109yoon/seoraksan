@@ -417,7 +417,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{
   </div>
 
   <!-- 내 정보 카드 -->
-  <div class="my-card" onclick="openChangeUser()" style="flex-shrink:0;margin-bottom:0;">
+  <div class="my-card" onclick="openChangeUser()" style="flex-shrink:0;margin-bottom:0;margin-top:10px;">
     <div class="my-avatar">👤</div>
     <div class="my-info"><div class="my-name" id="myName">작성자를 선택하세요</div><div class="my-sub" id="mySub">탭하여 설정</div></div>
     <div class="my-change-btn">변경</div>
@@ -694,10 +694,10 @@ input[type="date"]::-webkit-calendar-picker-indicator{
     </div>
     <div class="fg"><span class="fl">위험 유형</span>
       <div class="pills" id="hazTypePills">
-        <div class="pill" onclick="sPill(this,'hazTypePills')">🪨 낙석</div>
-        <div class="pill" onclick="sPill(this,'hazTypePills')">🌲 위험수목</div>
-        <div class="pill" onclick="sPill(this,'hazTypePills')">🔥 산불</div>
-        <div class="pill" onclick="sPill(this,'hazTypePills')">⚡ 기타</div>
+        <div class="pill" onclick="sPill(this,'hazTypePills');chkHazType(this.textContent)">🪨 낙석</div>
+        <div class="pill" onclick="sPill(this,'hazTypePills');chkHazType(this.textContent)">🌲 위험수목</div>
+        <div class="pill" onclick="sPill(this,'hazTypePills');chkHazType(this.textContent)">🔥 산불</div>
+        <div class="pill" onclick="sPill(this,'hazTypePills');chkHazType(this.textContent)">⚡ 기타</div>
       </div>
     </div>
     <div class="fg"><span class="fl">발생 일시</span><input type="datetime-local" id="hz_dt" class="fi"></div>
@@ -744,6 +744,19 @@ input[type="date"]::-webkit-calendar-picker-indicator{
         <div class="pill" onclick="sPill(this,'hazStatusPills')">조치중</div>
         <div class="pill" onclick="sPill(this,'hazStatusPills')">제거 완료</div>
         <div class="pill" onclick="sPill(this,'hazStatusPills')">통제중</div>
+      </div>
+    </div>
+    <!-- 산불 전용: 타임라인 -->
+    <div id="hazFireTimelineWrap" style="display:none;">
+      <div class="rsec-t" style="font-size:11px;color:#c0392b;font-weight:700;margin-bottom:6px;">🔥 산불 진행 타임라인</div>
+      <div id="hazFireTLList" style="margin-bottom:6px;"></div>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;">
+        ${['최초 발화 확인','소방 신고','소방 도착','진화 시작','진화 완료','재발화','완전 진화'].map(s=>`<div class="pill" onclick="addHazFireTL('${s}')" style="font-size:10px;">${s}</div>`).join('')}
+      </div>
+      <div class="fg" style="display:flex;gap:5px;align-items:flex-end;">
+        <div style="flex:1;"><span class="fl">시간</span><input type="datetime-local" id="hazFireTLTime" class="fi"></div>
+        <div style="flex:2;"><span class="fl">내용</span><input type="text" id="hazFireTLNote" class="fi" placeholder="상황 내용"></div>
+        <button onclick="confirmHazFireTL()" style="background:#1a4a6e;color:#fff;border:none;padding:9px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;margin-bottom:11px;">추가</button>
       </div>
     </div>
     <div class="fg"><span class="fl">보고자</span><input type="text" id="hz_author" class="fi"></div>
@@ -1045,9 +1058,51 @@ function getSelPills(id){return [...document.querySelectorAll(`#${id} .pill.on`)
 function tPill(el){el.classList.toggle('on');}
 function sPill(el,wrId){document.querySelectorAll(`#${wrId} .pill`).forEach(p=>p.classList.remove('on'));el.classList.add('on');}
 function tChk(el){const b=el.querySelector('.chk-box');b.classList.toggle('on');el.classList.toggle('on');}
-function chkIllegal(sel){document.getElementById('fineWrap').style.display=sel.value.includes('비법정')?'block':'none';}
+function chkIllegal(sel){
+  document.getElementById('fineWrap').style.display=sel.value.includes('비법정')?'block':'none';
+  const pw=document.getElementById('permitWrap');
+  if(pw) pw.style.display=(sel.value==='암벽'||sel.value==='빙벽')?'block':'none';
+}
 function chkPermit(sel){document.getElementById('permitNote').style.display=sel.value==='허가자 있음'?'block':'none';}
 function chkReporter(sel){document.getElementById('reporterWrap').style.display=sel.value==='y'?'block':'none';}
+function chkCompanion(sel){document.getElementById('companionWrap').style.display=sel.value==='y'?'block':'none';}
+let _companionCount=(window._companionCount)||0;
+function addCompanion(){
+  _companionCount++;
+  const list=document.getElementById('companionList');
+  if(!list)return;
+  const idx=list.children.length;
+  const div=document.createElement('div');
+  div.className='companion-item';
+  div.dataset.idx=idx;
+  div.style.cssText='background:#060d1a;border-radius:8px;padding:10px;margin-bottom:6px;border:1px solid rgba(255,255,255,.07);';
+  div.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><span style="font-size:11px;color:#4fa8d0;font-weight:700;">동반자 ${idx+1}</span><button onclick="this.closest('.companion-item').remove();renumberCompanions()" style="background:rgba(192,57,43,.15);color:#c0392b;border:none;border-radius:5px;padding:3px 8px;font-size:10px;cursor:pointer;">삭제</button></div>
+  <div class="frow"><div class="fg"><span class="fl">성명</span><input type="text" class="fi comp-name" placeholder="이름"></div><div class="fg"><span class="fl">연락처</span><input type="tel" class="fi comp-tel" placeholder="연락처"></div></div>`;
+  list.appendChild(div);
+}
+function removeCompanion(idx){
+  const items=document.querySelectorAll('#companionList .companion-item');
+  if(items[idx])items[idx].remove();
+  renumberCompanions();
+}
+function renumberCompanions(){
+  document.querySelectorAll('#companionList .companion-item').forEach((el,i)=>{
+    const label=el.querySelector('span');
+    if(label)label.textContent='동반자 '+(i+1);
+    el.dataset.idx=i;
+  });
+}
+function getCompanions(){
+  return [...document.querySelectorAll('#companionList .companion-item')].map(el=>({
+    name:el.querySelector('.comp-name')?.value||'',
+    tel:el.querySelector('.comp-tel')?.value||''
+  })).filter(c=>c.name||c.tel);
+}
+function chkNation(sel){
+  const wrap=document.getElementById('r_vNatWrap_extra');
+  if(wrap)wrap.style.display=sel.value==='외국인'?'block':'none';
+  autoGenTitle();
+}
 
 // ══════════════════════════════════════════
 // 알림
@@ -1473,6 +1528,8 @@ function submitNBoFromForm(){
     vName: document.getElementById('r_vName')?.value||res[idx].vName,
     vTel: document.getElementById('r_vTel')?.value||res[idx].vTel||'',
     vNation: document.getElementById('r_vNat')?.value||res[idx].vNation,
+    vNationality: document.getElementById('r_vNationality')?.value||res[idx].vNationality||'',
+    companions: getCompanions().length?getCompanions():res[idx].companions||[],
     vGender: document.getElementById('r_vGender')?.value||res[idx].vGender,
     vBirth: document.getElementById('r_vBirth')?.value||res[idx].vBirth||'',
     vAddr: document.getElementById('r_vAddr')?.value||res[idx].vAddr||'',
@@ -1825,7 +1882,7 @@ function render1BoForm(prefill=null){
         <div class="fg"><span class="fl">사고 장소</span>
           <input type="text" id="r_loc" class="fi" placeholder="예: 비선대 직상부 암릉 구간" value="${p.location||''}" oninput="autoGenTitle()">
         </div>
-        <div class="fg"><span class="fl">장소 구분</span>
+        <div class="fg"><span class="fl">장소구분 <span style="font-size:9px;color:#4a7090;font-weight:400;">(암빙벽, 비법정)</span></span>
           <select id="r_loctype" class="fsel" onchange="chkIllegal(this);autoGenTitle()">
             ${['법정탐방로','비법정탐방로','암벽','빙벽'].map(o=>`<option${p.loctype===o?' selected':''}>${o}</option>`).join('')}
           </select>
@@ -1835,6 +1892,13 @@ function render1BoForm(prefill=null){
           <select id="r_fine" class="fsel">
             ${['과태료 해당 없음','과태료 부과 예정','확인 필요'].map(o=>`<option${p.fine===o?' selected':''}>${o}</option>`).join('')}
           </select>
+        </div>
+        <div id="permitWrap" style="display:${p.loctype&&(p.loctype==='암벽'||p.loctype==='빙벽')?'block':'none'};" class="fg">
+          <span class="fl">🏔️ 암빙벽 허가</span>
+          <select id="r_permit" class="fsel" onchange="chkPermit(this)">${['해당없음','허가자 있음','무허가'].map(o=>`<option${p.permit===o?' selected':''}>${o}</option>`).join('')}</select>
+        </div>
+        <div id="permitNote" style="display:${p.permit&&p.permit==='허가자 있음'?'block':'none'};" class="fg">
+          <input type="text" id="r_permitNote" class="fi" placeholder="허가번호, 소속 등" value="${p.permitNote||''}">
         </div>
         <div class="fg">
           <span class="fl">GPS 좌표</span>
@@ -1861,7 +1925,7 @@ function render1BoForm(prefill=null){
       <div class="rsec"><div class="rsec-t">🚨 사고 유형 및 원인</div>
         <div class="fg"><span class="fl">사고 유형</span>
           <select id="r_type" class="fsel" onchange="autoGenTitle()">
-            ${['안전사고','낙석','위험수목','화재','기타'].map(o=>`<option${p.type===o?' selected':''}>${o}</option>`).join('')}
+            ${['안전사고','조난','고립','실종','낙석','위험수목','화재','기타'].map(o=>`<option${p.type===o?' selected':''}>${o}</option>`).join('')}
           </select>
         </div>
         <div class="fg"><span class="fl">사고 원인</span>
@@ -1869,8 +1933,8 @@ function render1BoForm(prefill=null){
             ${['실족','추락','낙석 피격','탈진/탈수','저체온','심혈관 이상','동물 피해','익수','기타'].map(o=>`<option${p.cause===o?' selected':''}>${o}</option>`).join('')}
           </select>
         </div>
-        <div class="fg"><span class="fl">사고 경위</span>
-          <textarea id="r_sit" class="fta" rows="3" placeholder="사고 발생 경위 상세 기술">${p.situation||''}</textarea>
+        <div class="fg"><span class="fl">사고 경위 <span style="font-size:9px;color:#4a7090;font-weight:400;">(상세 기술)</span></span>
+          <textarea id="r_sit" class="fta" rows="4" placeholder="예) 오전 09:00 비선대 주차장에서 산행 시작, 11:30경 천불동계곡 3km 지점 하산 중 실족하여 우측 발목 부상 발생">${p.situation||''}</textarea>
         </div>
       </div>
       <div class="rsec"><div class="rsec-t">🩺 부상 현황 <button class="info-btn" onclick="openGuide('injury')">ℹ</button></div>
@@ -1901,6 +1965,30 @@ function render1BoForm(prefill=null){
 
     <!-- ══ 섹터3: 인적사항 ══ -->
     <div id="repSec3" class="rep-sec" style="display:none;padding:12px;overflow-y:auto;">
+      <div class="rsec"><div class="rsec-t">🧑 사고자 인적사항 <button class="info-btn" onclick="openGuide('victim')">ℹ</button></div>
+        <div class="frow">
+          <div class="fg"><span class="fl">성명</span><input type="text" id="r_vName" class="fi" value="${p.vName||''}"></div>
+          <div class="fg"><span class="fl">연락처</span><input type="tel" id="r_vTel" class="fi" value="${p.vTel||''}"></div>
+        </div>
+        <div class="frow">
+          <div class="fg"><span class="fl">내/외국인</span>
+            <select id="r_vNat" class="fsel" onchange="chkNation(this)">${['내국인','외국인'].map(o=>`<option${p.vNation===o?' selected':''}>${o}</option>`).join('')}</select>
+          </div>
+          <div id="r_vNatWrap_extra" style="display:${p.vNation==='외국인'?'block':'none'};" class="fg">
+            <span class="fl">국적</span><input type="text" id="r_vNationality" class="fi" placeholder="예: 미국, 중국" value="${p.vNationality||''}">
+          </div>
+          <div class="fg"><span class="fl">성별</span>
+            <select id="r_vGender" class="fsel" onchange="autoGenTitle()">${['남','여'].map(o=>`<option${p.vGender===o?' selected':''}>${o}</option>`).join('')}</select>
+          </div>
+        </div>
+        <div class="frow">
+          <div class="fg"><span class="fl">생년월일</span><input type="date" id="r_vBirth" class="fi" value="${p.vBirth||''}"></div>
+          <div class="fg"><span class="fl">거주지</span><input type="text" id="r_vAddr" class="fi" placeholder="시/도" value="${p.vAddr||''}"></div>
+        </div>
+        <div class="fg"><span class="fl">기저질환</span><input type="text" id="r_vDis" class="fi" placeholder="없음 또는 해당 질환" value="${p.vDisease||''}"></div>
+        <div class="fg"><span class="fl">알레르기</span><input type="text" id="r_vAll" class="fi" placeholder="없음 또는 항목" value="${p.vAllergy||''}"></div>
+        <div class="fg"><span class="fl">복용약</span><input type="text" id="r_vMed" class="fi" placeholder="없음 또는 항목" value="${p.vMeds||''}"></div>
+      </div>
       <div class="rsec"><div class="rsec-t">📞 신고자</div>
         <div class="fg">
           <select id="r_hasRep" class="fsel" onchange="chkReporter(this)">
@@ -1915,26 +2003,22 @@ function render1BoForm(prefill=null){
           </div>
         </div>
       </div>
-      <div class="rsec"><div class="rsec-t">🧑 사고자 인적사항 <button class="info-btn" onclick="openGuide('victim')">ℹ</button></div>
-        <div class="frow">
-          <div class="fg"><span class="fl">성명</span><input type="text" id="r_vName" class="fi" value="${p.vName||''}"></div>
-          <div class="fg"><span class="fl">연락처</span><input type="tel" id="r_vTel" class="fi" value="${p.vTel||''}"></div>
+      <div class="rsec"><div class="rsec-t">👥 동반자</div>
+        <div class="fg">
+          <select id="r_hasComp" class="fsel" onchange="chkCompanion(this)">
+            <option value="n">동반자 없음</option>
+            <option value="y"${(p.companions&&p.companions.length)?' selected':''}>동반자 있음</option>
+          </select>
         </div>
-        <div class="frow">
-          <div class="fg"><span class="fl">내/외국인</span>
-            <select id="r_vNat" class="fsel">${['내국인','외국인'].map(o=>`<option${p.vNation===o?' selected':''}>${o}</option>`).join('')}</select>
+        <div id="companionWrap" style="display:${(p.companions&&p.companions.length)?'block':'none'};">
+          <div id="companionList">
+            ${(p.companions||[]).map((c,i)=>`<div class="companion-item" data-idx="${i}" style="background:#060d1a;border-radius:8px;padding:10px;margin-bottom:6px;border:1px solid rgba(255,255,255,.07);">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><span style="font-size:11px;color:#4fa8d0;font-weight:700;">동반자 ${i+1}</span><button onclick="removeCompanion(${i})" style="background:rgba(192,57,43,.15);color:#c0392b;border:none;border-radius:5px;padding:3px 8px;font-size:10px;cursor:pointer;">삭제</button></div>
+              <div class="frow"><div class="fg"><span class="fl">성명</span><input type="text" class="fi comp-name" placeholder="이름" value="${c.name||''}"></div><div class="fg"><span class="fl">연락처</span><input type="tel" class="fi comp-tel" placeholder="연락처" value="${c.tel||''}"></div></div>
+            </div>`).join('')}
           </div>
-          <div class="fg"><span class="fl">성별</span>
-            <select id="r_vGender" class="fsel">${['남','여'].map(o=>`<option${p.vGender===o?' selected':''}>${o}</option>`).join('')}</select>
-          </div>
+          <button onclick="addCompanion()" style="width:100%;padding:9px;background:rgba(79,168,208,.08);border:1px dashed rgba(79,168,208,.3);color:#4fa8d0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;margin-top:4px;">＋ 동반자 추가</button>
         </div>
-        <div class="frow">
-          <div class="fg"><span class="fl">생년월일</span><input type="date" id="r_vBirth" class="fi" value="${p.vBirth||''}"></div>
-          <div class="fg"><span class="fl">거주지</span><input type="text" id="r_vAddr" class="fi" placeholder="시/도" value="${p.vAddr||''}"></div>
-        </div>
-        <div class="fg"><span class="fl">기저질환</span><input type="text" id="r_vDis" class="fi" placeholder="없음 또는 해당 질환" value="${p.vDisease||''}"></div>
-        <div class="fg"><span class="fl">알레르기</span><input type="text" id="r_vAll" class="fi" placeholder="없음 또는 항목" value="${p.vAllergy||''}"></div>
-        <div class="fg"><span class="fl">복용약</span><input type="text" id="r_vMed" class="fi" placeholder="없음 또는 항목" value="${p.vMeds||''}"></div>
       </div>
     </div>
 
@@ -1979,12 +2063,6 @@ function render1BoForm(prefill=null){
         </div>
         <div class="fg"><span class="fl">보고 작성자</span>
           <input type="text" id="r_author" class="fi" value="${getAuthor()}">
-        </div>
-        <div class="fg"><span class="fl">암빙벽 허가</span>
-          <select id="r_permit" class="fsel" onchange="chkPermit(this)">${['해당없음','허가자 있음','무허가'].map(o=>`<option${p.permit===o?' selected':''}>${o}</option>`).join('')}</select>
-        </div>
-        <div id="permitNote" style="display:none;" class="fg">
-          <input type="text" id="r_permitNote" class="fi" placeholder="허가번호, 소속 등" value="${p.permitNote||''}">
         </div>
         <div class="fg"><span class="fl">기타 특이사항</span>
           <textarea id="r_extra" class="fta" rows="3">${p.extra||''}</textarea>
@@ -2046,12 +2124,14 @@ function submit1Bo(){
     vName:document.getElementById('r_vName')?.value||'',
     vTel:document.getElementById('r_vTel')?.value||'',
     vNation:document.getElementById('r_vNat')?.value||'내국인',
+    vNationality:document.getElementById('r_vNationality')?.value||'',
     vGender:document.getElementById('r_vGender')?.value||'남',
     vBirth:document.getElementById('r_vBirth')?.value||'',
     vAddr:document.getElementById('r_vAddr')?.value||'',
     vDisease:document.getElementById('r_vDis')?.value||'',
     vAllergy:document.getElementById('r_vAll')?.value||'',
     vMeds:document.getElementById('r_vMed')?.value||'',
+    companions:getCompanions(),
     cause:document.getElementById('r_cause')?.value||'',
     injuryParts:getSelPills('injParts'),
     injuryTypes:getSelPills('injTypes'),
@@ -2086,13 +2166,50 @@ function submit1Bo(){
 // ══════════════════════════════════════════
 // 위험상황 보고
 // ══════════════════════════════════════════
+let _hazFireTL=[];
+function chkHazType(txt){
+  const isFire=txt.includes('산불');
+  document.getElementById('hazFireTimelineWrap').style.display=isFire?'block':'none';
+  if(isFire){
+    const el=document.getElementById('hazFireTLTime');
+    if(el)el.value=new Date().toISOString().slice(0,16);
+  }
+}
+function addHazFireTL(stage){
+  const timeEl=document.getElementById('hazFireTLTime');
+  const noteEl=document.getElementById('hazFireTLNote');
+  const time=timeEl?.value?.replace('T',' ')||new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+  noteEl.value=stage;
+  renderHazFireTL();
+}
+function confirmHazFireTL(){
+  const time=(document.getElementById('hazFireTLTime')?.value||'').replace('T',' ');
+  const note=document.getElementById('hazFireTLNote')?.value||'';
+  if(!note.trim()){toast('⚠️ 내용 입력');return;}
+  _hazFireTL.push({time,note});
+  _hazFireTL.sort((a,b)=>a.time.localeCompare(b.time));
+  document.getElementById('hazFireTLNote').value='';
+  renderHazFireTL();
+}
+function renderHazFireTL(){
+  const el=document.getElementById('hazFireTLList');
+  if(!el)return;
+  el.innerHTML=_hazFireTL.length?_hazFireTL.map((t,i)=>`<div style="display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+    <span style="font-size:10px;color:#4fa8d0;flex-shrink:0;">${t.time.slice(11)||t.time}</span>
+    <span style="font-size:11px;color:#e0edf8;flex:1;">${t.note}</span>
+    <button onclick="_hazFireTL.splice(${i},1);renderHazFireTL()" style="background:none;border:none;color:#c0392b;font-size:13px;cursor:pointer;">✕</button>
+  </div>`).join(''):'<div style="font-size:11px;color:rgba(255,255,255,.25);padding:4px 0;">타임라인 항목 없음</div>';
+}
 function openNewHazard(){
+  _hazFireTL=[];
   document.getElementById('hz_dt').value=nowDT();
   document.getElementById('hz_loc').value='';document.getElementById('hz_gps').value='';
   document.getElementById('hz_desc').value='';document.getElementById('hz_author').value=getAuthor();
   document.getElementById('prevHaz').innerHTML='📸 현장 사진';
-  ['hazTypePills','hazDangerPills','hazStatusPills'].forEach(id=>{document.querySelectorAll(`#${id} .pill`).forEach(p=>p.classList.remove('on'));});
-  document.querySelector('#hazStatusPills .pill').classList.add('on'); // 기본값: 미조치
+  document.getElementById('hazFireTimelineWrap').style.display='none';
+  ['hazTypePills','hazDangerPills','hazStatusPills','hazOnSitePills','hazResponsePills'].forEach(id=>{document.querySelectorAll(`#${id} .pill`).forEach(p=>p.classList.remove('on'));});
+  document.querySelector('#hazStatusPills .pill').classList.add('on');
+  renderHazFireTL();
   document.getElementById('modalHazard').classList.add('on');
 }
 function submitHazard(){
@@ -2109,6 +2226,7 @@ function submitHazard(){
     hazStatus:getSelPills('hazStatusPills')[0]||'미조치',
     onSite:getSelPills('hazOnSitePills')[0]||'',response:getSelPills('hazResponsePills')[0]||'',
     author:document.getElementById('hz_author').value,
+    fireTL:type.includes('산불')?[..._hazFireTL]:[],
   };
   const haz=DB.g('hazards')||[];haz.push(h);DB.s('hazards',haz);
   pushNoti(`⚠️ 위험상황: ${type} · ${h.loc||'-'}`,'⚠️','낙석',{app:'rescue',tab:2});
@@ -2489,16 +2607,7 @@ function addCat(){const n=prompt('카테고리명 (이모지 포함)\n예: 🛖 
 function delCat(i){if(!confirm('삭제?'))return;const cs=DB.g('catFac')||[];cs.splice(i,1);DB.s('catFac',cs);renderAdmCat();}
 function renderAdmSheets(){
   const url=DB.g('sheetsUrl')||'';
-  const kakaoKey=DB.g('kakaoKey')||'';
   document.getElementById('admSheetsWrap').innerHTML=`
-    <div style="background:rgba(79,168,208,.06);border:1px solid rgba(79,168,208,.15);border-radius:8px;padding:8px 11px;margin-bottom:8px;font-size:11px;color:#4fa8d0;">
-      💡 카카오 API 키는 <b>내 설정</b>에서 입력하세요
-    </div>
-    <div class="scard" style="margin-bottom:8px;">
-      <div class="stitle">🔑 카카오 API 키 현황</div>
-      <div style="font-size:12px;color:#b8d4e8;margin-bottom:8px;">${kakaoKey?`✅ 키 설정됨: ${kakaoKey.slice(0,8)}...`:'⚠️ 키 미설정 — 내 설정에서 입력 필요'}</div>
-      <button onclick="openApp('settings')" style="width:100%;background:#1a4a6e;color:#fff;border:none;padding:9px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">⚙️ 내 설정으로 이동</button>
-    </div>
     <div class="scard" style="margin-bottom:8px;"><div class="stitle">🔗 Google Sheets 자동 동기화</div>
       <div style="font-size:12px;color:#7a9cb8;line-height:1.6;margin-bottom:10px;">구조보고·시설점검 저장 시 자동으로 스프레드시트에 기록됩니다.</div>
       <div class="fg"><span class="fl">Apps Script 배포 URL</span><input type="text" id="sheetsUrlIn" class="fi" placeholder="https://script.google.com/macros/s/..." value="${url}"></div>
@@ -2529,42 +2638,12 @@ function clearNotisOnly(){DB.s('notis',[]);updateBell();toast('🗑️ 알림 �
 // ══════════════════════════════════════════
 function renderSettings(){
   const s=DB.g('notiSetting')||{};
-  const savedKey=DB.g('kakaoKey')||'';
   const items=[{k:'안전사고',l:'안전사고',ico:'🤕',sub:'실족/추락/부상'},{k:'낙석',l:'낙석',ico:'🪨',sub:'낙석 발생'},{k:'위험수목',l:'위험수목',ico:'🌲',sub:'쓰러짐/낙목'},{k:'화재',l:'화재',ico:'🔥',sub:'산불/시설 화재'},{k:'기타',l:'기타',ico:'⚠️',sub:'기타 위험상황'},{k:'fac_bad',l:'위험 시설물',ico:'🚨',sub:'파손 심각 등록'},{k:'fac_warn',l:'보수 필요',ico:'⚙️',sub:'보수필요 판정'}];
   document.getElementById('settingsWrap').innerHTML=`
     <div class="scard" style="margin-bottom:8px;">
       <div class="stitle">👤 내 계정</div>
       <div style="font-size:12px;color:#b8d4e8;line-height:2.0;">${(()=>{const u=DB.g('currentUser')||{};return`이름: <b>${u.name||'미설정'}</b><br>소속: <b>${u.dept||'미설정'}</b><br>직위: <b>${u.rank||'미설정'}</b>`;})()}</div>
       <button onclick="openChangeUser()" style="width:100%;background:#1a4a6e;color:#fff;border:none;padding:9px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;margin-top:8px;">✏️ 계정 수정</button>
-    </div>
-    <div class="scard" style="margin-bottom:8px;">
-      <div class="stitle">📱 앱으로 설치</div>
-      <div style="font-size:11px;color:#7a9cb8;line-height:1.6;margin-bottom:8px;">
-        홈 화면에 앱으로 추가하면 언제든지 빠르게 실행할 수 있어요.<br>
-        <b style="color:#4fa8d0;">iOS:</b> Safari → 공유 버튼 → 홈 화면에 추가<br>
-        <b style="color:#4fa8d0;">Android:</b> Chrome → 메뉴 → 홈 화면에 추가
-      </div>
-      <button onclick="installPWA()" id="pwaInstallBtn" style="width:100%;background:#0d5040;color:#fff;border:none;padding:9px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">📲 앱 설치하기</button>
-    </div>
-    <div class="scard" style="margin-bottom:8px;">
-      <div class="stitle">🗺️ 카카오맵 API 키</div>
-      <div style="font-size:11px;color:#7a9cb8;line-height:1.6;margin-bottom:8px;">
-        지도 기능을 사용하려면 카카오 API 키를 입력하세요.<br>
-        <span style="color:#4fa8d0;">developers.kakao.com → 내 애플리케이션 → JavaScript 키</span>
-      </div>
-      <input type="text" id="kakaoKeyIn" class="fi" placeholder="카카오 JavaScript API 키 입력" value="${savedKey}" style="margin-bottom:8px;">
-      <div style="display:flex;gap:6px;">
-        <button onclick="saveKakaoKey()" style="flex:1;background:#1a4a6e;color:#fff;border:none;padding:9px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">저장 후 적용</button>
-        ${savedKey?`<button onclick="testKakaoKey()" style="background:rgba(79,168,208,.1);color:#4fa8d0;border:1px solid rgba(79,168,208,.3);padding:9px 12px;border-radius:8px;font-size:12px;cursor:pointer;">키 테스트</button>`:''}
-      </div>
-      ${savedKey
-        ?`<div style="margin-top:6px;font-size:10px;color:#27ae60;">✅ 키 저장됨 — 테스트 버튼으로 지도 활성화 가능</div>`
-        :'<div style="margin-top:6px;font-size:10px;color:#e67e22;">⚠️ 키 미설정 — 지도 기능 비활성</div>'}
-      <div style="margin-top:8px;background:rgba(230,126,34,.07);border:1px solid rgba(230,126,34,.2);border-radius:7px;padding:8px 10px;font-size:10px;color:#e67e22;line-height:1.7;">
-        ⚠️ <b>키 오류가 뜨면</b><br>
-        kakao developers → 내 애플리케이션 → 플랫폼 → Web<br>
-        → 사이트 도메인에 <b>file://</b> 또는 사용 중인 URL 추가
-      </div>
     </div>
     <div class="scard" style="margin-bottom:8px;">
       <div class="stitle">💬 카카오 로그인</div>
@@ -3238,6 +3317,9 @@ function removeExtraDispatch(i){
 // ══════════════════════════════════════════
 // 타임라인 시간순 정렬 + 편집
 // ══════════════════════════════════════════
+let _ttInlineEntries = [];
+let _ttInlineSelectedStage = '';
+let _ttInlineFoundVictim = false;
 // _ttInlineEntries 시간순 정렬
 function sortTTByTime(entries){
   return [...entries].sort((a,b)=>{
@@ -3382,19 +3464,20 @@ function confirmMapPicker(){
 // ══════════════════════════════════════════
 function autoGenTitle(returnOnly=false){
   const loc   = (document.getElementById('r_loc')?.value||'').trim();
-  const loctype= document.getElementById('r_loctype')?.value||'';
   const sev   = getSelPills('sevPills')[0]||'';
   const cause = document.getElementById('r_cause')?.value||'';
   const type  = document.getElementById('r_type')?.value||'안전사고';
+  const nation= document.getElementById('r_vNat')?.value||'내국인';
+  const gender= document.getElementById('r_vGender')?.value||'';
   const parts=[];
   if(loc)     parts.push(loc.slice(0,12)+(loc.length>12?'...':''));
   if(type!=='안전사고') parts.push(type);
   if(cause&&cause!=='실족') parts.push(cause);
   if(sev)     parts.push(sev.replace('KTAS ','').split('(')[0].trim());
+  if(nation==='외국인') parts.push('외국인'+(gender?'('+gender+')':''));
   const title=parts.join(' · ')||today()+' '+type;
   if(returnOnly) return title;
   const el=document.getElementById('r_title');
-  // 사용자가 직접 수정하지 않은 경우만 자동 업데이트
   if(el&&(!el.dataset.userEdited)){
     el.value=title;
   }
