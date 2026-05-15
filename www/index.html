@@ -2645,7 +2645,7 @@ function render1BoForm(prefill=null){
   if(_footer){
     if(!isNbo){
       _footer.style.display='block';
-      _footer.innerHTML=`<button class="btn-submit" style="background:#7a1818;color:#fff;" onclick="submit1BoWithTimeline()">🚨 1보 등록 / 타임라인 작성</button>`;
+      _footer.innerHTML=`<button class="btn-submit" style="background:#7a3800;color:#fff;" onclick="openTimelineTab()">📋 타임라인 작성</button>`;
     } else {
       _footer.style.display='none';
     }
@@ -2657,6 +2657,24 @@ function render1BoForm(prefill=null){
   initFireAgencies(p);
 }
 
+function openTimelineTab(){
+  document.querySelectorAll('.rep-sec').forEach(s=>s.style.display='none');
+  const tl=document.getElementById('repSec0');
+  if(tl){
+    tl.style.display='block';
+    tl.style.opacity='0';tl.style.transition='opacity .25s';
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{tl.style.opacity='1';}));
+  }
+  document.getElementById('repContent').scrollTop=0;
+  document.querySelectorAll('.rep-tab').forEach(t=>{t.style.color='rgba(255,255,255,.3)';t.style.borderBottomColor='transparent';t.classList.remove('rep-tab-on');});
+  const footer=document.getElementById('rep1BoFooter');
+  if(footer){
+    footer.style.background='rgba(26,74,110,.15)';footer.style.transition='background .3s';
+    setTimeout(()=>{footer.style.background='#040a16';},400);
+    footer.innerHTML=`<button class="btn-submit" style="background:#1a4a6e;color:#fff;" onclick="submit1Bo()">💾 1보 등록</button>`;
+  }
+}
+let _1boSubmitting=false;
 function switchRepTab(secId,el){
   document.querySelectorAll('.rep-sec').forEach(s=>s.style.display='none');
   const target=document.getElementById(secId);
@@ -2668,12 +2686,6 @@ function switchRepTab(secId,el){
   });
   if(el){el.style.color='#4fa8d0';el.style.borderBottomColor='#4fa8d0';el.classList.add('rep-tab-on');}
 }
-let _openTimelineAfter1Bo=false;
-function submit1BoWithTimeline(){
-  _openTimelineAfter1Bo=true;
-  submit1Bo();
-}
-
 function initTTInline(existing,prevMembers,allStaff){
   _ttInlineEntries=[...(existing||[])];
   _ttInlineFoundVictim=_ttInlineEntries.some(e=>e.stage==='요구조자 조우');
@@ -2685,7 +2697,10 @@ function initTTInline(existing,prevMembers,allStaff){
 
 
 function submit1Bo(){
-  // 사고 제목 자동생성 (미입력 시)
+  if(_1boSubmitting)return;
+  _1boSubmitting=true;
+  const _btn=document.querySelector('#rep1BoFooter .btn-submit');
+  if(_btn){_btn.disabled=true;_btn.style.opacity='.5';}
   autoGenTitle();
   const title=document.getElementById('r_title').value.trim()||autoGenTitle(true);
   const gps=(document.getElementById('r_gps')?.value||'').split(',');
@@ -2748,22 +2763,9 @@ function submit1Bo(){
   DB.s('rescues',res);
   pushNoti('🚨 구조 1보: '+title+' ('+r.type+')',RES_TYPES[r.type]?.ico||'🚨',r.type,{app:'rescue',tab:2,id:r.id});
   syncToSheets('rescue',{id:r.id,title,type:r.type,date:r.date,author:r.author});
+  _1boSubmitting=false;
   toast('🚨 1보 등록 완료');
-  if(_openTimelineAfter1Bo){
-    _openTimelineAfter1Bo=false;
-    document.getElementById('appHdr').style.display='block';
-    document.getElementById('bnav').style.display='none';
-    document.getElementById('topTitle').textContent=title+' — 타임라인';
-    showV('v-report');
-    renderPhaseBar(0,1);
-    // 타임라인 탭(repSec0) 바로 열기
-    document.querySelectorAll('.rep-sec').forEach(s=>s.style.display='none');
-    const tl=document.getElementById('repSec0');
-    if(tl) tl.style.display='block';
-    document.querySelectorAll('.rep-tab').forEach(t=>{t.style.color='rgba(255,255,255,.3)';t.style.borderBottomColor='transparent';t.classList.remove('rep-tab-on');});
-  } else {
-    openApp('rescue');
-  }
+  openApp('rescue');
 }
 
 // ══════════════════════════════════════════
