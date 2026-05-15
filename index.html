@@ -1856,11 +1856,13 @@ function selAgencySubType(el,type){
 function _updateAgencyNameAuto(){
   const nameEl=document.getElementById('agNameIn');
   if(!nameEl) return;
-  const base=_agSelectedCat==='🚒 소방'?'소방':_agSelectedCat==='🚔 경찰'?'경찰':'';
-  if(!base) return;
-  let name=(_agSubLoc?_agSubLoc:'')+base;
-  if(_agSubType) name+=' '+_agSubType;
-  nameEl.value=name;
+  if(_agSelectedCat==='🚒 소방'){
+    let name=_agSubLoc||'';
+    if(_agSubType) name+=(name?' ':'')+_agSubType+'대';
+    nameEl.value=name;
+  } else if(_agSelectedCat==='🚔 경찰'){
+    nameEl.value=(_agSubLoc?_agSubLoc+'경찰':'');
+  }
 }
 function addAgencyEntry(){
   const cat=_agSelectedCat||'🏢 기타';
