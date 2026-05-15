@@ -1855,8 +1855,9 @@ function selAgencySubType(el,type){
     _agSubLoc='양양';
     document.querySelectorAll('#agSubLocPills .pill').forEach(p=>{
       p.classList.toggle('on',p.textContent==='양양');
-      p.style.opacity=p.textContent==='양양'?'1':'0.3';
-      p.style.pointerEvents=p.textContent==='양양'?'':'none';
+      const active=p.textContent==='양양'||p.textContent==='기타';
+      p.style.opacity=active?'1':'0.3';
+      p.style.pointerEvents=active?'':'none';
     });
   } else {
     document.querySelectorAll('#agSubLocPills .pill').forEach(p=>{p.style.opacity='1';p.style.pointerEvents='';});
