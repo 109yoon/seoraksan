@@ -1593,7 +1593,7 @@ function viewFullPrev(){
   } else {
     document.getElementById('prevRepContent').innerHTML=`<div style="font-size:12px;color:#7a9cb8;line-height:2;">
       <b>유형:</b> ${r.type}<br><b>발생:</b> ${r.date}<br><b>위치:</b> ${r.location||'-'}<br>
-      <b>사고자:</b> ${r.vName||'미상'} / ${r.vGender||'-'}<br><b>중증도:</b> ${r.severity||'-'}<br>
+      <b>사고자:</b> ${r.vName||'미상'} / ${(r.vGender&&r.vGender!=='알수없음')?r.vGender:'-'}<br><b>중증도:</b> ${r.severity||'-'}<br>
       <b>부상부위:</b> ${(r.injuryParts||[]).join(', ')||'-'}<br><b>구조방법:</b> ${(r.rescueMethod||[]).join(', ')||'-'}
     </div>`;
   }
@@ -1630,7 +1630,7 @@ function renderTimeline(r,viewMode){
       const brief=`<div class="tl-body">📍 ${r.location||'위치 미기재'}<br>🧑 ${r.vName||'미상'} · ${r.severity||'-'}<br>🩺 ${(r.injuryParts||[]).join(', ')||'-'}<br>🚑 ${(r.rescueMethod||[]).join(', ')||'-'}</div>`;
       const full=`<div class="tl-body">
         <b>위치:</b> ${r.location||'-'} (${r.loctype||'-'})<br>
-        <b>사고자:</b> ${r.vName||'미상'} / ${r.vGender||'-'} / ${r.vNation||'-'}<br>
+        <b>사고자:</b> ${r.vName||'미상'} / ${(r.vGender&&r.vGender!=='알수없음')?r.vGender:'성별미상'} / ${(r.vNation&&r.vNation!=='알수없음')?r.vNation:'국적미상'}<br>
         <b>연락처:</b> ${r.vTel||'-'}<br>
         <b>중증도:</b> ${r.severity||'-'}<br>
         <b>사고 원인:</b> ${r.cause||'-'}<br>
@@ -1640,9 +1640,9 @@ function renderTimeline(r,viewMode){
         <b>출동:</b> ${r.dispatch||'-'} → 도착: ${r.arrival||'-'}<br>
         <b>출동 대원:</b> ${(r.members||[]).join(', ')||'-'}<br>
         <b>119:</b> ${r.r119||'-'} · 기타: ${r.others||'-'}<br>
-        <b>병원 후송:</b> ${r.hospital||'-'}<br>
+        <b>병원 후송:</b> ${(r.hospital&&r.hospital!=='미정')?r.hospital:'미정'}<br>
         <b>기상:</b> ${r.weather||'-'} ${r.weatherAlert||''}<br>
-        <b>음주:</b> ${r.alcohol||'-'}<br>
+        <b>음주:</b> ${(r.alcohol&&r.alcohol!=='알수없음')?r.alcohol:'-'}<br>
         ${r.situation?`<b>경위:</b> ${r.situation}<br>`:''}
         ${r.extra?`<b>특이:</b> ${r.extra}`:''}
       </div>`;
@@ -1948,7 +1948,7 @@ function render1BoForm(prefill=null){
           <div class="pills" id="sevPills">${['KTAS 1 (소생)','KTAS 2 (긴급)','KTAS 3 (응급)','KTAS 4 (준응급)','KTAS 5 (비응급)'].map(o=>`<div class="pill${p.severity===o?' on':''}" onclick="sPill(this,'sevPills');autoGenTitle()">${o}</div>`).join('')}</div>
         </div>
         <div class="fg"><span class="fl">음주</span>
-          <select id="r_alc" class="fsel">${['없음','의심','확인됨'].map(o=>`<option${p.alcohol===o?' selected':''}>${o}</option>`).join('')}</select>
+          <select id="r_alc" class="fsel">${['알수없음','없음','의심','확인됨'].map(o=>`<option${(p.alcohol||'알수없음')===o?' selected':''}>${o}</option>`).join('')}</select>
         </div>
       </div>
       <div class="rsec"><div class="rsec-t">📸 현장 사진</div>
@@ -1972,13 +1972,13 @@ function render1BoForm(prefill=null){
         </div>
         <div class="frow">
           <div class="fg"><span class="fl">내/외국인</span>
-            <select id="r_vNat" class="fsel" onchange="chkNation(this)">${['내국인','외국인'].map(o=>`<option${p.vNation===o?' selected':''}>${o}</option>`).join('')}</select>
+            <select id="r_vNat" class="fsel" onchange="chkNation(this)">${['내국인','외국인','알수없음'].map(o=>`<option${p.vNation===o?' selected':''}>${o}</option>`).join('')}</select>
           </div>
           <div id="r_vNatWrap_extra" style="display:${p.vNation==='외국인'?'block':'none'};" class="fg">
             <span class="fl">국적</span><input type="text" id="r_vNationality" class="fi" placeholder="예: 미국, 중국" value="${p.vNationality||''}">
           </div>
           <div class="fg"><span class="fl">성별</span>
-            <select id="r_vGender" class="fsel" onchange="autoGenTitle()">${['남','여'].map(o=>`<option${p.vGender===o?' selected':''}>${o}</option>`).join('')}</select>
+            <select id="r_vGender" class="fsel" onchange="autoGenTitle()">${['알수없음','남','여'].map(o=>`<option${(p.vGender||'알수없음')===o?' selected':''}>${o}</option>`).join('')}</select>
           </div>
         </div>
         <div class="frow">
@@ -2046,7 +2046,7 @@ function render1BoForm(prefill=null){
           <textarea id="r_equip" class="fta" rows="2" placeholder="들것, 로프, AED, 헬기 등">${p.equipment||''}</textarea>
         </div>
         <div class="fg"><span class="fl">병원 후송</span>
-          <select id="r_hosp" class="fsel">${['후송 없음','후송 완료','후송 중','본인 귀가'].map(o=>`<option${p.hospital===o?' selected':''}>${o}</option>`).join('')}</select>
+          <select id="r_hosp" class="fsel">${['미정','후송 없음','후송 완료','후송 중','본인 귀가'].map(o=>`<option${(p.hospital||'미정')===o?' selected':''}>${o}</option>`).join('')}</select>
         </div>
         <div class="fg"><span class="fl">기타 동원</span>
           <input type="text" id="r_others" class="fi" placeholder="경찰, 소방 등" value="${p.others||''}">
@@ -2123,9 +2123,9 @@ function submit1Bo(){
     fine:document.getElementById('fineWrap')?.style.display!=='none'?(document.getElementById('r_fine')?.value||''):'',
     vName:document.getElementById('r_vName')?.value||'',
     vTel:document.getElementById('r_vTel')?.value||'',
-    vNation:document.getElementById('r_vNat')?.value||'내국인',
+    vNation:document.getElementById('r_vNat')?.value||'알수없음',
     vNationality:document.getElementById('r_vNationality')?.value||'',
-    vGender:document.getElementById('r_vGender')?.value||'남',
+    vGender:document.getElementById('r_vGender')?.value||'알수없음',
     vBirth:document.getElementById('r_vBirth')?.value||'',
     vAddr:document.getElementById('r_vAddr')?.value||'',
     vDisease:document.getElementById('r_vDis')?.value||'',
@@ -2136,14 +2136,14 @@ function submit1Bo(){
     injuryParts:getSelPills('injParts'),
     injuryTypes:getSelPills('injTypes'),
     severity:getSelPills('sevPills')[0]||'',
-    alcohol:document.getElementById('r_alc')?.value||'없음',
+    alcohol:document.getElementById('r_alc')?.value||'알수없음',
     situation:document.getElementById('r_sit')?.value||'',
     rescueMethod:getSelPills('rescMeth'),
     members, extraMembers,
     r119:document.getElementById('r_119')?.value||'',
     others:document.getElementById('r_others')?.value||'',
     equipment:document.getElementById('r_equip')?.value||'',
-    hospital:document.getElementById('r_hosp')?.value||'후송 없음',
+    hospital:document.getElementById('r_hosp')?.value||'미정',
     author:document.getElementById('r_author')?.value||getAuthor(),
     extra:document.getElementById('r_extra')?.value||'',
     permit:document.getElementById('r_permit')?.value||'해당없음',
@@ -2892,12 +2892,12 @@ function viewSinglePhase(resId,phaseIdx){
     <div class="rsec"><div class="rsec-t">📋 1보 — 초기 접수</div>
       <div style="font-size:12px;color:#7a9cb8;line-height:2.0;">
         <b>유형:</b> ${r.type}<br><b>발생:</b> ${r.date}<br><b>위치:</b> ${r.location||'-'} (${r.loctype||'-'})<br>
-        <b>사고자:</b> ${r.vName||'미상'} / ${r.vGender||'-'} / ${r.vNation||'-'}<br>
+        <b>사고자:</b> ${r.vName||'미상'} / ${(r.vGender&&r.vGender!=='알수없음')?r.vGender:'성별미상'} / ${(r.vNation&&r.vNation!=='알수없음')?r.vNation:'국적미상'}<br>
         <b>연락처:</b> ${r.vTel||'-'}<br><b>중증도:</b> ${r.severity||'-'}<br>
         <b>사고 원인:</b> ${r.cause||'-'}<br><b>부상 부위:</b> ${(r.injuryParts||[]).join(', ')||'-'}<br>
         <b>구조 방법:</b> ${(r.rescueMethod||[]).join(', ')||'-'}<br>
         <b>출동 대원:</b> ${(r.members||[]).join(', ')||'-'}<br>
-        <b>병원 후송:</b> ${r.hospital||'-'}<br><b>작성자:</b> ${r.author||'-'}
+        <b>병원 후송:</b> ${(r.hospital&&r.hospital!=='미정')?r.hospital:'미정'}<br><b>작성자:</b> ${r.author||'-'}
       </div>
     </div>`:
     `<div class="rsec"><div class="rsec-t">📋 ${phaseIdx+1}보 — 상황 업데이트</div>
@@ -3467,14 +3467,17 @@ function autoGenTitle(returnOnly=false){
   const sev   = getSelPills('sevPills')[0]||'';
   const cause = document.getElementById('r_cause')?.value||'';
   const type  = document.getElementById('r_type')?.value||'안전사고';
-  const nation= document.getElementById('r_vNat')?.value||'내국인';
+  const nation= document.getElementById('r_vNat')?.value||'알수없음';
   const gender= document.getElementById('r_vGender')?.value||'';
   const parts=[];
   if(loc)     parts.push(loc.slice(0,12)+(loc.length>12?'...':''));
   if(type!=='안전사고') parts.push(type);
   if(cause&&cause!=='실족') parts.push(cause);
   if(sev)     parts.push(sev.replace('KTAS ','').split('(')[0].trim());
-  if(nation==='외국인') parts.push('외국인'+(gender?'('+gender+')':''));
+  if(nation==='외국인'){
+    const gLabel=(gender&&gender!=='알수없음')?'('+gender+')':'';
+    parts.push('외국인'+gLabel);
+  }
   const title=parts.join(' · ')||today()+' '+type;
   if(returnOnly) return title;
   const el=document.getElementById('r_title');
