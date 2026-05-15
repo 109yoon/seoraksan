@@ -445,6 +445,9 @@ body.guest-mode .guest-hide{display:none!important;}
     👁 게스트로 보기
   </button>
   <div class="ls-guest-note">게스트 모드: 등록·수정·삭제 불가</div>
+  <button class="ls-btn ls-dev" onclick="devLogin()" style="margin-top:8px;background:#2a2a3a;color:#7ec8e3;border:1px solid #3a4a5a;font-size:13px;">
+    🛠 개발자 모드
+  </button>
 </div>
 
 <div id="app">
@@ -1378,7 +1381,6 @@ async function handleKakaoCallback(code){
           if(imgUrl) u.kakaoImg=imgUrl;
           DB.s('currentUser',u);
           DB.s('authType','kakao');
-          sessionStorage.setItem('_sess','1');
           history.replaceState({},'',location.pathname);
           hideLoginScreen();
           applyAuthState();
@@ -1386,7 +1388,6 @@ async function handleKakaoCallback(code){
         },
         fail:function(){
           DB.s('authType','kakao');
-          sessionStorage.setItem('_sess','1');
           history.replaceState({},'',location.pathname);
           hideLoginScreen();
           applyAuthState();
@@ -1403,16 +1404,22 @@ async function handleKakaoCallback(code){
 }
 function guestLogin(){
   DB.s('authType','guest');
-  sessionStorage.setItem('_sess','1');
   applyAuthState();
   hideLoginScreen();
   toast('👁 게스트 모드 — 보기 전용입니다');
+}
+function devLogin(){
+  DB.s('authType','dev');
+  const u=DB.g('currentUser')||{};
+  if(!u.name){ u.name='개발자'; u.dept='개발'; u.rank='담당자'; DB.s('currentUser',u); }
+  applyAuthState();
+  hideLoginScreen();
+  toast('🛠 개발자 모드');
 }
 function doLogout(){
   if(!confirm('로그아웃 하시겠습니까?')) return;
   const type=DB.g('authType');
   DB.d('authType');
-  sessionStorage.removeItem('_sess');
   if(type==='kakao'&&window.Kakao&&Kakao.Auth){
     try{Kakao.Auth.logout(()=>{});}catch(e){}
   }
@@ -1426,6 +1433,11 @@ function applyAuthState(){
     document.body.classList.add('guest-mode');
   } else {
     document.body.classList.remove('guest-mode');
+  }
+  if(type==='dev'){
+    document.body.classList.add('dev-mode');
+  } else {
+    document.body.classList.remove('dev-mode');
   }
   const lb=document.getElementById('logoutBtn');
   if(lb) lb.style.display=type?'block':'none';
@@ -3755,7 +3767,7 @@ window.onload=function(){
           handleKakaoCallback(kakaoCode);
           return;
         }
-        if(!DB.g('authType')||!sessionStorage.getItem('_sess')){
+        if(!DB.g('authType')){
           showLoginScreen();
         } else {
           applyAuthState();
