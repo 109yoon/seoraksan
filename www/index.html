@@ -504,6 +504,11 @@ body.guest-mode .guest-hide{display:none!important;}
     <button class="mbtn-sm" onclick="openApp('settings')"><span class="mbtn-sm-ico">⚙️</span><div class="mbtn-sm-text"><div class="mbtn-sm-title">내 설정</div><div class="mbtn-sm-desc">알림·계정·API키</div></div></button>
     <button class="mbtn-sm guest-hide" style="background:#150e2a;border:1px solid rgba(139,92,246,.2);" onclick="openApp('admin')"><span class="mbtn-sm-ico">🔐</span><div class="mbtn-sm-text"><div class="mbtn-sm-title" style="color:#c4b5fd;">관리자 전용</div><div class="mbtn-sm-desc">관제·데이터 관리</div></div></button>
   </div>
+  <a href="https://github.com/109yoon/seoraksan/releases/latest" target="_blank" style="display:flex;align-items:center;gap:8px;background:#0b1c30;border:1px solid rgba(79,168,208,.18);border-radius:10px;padding:9px 12px;margin-top:6px;text-decoration:none;flex-shrink:0;">
+    <span style="font-size:16px;">📱</span>
+    <div><div style="font-size:12px;font-weight:700;color:#e0edf8;">안드로이드 앱 다운로드</div><div style="font-size:10px;color:#3a6a8a;">최신 APK 받기 (GitHub Releases)</div></div>
+    <span style="margin-left:auto;font-size:11px;color:#4fa8d0;">↗</span>
+  </a>
 </div>
 </div>
 
@@ -1346,6 +1351,8 @@ function kakaoLogin(){
   });
 }
 async function handleKakaoCallback(code){
+  // 즉시 URL에서 code 제거 — 재시도 루프 방지
+  history.replaceState({},'',location.pathname);
   try{
     const resp=await fetch('https://kauth.kakao.com/oauth/token',{
       method:'POST',
@@ -1366,7 +1373,6 @@ async function handleKakaoCallback(code){
           const nick=profile.nickname||res.properties?.nickname||'사용자';
           const imgUrl=profile.profile_image_url||profile.thumbnail_image_url||'';
           const u=DB.g('currentUser')||{};
-          // 카카오 정보로 덮어쓰기
           u.kakao={id:res.id,name:nick,img:imgUrl};
           u.name=nick;
           if(imgUrl) u.kakaoImg=imgUrl;
@@ -3735,6 +3741,8 @@ window.onload=function(){
       if(barEl)barEl.style.width=prog+'%';
     },500);
     window._hideLoading=function(){
+      if(window._hideLoadingDone) return; // 중복 호출 방지
+      window._hideLoadingDone=true;
       clearInterval(tipTimer);clearInterval(barTimer);
       if(barEl)barEl.style.width='100%';
       // 로그인 체크 — 세션(탭)마다 다시 로그인 필요
