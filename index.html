@@ -218,6 +218,32 @@ html,body{height:100%;height:100dvh;max-height:100%;background:#060d1a;font-fami
 .photo-slot img{width:100%;height:100%;object-fit:cover;}
 .info-btn{background:rgba(79,168,208,.07);border:1px solid rgba(79,168,208,.18);color:#4fa8d0;border-radius:5px;padding:2px 6px;font-size:10px;cursor:pointer;margin-left:4px;}
 
+/* ─── 부드러운 트랜지션 (Toss-style) ─── */
+.modal .mbox{transform:translateY(20px);opacity:0;transition:transform .3s cubic-bezier(.22,1,.36,1),opacity .25s ease;will-change:transform,opacity;}
+.modal.on .mbox{transform:translateY(0);opacity:1;}
+.lcard{transition:transform .15s ease,background .15s ease;}
+.lcard:active{transform:scale(.985);}
+.btn{transition:transform .12s ease,opacity .12s ease;}
+.btn:active{transform:scale(.96);opacity:.85;}
+.btn-submit{transition:transform .12s ease,opacity .12s ease;}
+.btn-submit:active{transform:scale(.98);opacity:.85;}
+.mbtn{transition:transform .18s cubic-bezier(.22,1,.36,1),box-shadow .18s ease;}
+.mbtn:active{transform:scale(.94);}
+.mbtn-sm{transition:transform .15s cubic-bezier(.22,1,.36,1);}
+.mbtn-sm:active{transform:scale(.96);}
+.fi:focus,.fsel:focus,.fta:focus{border-color:rgba(79,168,208,.5);box-shadow:0 0 0 3px rgba(79,168,208,.1);transition:border-color .2s ease,box-shadow .2s ease;}
+.pill{transition:background .18s ease,color .18s ease,border-color .18s ease,transform .12s ease;}
+.pill:active{transform:scale(.94);}
+.hstat{transition:transform .15s ease;}
+.hstat:active{transform:scale(.97);}
+.scard{transition:box-shadow .2s ease;}
+.dbcard{transition:bottom .3s cubic-bezier(.22,1,.36,1);}
+.type-row{transition:background .15s ease;}
+.sm-btn{transition:background .15s ease,transform .12s ease;}
+.sm-btn:active{transform:scale(.94);}
+.view.on{animation:viewFadeIn .22s ease both;}
+@keyframes viewFadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
 /* ─── 위키 ─── */
 .wiki-search{background:#0b1c30;border:1px solid rgba(79,168,208,.22);color:#e0edf8;padding:10px 13px;border-radius:9px;width:100%;font-size:13px;outline:none;}
 .wiki-search:focus{border-color:rgba(79,168,208,.5);}
@@ -711,7 +737,8 @@ body.guest-mode .guest-hide{display:none!important;}
       </div>
       <div class="fg"><span class="fl">추가 출동 대원</span><input type="text" id="r_addMem" class="fi" placeholder="추가 투입 대원명"></div>
       <div class="fg"><span class="fl">작성자</span><input type="text" id="r_repAuthor" class="fi"></div>
-      <button class="btn-submit" style="background:#1a4a6e;color:#fff;" onclick="submitNBo()">💾 저장</button>
+      <textarea id="r_repExtra" class="fta" rows="2" placeholder="기타 특이사항 (선택)" style="width:100%;margin-top:4px;margin-bottom:0;"></textarea>
+      <button class="btn-submit" style="background:#1a4a6e;color:#fff;margin-top:10px;" onclick="submitNBo()">💾 저장</button>
     </div>
   </div>
 </div>
@@ -792,9 +819,7 @@ body.guest-mode .guest-hide{display:none!important;}
     <div id="hazFireTimelineWrap" style="display:none;">
       <div class="rsec-t" style="font-size:11px;color:#c0392b;font-weight:700;margin-bottom:6px;">🔥 산불 진행 타임라인</div>
       <div id="hazFireTLList" style="margin-bottom:6px;"></div>
-      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;">
-        ${['최초 발화 확인','소방 신고','소방 도착','진화 시작','진화 완료','재발화','완전 진화'].map(s=>`<div class="pill" onclick="addHazFireTL('${s}')" style="font-size:10px;">${s}</div>`).join('')}
-      </div>
+      <div id="hazFireQuickPills" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;"></div>
       <div class="fg" style="display:flex;gap:5px;align-items:flex-end;">
         <div style="flex:1;"><span class="fl">시간</span><input type="datetime-local" id="hazFireTLTime" class="fi"></div>
         <div style="flex:2;"><span class="fl">내용</span><input type="text" id="hazFireTLNote" class="fi" placeholder="상황 내용"></div>
@@ -1325,10 +1350,11 @@ function kakaoLogin(){
         if(!u.name) u.name=nick;
         DB.s('currentUser',u);
         DB.s('authType','kakao');
+        sessionStorage.setItem('_sess','1');
         applyAuthState();
         hideLoginScreen();
         toast('✅ '+nick+'님 안녕하세요!');
-      },fail:function(){DB.s('authType','kakao');applyAuthState();hideLoginScreen();}});
+      },fail:function(){DB.s('authType','kakao');sessionStorage.setItem('_sess','1');applyAuthState();hideLoginScreen();}});
     },
     fail:function(err){
       toast('⚠️ 카카오 로그인 실패. 카카오 개발자콘솔에서 로그인 활성화 및 도메인 등록을 확인하세요.');
@@ -1337,6 +1363,7 @@ function kakaoLogin(){
 }
 function guestLogin(){
   DB.s('authType','guest');
+  sessionStorage.setItem('_sess','1');
   applyAuthState();
   hideLoginScreen();
   toast('👁 게스트 모드 — 보기 전용입니다');
@@ -1345,6 +1372,7 @@ function doLogout(){
   if(!confirm('로그아웃 하시겠습니까?')) return;
   const type=DB.g('authType');
   DB.d('authType');
+  sessionStorage.removeItem('_sess');
   if(type==='kakao'&&window.Kakao&&Kakao.Auth){
     try{Kakao.Auth.logout(()=>{});}catch(e){}
   }
@@ -1750,6 +1778,22 @@ function renderTimeline(r,viewMode){
     }
   }
 
+  // 타임라인 보 제목 생성 (카테고리 기반)
+  function tlTitle(p,idx){
+    if(idx===0){
+      const cats=[];
+      if(r.location)cats.push('위치·기상');
+      if(r.vName||r.severity)cats.push('환자·부상');
+      if((r.members||[]).length)cats.push('출동대원');
+      return '1보'+(cats.length?' — '+cats.join(' · '):'');
+    }
+    const cats=[];
+    if(p.update)cats.push('상황보고');
+    if(p.victimChange&&p.victimChange!=='변화없음')cats.push('부상자 '+p.victimChange);
+    if(p.addMem)cats.push('대원추가');
+    return `${idx+1}보`+(cats.length?' — '+cats.join(' · '):'');
+  }
+
   // 댓글 렌더링
   function renderComments(resId){
     const cmts=(DB.g('comments_'+resId)||[]);
@@ -1795,7 +1839,7 @@ function renderTimeline(r,viewMode){
         <div class="tl-dot ${i<all.length-1?'done':r.status==='ongoing'?'active':'done'}"></div>
         <div class="tl-time">${i===0?r.date:p.repTime||'-'} · ${i===0?r.author||'-':p.author||'-'}</div>
         <div class="tl-box">
-          <div class="tl-title">${i+1}보 ${i===0?'— 초기 접수':'— 상황 업데이트'}</div>
+          <div class="tl-title">${tlTitle(p,i)}</div>
           ${renderPhaseContent(p,i,_tlViewMode)}
         </div>
       </div>`).join('')}
@@ -1874,6 +1918,7 @@ function submitNBo(){
     victimChange:document.getElementById('r_vChg').value,
     addMem:document.getElementById('r_addMem').value,
     author:document.getElementById('r_repAuthor').value,
+    extra:document.getElementById('r_repExtra')?.value||'',
   });
   DB.s('rescues',res);
   const phNum=res[idx].reports.length;
@@ -2268,6 +2313,9 @@ function chkHazType(txt){
   if(isFire){
     const el=document.getElementById('hazFireTLTime');
     if(el)el.value=new Date().toISOString().slice(0,16);
+    const stages=['최초 발화 확인','소방 신고','소방 도착','진화 시작','진화 완료','재발화','완전 진화'];
+    const qp=document.getElementById('hazFireQuickPills');
+    if(qp)qp.innerHTML=stages.map(s=>`<div class="pill" onclick="addHazFireTL('${s}')" style="font-size:10px;">${s}</div>`).join('');
   }
 }
 function addHazFireTL(stage){
@@ -3642,9 +3690,9 @@ window.onload=function(){
     window._hideLoading=function(){
       clearInterval(tipTimer);clearInterval(barTimer);
       if(barEl)barEl.style.width='100%';
-      // 로그인 체크는 로딩화면 제거와 무관하게 항상 실행
+      // 로그인 체크 — 세션(탭)마다 다시 로그인 필요
       function checkAuth(){
-        if(!DB.g('authType')){
+        if(!DB.g('authType')||!sessionStorage.getItem('_sess')){
           showLoginScreen();
         } else {
           applyAuthState();
