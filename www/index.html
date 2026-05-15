@@ -1851,6 +1851,16 @@ function selAgencySubType(el,type){
   document.querySelectorAll('#agSubTypePills .pill').forEach(p=>p.classList.remove('on'));
   el.classList.add('on');
   _agSubType=type;
+  if(type==='항공대'){
+    _agSubLoc='양양';
+    document.querySelectorAll('#agSubLocPills .pill').forEach(p=>{
+      p.classList.toggle('on',p.textContent==='양양');
+      p.style.opacity=p.textContent==='양양'?'1':'0.3';
+      p.style.pointerEvents=p.textContent==='양양'?'':'none';
+    });
+  } else {
+    document.querySelectorAll('#agSubLocPills .pill').forEach(p=>{p.style.opacity='1';p.style.pointerEvents='';});
+  }
   _updateAgencyNameAuto();
 }
 function _updateAgencyNameAuto(){
