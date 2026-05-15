@@ -4224,7 +4224,7 @@ function selectTTInline(stage, pillEl){
     const extraTeamNames=(_extraTeams||[]).filter(t=>t.members&&t.members.length>0).map(t=>t.teamName||'추가팀');
     const hwChecked=document.getElementById('agHwChk')?.classList.contains('on');
     const agencyNames=(_fireAgencies||[]).filter(a=>a.name).map(a=>a.name);
-    const allActors=[...mainDepts,...extraTeamNames,...(hwChecked?['환동해특수대응단']:[]),...agencyNames,'요구조자','기타'];
+    const allActors=['요구조자',...mainDepts,...extraTeamNames,...(hwChecked?['환동해특수대응단']:[]),...agencyNames,'기타'];
     actorPillsEl.innerHTML=allActors.map(a=>`<div class="pill tt-actor-pill" onclick="selTTActor(this,'${a}')" style="cursor:pointer;font-size:11px;">${a}</div>`).join('');
     const autoActor=stage==='요구조자 조우'||stage==='처치중'||stage==='처치완료'?'요구조자':
       stage==='헬기이륙/출발'||stage==='헬기구조완료'?'환동해특수대응단':null;
