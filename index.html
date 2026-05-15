@@ -227,28 +227,61 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 /* ─── 부드러운 트랜지션 (Toss-style) ─── */
 .modal .mbox{transform:translateY(20px);opacity:0;transition:transform .3s cubic-bezier(.22,1,.36,1),opacity .25s ease;will-change:transform,opacity;}
 .modal.on .mbox{transform:translateY(0);opacity:1;}
-.lcard{transition:transform .15s ease,background .15s ease;}
-.lcard:active{transform:scale(.985);}
-.btn{transition:transform .12s ease,opacity .12s ease;}
-.btn:active{transform:scale(.96);opacity:.85;}
-.btn-submit{transition:transform .12s ease,opacity .12s ease;}
-.btn-submit:active{transform:scale(.98);opacity:.85;}
-.mbtn{transition:transform .18s cubic-bezier(.22,1,.36,1),box-shadow .18s ease;}
-.mbtn:active{transform:scale(.94);}
-.mbtn-sm{transition:transform .15s cubic-bezier(.22,1,.36,1);}
-.mbtn-sm:active{transform:scale(.96);}
+:root{--sp:cubic-bezier(.22,1,.36,1);--qt:cubic-bezier(.4,0,.2,1);}
+/* ── 공통 상호작용 ── */
+.pill,.chk-item,.navi,.mbtn,.mbtn-sm,.lcard,.hstat,.sm-btn,.btn,.btn-submit,
+.fab,.fab-gps,.fab2,.map-ctrl,.dbclose,.mclose{user-select:none;}
+/* ── 리스트 카드 ── */
+.lcard{transition:transform .12s var(--qt),background .12s ease;}
+.lcard:active{transform:scale(.982);background:#0d1f32;}
+/* ── 일반 버튼 ── */
+.btn{transition:transform .1s var(--qt),opacity .1s ease;}
+.btn:active{transform:scale(.94);opacity:.8;}
+/* ── 제출 버튼 (더 탱탱하게) ── */
+.btn-submit{transition:transform .1s var(--qt),opacity .1s ease;}
+.btn-submit:active{transform:scale(.95);opacity:.82;}
+/* ── 홈 메뉴 버튼 ── */
+.mbtn{transition:transform .14s var(--sp);}
+.mbtn:active{transform:scale(.93);}
+.mbtn-sm{transition:transform .12s var(--sp);}
+.mbtn-sm:active{transform:scale(.95);}
+/* ── 인풋 포커스 ── */
 .fi:focus,.fsel:focus,.fta:focus{border-color:rgba(79,168,208,.5);box-shadow:0 0 0 3px rgba(79,168,208,.1);transition:border-color .2s ease,box-shadow .2s ease;}
-.pill{transition:background .18s ease,color .18s ease,border-color .18s ease,transform .12s ease;}
-.pill:active{transform:scale(.94);}
-.hstat{transition:transform .15s ease;}
-.hstat:active{transform:scale(.97);}
+/* ── pill (태그) ── */
+.pill{transition:background .14s ease,color .14s ease,border-color .14s ease,transform .1s var(--qt);}
+.pill:active{transform:scale(.91);}
+.pill.on{background:rgba(79,168,208,.15);color:#4fa8d0;border-color:rgba(79,168,208,.4);}
+/* ── 체크박스 / 체크아이템 ── */
+.chk-item{transition:transform .1s var(--qt),background .14s ease,border-color .14s ease;}
+.chk-item:active{transform:scale(.94);}
+.chk-box{transition:background .14s ease,border-color .14s ease,transform .12s var(--sp);}
+.chk-item:active .chk-box{transform:scale(.88);}
+.chk-box.on{transform:scale(1.08);}/* 선택 시 살짝 튀어오름 */
+/* ── 하단 네비 ── */
+.navi{transition:transform .1s var(--qt),opacity .12s ease;}
+.navi:active{transform:scale(.84);opacity:.65;}
+/* ── FAB / 지도 컨트롤 ── */
+.fab{transition:transform .12s var(--sp),box-shadow .12s ease;}
+.fab:active{transform:scale(.86);}
+.fab-gps{transition:transform .12s var(--sp);}
+.fab-gps:active{transform:scale(.86);}
+.fab2{transition:transform .12s var(--sp);}
+.fab2:active{transform:scale(.92);}
+.map-ctrl{transition:transform .1s var(--qt),opacity .1s ease;}
+.map-ctrl:active{transform:scale(.9);opacity:.75;}
+/* ── 통계 카드 ── */
+.hstat{transition:transform .1s var(--qt);}
+.hstat:active{transform:scale(.96);}
 .scard{transition:box-shadow .2s ease;}
-.dbcard{transition:bottom .3s cubic-bezier(.22,1,.36,1);}
-.type-row{transition:background .15s ease;}
-.sm-btn{transition:background .15s ease,transform .12s ease;}
-.sm-btn:active{transform:scale(.94);}
-.view.on{animation:viewFadeIn .22s ease both;}
-@keyframes viewFadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+/* ── DB 팝업 / 기타 ── */
+.dbcard{transition:bottom .3s var(--sp);}
+.type-row{transition:background .12s ease;}
+.type-row:active{background:rgba(79,168,208,.07);}
+.sm-btn{transition:background .12s ease,transform .1s var(--qt);}
+.sm-btn:active{transform:scale(.92);}
+/* ── 뷰 전환 ── */
+.view.on{animation:viewFadeIn .2s var(--qt) both;}
+@keyframes viewFadeIn{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
 
 /* ─── 위키 ─── */
 .wiki-search{background:#0b1c30;border:1px solid rgba(79,168,208,.22);color:#e0edf8;padding:10px 13px;border-radius:9px;width:100%;font-size:13px;outline:none;}
@@ -334,8 +367,8 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 
 /* ─── 하단 네비 ─── */
 .bnav{position:absolute;bottom:0;width:100%;background:#040a16;display:none;border-top:.5px solid rgba(255,255,255,.07);padding-bottom:env(safe-area-inset-bottom);z-index:20;height:auto;}
-.navi{flex:1;padding:8px 3px 6px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;}
-.navi:active{opacity:.6;}
+.navi{flex:1;padding:8px 3px 6px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;transition:transform .1s var(--qt),opacity .12s ease;}
+.navi:active{transform:scale(.84);opacity:.65;}
 .navi-ico{font-size:18px;color:rgba(255,255,255,.2);}
 .navi.on .navi-ico{color:#4fa8d0;}
 .navi-lbl{font-size:9px;color:rgba(255,255,255,.2);}
