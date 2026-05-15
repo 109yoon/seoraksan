@@ -447,6 +447,37 @@ body.guest-mode .guest-hide{display:none!important;}
   <button class="ls-btn ls-dev" onclick="devLogin()" style="margin-top:8px;background:#1a2a1a;color:#7ec8a0;border:1px solid #2a4a2a;font-size:12px;padding:10px;">
     🛠 개발자 모드
   </button>
+  <div style="margin-top:20px;text-align:center;">
+    <div onclick="openChangelog()" style="cursor:pointer;display:inline-block;padding:6px 14px;background:rgba(79,168,208,.07);border:1px solid rgba(79,168,208,.15);border-radius:20px;">
+      <span style="font-size:11px;color:#4fa8d0;font-weight:700;">v1.2</span>
+      <span style="font-size:10px;color:#4a7090;margin-left:6px;">2026.05.15</span>
+      <span style="font-size:10px;color:#4a7090;margin-left:4px;">· 변경이력 ▾</span>
+    </div>
+    <div style="font-size:10px;color:#2a3a4a;margin-top:6px;">개발: 윤태종 · 설악산국립공원</div>
+  </div>
+</div>
+
+<!-- 변경이력 모달 -->
+<div id="changelogModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;" onclick="if(event.target===this)closeChangelog()">
+  <div style="background:#0b1c30;border-radius:16px;padding:20px;max-width:320px;width:90%;max-height:70vh;overflow-y:auto;border:1px solid rgba(79,168,208,.2);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <span style="font-size:14px;font-weight:700;color:#e0edf8;">📋 변경이력</span>
+      <button onclick="closeChangelog()" style="background:none;border:none;color:#4a7090;font-size:18px;cursor:pointer;">×</button>
+    </div>
+    ${[
+      {ver:'v1.2',date:'2026.05.15',items:['공단 초동 출동팀 자동체크 (본인 이름)','추가팀 복수 지원 (추가1팀·2팀·3팀)','소방 유관기관 동적 추가 기능','타임라인 누가 항목 자동선택','환동해산악구조대 당직팀 자동계산','직원 선택 로그인으로 전환']},
+      {ver:'v1.1',date:'2026.05.10',items:['구조 타임라인 카테고리 정리','유관기관 출동 섹션 추가','APK 빌드 자동화 (GitHub Actions)','무한 로그인 버그 수정']},
+      {ver:'v1.0',date:'2026.05.01',items:['설악산 현장관리 앱 최초 출시','재난/구조 접수 및 보고 기능','시설물 점검 관리','설악위키 기능','카카오 지도 연동']},
+    ].map(v=>`
+      <div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,.06);">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+          <span style="background:#1a4a6e;color:#4fa8d0;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;">${v.ver}</span>
+          <span style="font-size:10px;color:#4a7090;">${v.date}</span>
+        </div>
+        ${v.items.map(i=>`<div style="font-size:11px;color:#b8d4e8;padding:2px 0;">· ${i}</div>`).join('')}
+      </div>`).join('')}
+    <div style="font-size:10px;color:#2a3a4a;text-align:center;margin-top:4px;">개발: 윤태종 · 설악산국립공원</div>
+  </div>
 </div>
 
 <div id="app">
@@ -455,7 +486,10 @@ body.guest-mode .guest-hide{display:none!important;}
   <div class="ahdr-row">
     <div class="ahdr-title"><button class="back-btn" onclick="goHome()">← 홈</button><img src="data:image/png;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/4gHYSUNDX1BST0ZJTEUAAQEAAAHIAAAAAAQwAABtbnRyUkdCIFhZWiAH4AABAAEAAAAAAABhY3NwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAA9tYAAQAAAADTLQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAlkZXNjAAAA8AAAACRyWFlaAAABFAAAABRnWFlaAAABKAAAABRiWFlaAAABPAAAABR3dHB0AAABUAAAABRyVFJDAAABZAAAAChnVFJDAAABZAAAAChiVFJDAAABZAAAAChjcHJ0AAABjAAAADxtbHVjAAAAAAAAAAEAAAAMZW5VUwAAAAgAAAAcAHMAUgBHAEJYWVogAAAAAAAAb6IAADj1AAADkFhZWiAAAAAAAABimQAAt4UAABjaWFlaIAAAAAAAACSgAAAPhAAAts9YWVogAAAAAAAA9tYAAQAAAADTLXBhcmEAAAAAAAQAAAACZmYAAPKnAAANWQAAE9AAAApbAAAAAAAAAABtbHVjAAAAAAAAAAEAAAAMZW5VUwAAACAAAAAcAEcAbwBvAGcAbABlACAASQBuAGMALgAgADIAMAAxADb/2wBDAAUDBAQEAwUEBAQFBQUGBwwIBwcHBw8LCwkMEQ8SEhEPERETFhwXExQaFRERGCEYGh0dHx8fExciJCIeJBweHx7/2wBDAQUFBQcGBw4ICA4eFBEUHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh7/wAARCABPAI8DASIAAhEBAxEB/8QAHQABAAEFAQEBAAAAAAAAAAAAAAYCBAUHCAMBCf/EAEQQAAECBQEDBA4IBAcAAAAAAAECAwAEBQYRIQcxQRJRYXEIExUWIiNCUlWRoaTR0hQyVGKBk7HBJDNDolNyc3SywvD/xAAbAQACAwEBAQAAAAAAAAAAAAAABQMEBgIBB//EADURAAEDAgIGBgoDAQAAAAAAAAEAAgMEEQUhEjFRcaHRBhYiQWHSEzNTgZGSscHh8EJDUrL/2gAMAwEAAhEDEQA/AOMoQhAhIQhAhIqbQtxxLbaFLWshKUpGSSdwAimOquxf2Mqp4l73u2TKZw4XTZJ1P8kcHlg7l+aPJ378YgqJ2wM0nLl7w0XKyux7YRT5PZpUpa65Yd2K9Lch3TKpJGQpCU/fCglR6UgcNeW73tmq2fc85b9YZLczKrxygPBdR5K0nikjUfGP0fjWXZAbM6Zf1sLmFOMyVYp7alys6vRPJGpbXjyDz68k6jiCopa9zZSZNR4KsyaxJdqXCUI6QmNidPm9ksrK01bDlwtAzX0oHR5wgcpkk+SMADOMEZ0yqOdZyWmJObdlJthxiYZWUONuJKVIUDggg7jDeGoZNfR7lJBUxzglhXjCEInU6QhCBCQhCBCQhCBCQhCBCRU2hbjiW20KWtZCUpSMkk7gBGbsq0bhvKrpplu0x6dfOOWpIw20nzlqOiR1/hkx1/sS2H0SxEtVaqlqq3DjIfKfFSx5mgeP3zrzcnJBq1NWyAZ69ijfIGKGdjtsH7nrlbtveVBnBhySprgyGuIcdHncyeG866DpGEecw8zLsLffdQ00gZUtasBI5yTGdnnfM7Scqb3k5lVkgDJOAI1LtKuxNVdNKpzpMi2rxriTo8oc3Oke068AYqvy91VRC6bSVLbkjo66RhTw5hzJ9p441EQaBjLZlYrG8bEoNPAcu87fAeH1WVt6sv0mY4uSyz4xv9x0/r6sYnbBsyp9+SJuK21NNVlKPDGgTNYH1V+ascFHoB0wR9i9o9TmaXNdul1ZB0Wg/VWOn4xOxzo3abNaXYVi8lE4Ans/T8LlGelJqQnHZOdl3ZaZZUUONOpKVIUN4IO6PCOtr/sa3tp1MM4wpNPrrSMIfxrpuS4PKRzK3j1pjmK7rZrVqVddMrcmuXeGqFb0Op85CtxH/jDumqmzC2o7F9Ko66KqYHMKw0IQi0riQhCBCQhCBCk1sWLctxKR9Akm2mla9um5huXbxzguEZHVmN12B2P1rMrbm72valzJGpkqfNoSg9CnVHlEdACeuOfZGckGgEzdJamAN6g84hR9uPZGekHbLmMJdk3JZZ4OOLx6wr9cRM3D31OTZ2t33HG1lSqKh8f8HEeAB+913PbjljW5S26ZQpuh0+Tb3NMzDaQTzk5yo9JyTGRcuW3W0Fa6/S0pSMkmbb09scRy9u23MN9sl5dt1HnImFkexUe6LZoCTrTEL63nP2VHfUapf2vStPx5JQ/FoBfJ19w5rqyt7V7VlEqRT51mfe4cl0IbBzxJ19QPXGuLjvZyvOAz1WlA0k5Qw26lLaTz4zqek5OpjULdu2uD4yhpI+7NOj/tFw3bdlKHh0ZxB/3DhH/KJG9Bqgf2N48kir6kVQ0XveG7A1tv+7lT/ulTvt8r+cn4w7pU77fK/nJ+MQpq0bIcOEyKM9My6P1VFymw7SUARSwQeImXfmiTqPU+0bx5JI6Chbrc/wCUeZSzulTvt8r+cn4w7pU77fK/nJ+MRPvCtP0V7w780O8K0/RXvDvzQdRqr2jePJeejw//AG/5W+ZTCWrMpLPpfYqcu24g5SpLycj2xn5yo2fe9JNEuhUg4o5La+3JGDj6yVZyhXsP44jWHeFafor3h35od4Vp+iveHfmg6jVV7iRt/fyVyjqqWkdpMkfu0R5lDNp+zh21HVzlLqkpV6QVeC408gutcwWgH+4ac+M4iARvLvCtP0V7w780O8K0/RXvDvzQwj6LVrW2c9p+PJaVnSykaLODj7h5lo2Eby7wrT9Fe8O/NGYp2x+kTkmqfVRESdPQApydnJxxhhCT5XKUsZHVmPJOjlRGNJ72gbzyU0fSmlkOixjydw5rnWEbfr7WxKhFTX8bcc2lJBbpjjjTCVf67h1HSlB64g9cuG3JohFJsKlU5oblLnpt909ai6E+pAhPNA2I2Dw7df7gJ5T1LphcxubvtzKjEIQiurS9Jd96XcDjDzjSx5SFEH2Rnadd1UlsJfKJpA4LGFesfvmI9CLEFXNTm8TiFBNTRTC0jQVsWm3fS5nCZjlyiz5+qfWP3xGfZdaebDjLiHEHcpKgQfxjTcXElOzck52yUmHGVceSdD1jjD6m6SStymbfxGR5fRJqjAY3ZxOtvzH78Vt+K2nXWjltxSD0HEQSlXq8jCKiwHR/iN6K/Ebj7IllNqcjUW+XKTCHMb07lDrG+NHSYlTVXq3Z7Dkf3ckNVh89P6xuW3uWbYq023gKUlwfeEXzFZYVo82ps841EYKEMASErfSxP7lLWX2XhlpxK+o6x6RDkqKTlJII4gxkJWrTLWA541PTv9cdB+1VJKFwzYbqQxn7TtKsXI7mTZ7XLJOFzLuiB0Dzj0DoziPmxg2Zd9Ydl5uuyqpllXJTTe2FDjxGpIJxykj7hJ58ccf2Re3FFLS7ZFgTDbK2gWZ2fl8AMjGC0yRuI4qG7cNdQkxDG44GkRG52phh2AzVDx6UWGxX1/3vYGyrlyFPZbum6kDBDhBYlV6arxoCCM8kZVzlMc53/f8Add9T/wBKuOrOzCArLUsjwGGv8qBoOs5J4kxGFKUpRUolSickk6kx8jFVVbNUuvIVv6PDoKNto2pCEIqK8kIQgQkIQgQkIQgQkVNuLacS42tSFpOQpJwR+MUwgBsg5qV0S8ZhkhqpJL7e7tiRhY6+BiayM3LTsuH5V5LrZ4jh0HmjT8XlKqU3TJkPyrhSfKSdUqHMRGgw/HpYSGTdpvEc0krcGjlBdF2XcPwttxC71uE8pdMkV4xo84k/2j9/VFxVbpbXbyX5QKbmXyW8H+mQByjnjvGOuIISScnUxdxrGAWCKA6xmfA93NVMJws6RlmGrUPHaqm1racS42tSFoIUlSTggjcQY+EknJ1MfIRklpkhCECEhCECF//Z" style="width:18px;height:18px;object-fit:contain;mix-blend-mode:screen;filter:brightness(1.2);vertical-align:middle;" alt=""><span id="topTitle"></span><span id="guestBadge">게스트</span></div>
     <div style="display:flex;align-items:center;gap:6px;">
-      <button id="logoutBtn" onclick="doLogout()" style="display:none;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#7a9cb8;font-size:10px;padding:3px 8px;border-radius:6px;cursor:pointer;">로그아웃</button>
+      <div id="headerUserArea" style="display:none;align-items:center;gap:5px;">
+        <span id="headerUserName" style="font-size:11px;color:#4fa8d0;font-weight:600;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+        <button onclick="doLogout()" style="background:none;border:none;color:#2a4a6a;font-size:10px;cursor:pointer;padding:2px 4px;" title="로그아웃">⏏</button>
+      </div>
       <div class="bell-wrap"><button class="bell-btn" onclick="openNoti()">🔔</button><div class="bell-cnt" id="bellCnt"></div></div>
     </div>
   </div>
@@ -1442,7 +1476,8 @@ function doLogout(){
     try{Kakao.Auth.logout(()=>{});}catch(e){}
   }
   document.body.classList.remove('guest-mode');
-  document.getElementById('logoutBtn').style.display='none';
+  const _ua=document.getElementById('headerUserArea');
+  if(_ua) _ua.style.display='none';
   showLoginScreen();
 }
 function applyAuthState(){
@@ -1457,8 +1492,13 @@ function applyAuthState(){
   } else {
     document.body.classList.remove('dev-mode');
   }
-  const lb=document.getElementById('logoutBtn');
-  if(lb) lb.style.display=type?'block':'none';
+  const ua=document.getElementById('headerUserArea');
+  const un=document.getElementById('headerUserName');
+  if(ua) ua.style.display=type?'flex':'none';
+  if(un){
+    const u=DB.g('currentUser')||{};
+    un.textContent=u.name||(type==='dev'?'개발자':type==='guest'?'게스트':'');
+  }
   updateUserUI();
 }
 function openKakaoLogin(){ kakaoLogin(); }
@@ -1484,6 +1524,92 @@ function getAddTeamMembers(){
   }).filter(Boolean);
 }
 
+// 변경이력 모달
+function openChangelog(){
+  const m=document.getElementById('changelogModal');
+  if(m){m.style.display='flex';}
+}
+function closeChangelog(){
+  const m=document.getElementById('changelogModal');
+  if(m){m.style.display='none';}
+}
+
+// 추가팀 복수 지원
+let _extraTeams=[]; // [{teamName, members:[]}]
+function initExtraTeams(prefill){
+  _extraTeams=(prefill&&prefill.extraTeams)?prefill.extraTeams.map(t=>({...t})):[];
+  renderExtraTeams();
+}
+function addExtraTeam(){
+  const teamNum=_extraTeams.length+1;
+  _extraTeams.push({teamName:`추가${teamNum}팀`,members:[]});
+  renderExtraTeams();
+}
+function removeExtraTeam(idx){
+  _extraTeams.splice(idx,1);
+  renderExtraTeams();
+}
+function renderExtraTeams(){
+  const wrap=document.getElementById('extraTeamsWrap');
+  if(!wrap) return;
+  const staff=sortStaff(getStaff());
+  wrap.innerHTML=_extraTeams.map((t,ti)=>`
+    <div style="margin-bottom:8px;padding:10px;background:#060d1a;border-radius:8px;border:1px solid rgba(126,200,163,.2);">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
+        <input type="text" value="${t.teamName}" oninput="_extraTeams[${ti}].teamName=this.value"
+          style="flex:1;background:transparent;border:none;border-bottom:1px solid rgba(126,200,163,.3);color:#7ec8a0;font-size:12px;font-weight:700;outline:none;padding:2px 0;">
+        <button onclick="removeExtraTeam(${ti})" style="background:rgba(192,57,43,.1);border:none;color:#c0392b;font-size:11px;padding:3px 8px;border-radius:5px;cursor:pointer;">삭제</button>
+      </div>
+      <div class="chk-grid">
+        ${staff.map(s=>`
+          <div class="chk-item${t.members.includes(s.name)?' on':''}"
+            onclick="toggleExtraTeamMember(${ti},'${s.name}',this)">
+            <div class="chk-box${t.members.includes(s.name)?' on':''}"></div>
+            <span class="chk-txt">${s.name}<span style="font-size:9px;color:#4a7090;margin-left:3px;">${s.rank}</span></span>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+function toggleExtraTeamMember(teamIdx,name,el){
+  el.classList.toggle('on');
+  el.querySelector('.chk-box').classList.toggle('on',el.classList.contains('on'));
+  const t=_extraTeams[teamIdx];
+  if(!t) return;
+  if(el.classList.contains('on')){
+    if(!t.members.includes(name)) t.members.push(name);
+  } else {
+    t.members=t.members.filter(n=>n!==name);
+  }
+}
+function getExtraTeams(){ return _extraTeams.filter(t=>t.members.length>0); }
+
+// 소방 유관기관 동적
+let _fireAgencies=[]; // [{name}]
+function initFireAgencies(prefill){
+  _fireAgencies=(prefill&&prefill.agencies&&prefill.agencies.fireAgencies)?[...prefill.agencies.fireAgencies]:[];
+  renderFireAgencies();
+}
+function addFireAgency(name){
+  const n=name==='기타소방'?prompt('소방 기관명 입력:')||'':name;
+  if(!n) return;
+  if(_fireAgencies.find(a=>a.name===n)) return;
+  _fireAgencies.push({name:n});
+  renderFireAgencies();
+}
+function removeFireAgency(idx){
+  _fireAgencies.splice(idx,1);
+  renderFireAgencies();
+}
+function renderFireAgencies(){
+  const el=document.getElementById('fireAgencyList');
+  if(!el) return;
+  el.innerHTML=_fireAgencies.map((a,i)=>`
+    <div style="display:flex;align-items:center;gap:6px;padding:5px 8px;background:#060d1a;border-radius:6px;margin-bottom:4px;border:1px solid rgba(79,168,208,.1);">
+      <span style="font-size:12px;flex:1;color:#e0edf8;">🚒 ${a.name}</span>
+      <button onclick="removeFireAgency(${i})" style="background:none;border:none;color:#c0392b;font-size:13px;cursor:pointer;">×</button>
+    </div>`).join('');
+}
+
 // 환동해산악구조대 당직팀 계산 (기준: 2026-05-15 = 2팀, 9시~익일9시)
 function getHwandonghaTeam(){
   const now=new Date();
@@ -1500,7 +1626,7 @@ function getAgencies(){
   return {
     hwandongha: document.getElementById('agHwChk')?.classList.contains('on')||false,
     hwTeam: parseInt(document.getElementById('hwTeamSel')?.value||'1'),
-    fireOther: document.getElementById('r_fire_other')?.value||'',
+    fireAgencies: _fireAgencies,
     police: document.getElementById('agPoliceChk')?.classList.contains('on')||false,
     forestry: document.getElementById('agForestChk')?.classList.contains('on')||false,
     agenciesNote: document.getElementById('r_agencies_note')?.value||'',
@@ -1801,7 +1927,8 @@ function submitNBoFromForm(){
     situation: document.getElementById('r_sit')?.value||'',
     alcohol: document.getElementById('r_alc')?.value||res[idx].alcohol,
     rescueMethod: getSelPills('rescMeth'),
-    members, addTeam,
+    members,
+    extraTeams: getExtraTeams(),
     agencies: getAgencies(),
     r119: document.getElementById('r_119')?.value||res[idx].r119||'',
     equipment: document.getElementById('r_equip')?.value||res[idx].equipment||'',
@@ -1997,13 +2124,14 @@ function renderTimeline(r,viewMode){
       <div style="font-size:11px;color:#b8d4e8;margin-bottom:4px;">
         <span style="color:#4a7090;font-weight:600;">초동팀:</span> ${(r.members||[]).join(', ')||'미기재'}
       </div>
-      ${(r.addTeam&&r.addTeam.length)?`<div style="font-size:11px;color:#b8d4e8;margin-bottom:4px;">
-        <span style="color:#7ec8a0;font-weight:600;">추가팀:</span> ${r.addTeam.join(', ')}
-      </div>`:''}
+      ${(r.extraTeams&&r.extraTeams.length)?r.extraTeams.map(t=>`
+        <div style="font-size:11px;color:#b8d4e8;margin-bottom:3px;">
+          <span style="color:#7ec8a0;font-weight:600;">${t.teamName}:</span> ${t.members.join(', ')}
+        </div>`).join(''):''}
       ${(r.agencies)?(()=>{
         const ag=r.agencies; const parts=[];
         if(ag.hwandongha) parts.push(`🚒 환동해 ${ag.hwTeam||'?'}팀`);
-        if(ag.fireOther) parts.push(`🚒 ${ag.fireOther}`);
+        if(ag.fireAgencies&&ag.fireAgencies.length) ag.fireAgencies.forEach(a=>parts.push(`🚒 ${a.name}`));
         if(ag.police) parts.push('🚔 경찰');
         if(ag.forestry) parts.push('🌲 산림청');
         if(ag.other) parts.push(ag.other);
@@ -2132,7 +2260,7 @@ function render1BoForm(prefill=null){
         <div id="ttInputArea" style="display:none;margin-top:10px;background:#060d1a;border-radius:9px;padding:10px;border:1px solid rgba(79,168,208,.2);">
           <div style="font-size:11px;color:#4fa8d0;font-weight:700;margin-bottom:8px;" id="ttInputLabel"></div>
           <!-- 누가 -->
-          <div class="fg">
+          <div class="fg" id="ttActorWrap">
             <span class="fl">누가</span>
             <div style="display:flex;flex-wrap:wrap;gap:4px;" id="ttActorPills">
               ${['초동팀','환자(요구조자)','추가팀','환동해','기타'].map(a=>`<div class="pill" onclick="selTTActor(this,'${a}')" style="cursor:pointer;font-size:11px;">${a}</div>`).join('')}
@@ -2330,20 +2458,9 @@ function render1BoForm(prefill=null){
               </div>`).join('');
           })()}
         </div>
-        <!-- 추가팀 -->
-        <button onclick="toggleAddTeam()" id="addTeamBtn" style="width:100%;margin-top:10px;padding:8px;background:rgba(126,200,163,.08);border:1px dashed rgba(126,200,163,.3);color:#7ec8a0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">＋ 추가팀 출동</button>
-        <div id="addTeamWrap" style="display:none;margin-top:8px;padding:10px;background:#060d1a;border-radius:8px;border:1px solid rgba(126,200,163,.2);">
-          <div style="font-size:10px;color:#7ec8a0;font-weight:700;margin-bottom:8px;">➕ 추가팀 (초동팀과 별도 저장)</div>
-          <div id="addTeamGrid" class="chk-grid">
-            ${ms.map(s=>{
-              const checked=(p.addTeam||[]).includes(s.name);
-              return `<div class="chk-item${checked?' on':''}" onclick="tChkAt(this)">
-                <div class="chk-box${checked?' on':''}"></div>
-                <span class="chk-txt">${s.name}<span style="font-size:9px;color:#4a7090;margin-left:3px;">${s.rank}</span></span>
-              </div>`;
-            }).join('')}
-          </div>
-        </div>
+        <!-- 추가팀 (복수) -->
+        <div id="extraTeamsWrap" style="margin-top:8px;"></div>
+        <button onclick="addExtraTeam()" style="width:100%;margin-top:8px;padding:8px;background:rgba(126,200,163,.08);border:1px dashed rgba(126,200,163,.3);color:#7ec8a0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">＋ 추가팀 추가</button>
       </div>
 
       <!-- 유관기관 (압축) -->
@@ -2360,6 +2477,14 @@ function render1BoForm(prefill=null){
             ${[1,2,3].map(t=>`<option value="${t}"${((p.agencies||{}).hwTeam||hdTeam)===t?' selected':''}>${t}팀</option>`).join('')}
           </select>
         </div>
+
+        <!-- 소방 동적 목록 -->
+        <div id="fireAgencyList" style="margin-bottom:6px;"></div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px;" id="firePresets">
+          ${['양양항공대','양양구조','양양구급','속초구조','속초구급','기타소방'].map(n=>`
+            <div class="pill" onclick="addFireAgency('${n}')" style="font-size:11px;cursor:pointer;">＋${n}</div>`).join('')}
+        </div>
+
         <!-- 경찰 / 산림청 -->
         <div class="chk-grid" style="margin-bottom:6px;">
           <div class="chk-item${(p.agencies||{}).police?' on':''}" onclick="tChk(this)" id="agPoliceChk">
@@ -2371,8 +2496,6 @@ function render1BoForm(prefill=null){
             <span class="chk-txt">🌲 산림청</span>
           </div>
         </div>
-        <!-- 수기 입력 -->
-        <input type="text" id="r_fire_other" class="fi" placeholder="기타 소방서" value="${(p.agencies||{}).fireOther||''}" style="margin-bottom:5px;">
         <input type="text" id="r_agencies_note" class="fi" placeholder="경찰·산림청·기타 메모 (선택)" value="${(p.agencies||{}).agenciesNote||''}" style="margin-bottom:5px;">
         <input type="text" id="r_agency_other" class="fi" placeholder="기타 유관기관" value="${(p.agencies||{}).other||''}">
       </div>
@@ -2413,6 +2536,8 @@ function render1BoForm(prefill=null){
 
   initTTInline(p.timetable||[],p.members||[],ms);
   initExtraDispatch(p);
+  initExtraTeams(p);
+  initFireAgencies(p);
 }
 
 function switchRepTab(idx,el){
@@ -2477,7 +2602,8 @@ function submit1Bo(){
     alcohol:document.getElementById('r_alc')?.value||'알수없음',
     situation:document.getElementById('r_sit')?.value||'',
     rescueMethod:getSelPills('rescMeth'),
-    members, extraMembers, addTeam,
+    members, extraMembers,
+    extraTeams:getExtraTeams(),
     agencies:getAgencies(),
     r119:document.getElementById('r_119')?.value||'',
     equipment:document.getElementById('r_equip')?.value||'',
@@ -3730,7 +3856,12 @@ function confirmTTInline(){
     const recv=document.getElementById('r_recv')?.value||'';
     if(recv) finalNote=(recv+(note?' · '+note:''));
   }
-  const actor = document.querySelector('#ttActorPills .pill.on')?.textContent||'';
+  let actor='';
+  if(_ttInlineSelectedStage==='상황전파'){
+    actor=(DB.g('currentUser')||{}).name||getAuthor()||'';
+  } else {
+    actor=document.querySelector('#ttActorPills .pill.on')?.textContent||'';
+  }
   if(_editTTIdx >= 0){
     _ttInlineEntries[_editTTIdx] = {stage: finalStage, time, note: finalNote, actor};
     _editTTIdx = -1;
@@ -3748,6 +3879,14 @@ function confirmTTInline(){
 function selectTTInline(stage){
   _editTTIdx = -1;
   _ttInlineSelectedStage = stage;
+  // 추가팀 목록으로 actor pills 갱신
+  const actorPillsEl=document.getElementById('ttActorPills');
+  if(actorPillsEl){
+    const baseActors=['초동팀','환자(요구조자)','환동해'];
+    const extraActors=(_extraTeams||[]).map(t=>t.teamName);
+    const allActors=[...baseActors,...extraActors,'기타'];
+    actorPillsEl.innerHTML=allActors.map(a=>`<div class="pill" onclick="selTTActor(this,'${a}')" style="cursor:pointer;font-size:11px;">${a}</div>`).join('');
+  }
   const area  = document.getElementById('ttInputArea');
   const label = document.getElementById('ttInputLabel');
   const timeIn= document.getElementById('ttTimeIn');
@@ -3759,12 +3898,17 @@ function selectTTInline(stage){
   // 접수경로 표시 (상황전파일 때만)
   const rw=document.getElementById('ttRecvWrap');
   if(rw) rw.style.display=stage==='상황전파'?'':'none';
-  // actor 초기화 후 단계별 기본값 설정
+  // 상황전파는 누가 항목 숨기고 작성자 이름 자동입력
+  const actorWrap=document.getElementById('ttActorWrap');
+  if(actorWrap) actorWrap.style.display=stage==='상황전파'?'none':'';
   document.querySelectorAll('#ttActorPills .pill').forEach(p=>p.classList.remove('on'));
-  const autoActor = stage==='요구조자 조우'||stage==='처치중'||stage==='처치완료'?'환자(요구조자)':
-    stage==='헬기출동'||stage==='헬기구조완료'?'환동해':
-    stage==='119인계'||stage==='병원이송'?'초동팀':'초동팀';
-  document.querySelectorAll('#ttActorPills .pill').forEach(p=>{if(p.textContent===autoActor)p.classList.add('on');});
+  if(stage!=='상황전파'){
+    const autoActor = stage==='요구조자 조우'||stage==='처치중'||stage==='처치완료'?'환자(요구조자)':
+      stage==='헬기출동'||stage==='헬기구조완료'?'환동해':
+      stage==='119인계'||stage==='병원이송'?'초동팀':
+      _extraTeams.length>0?'초동팀':'초동팀';
+    document.querySelectorAll('#ttActorPills .pill').forEach(p=>{if(p.textContent===autoActor)p.classList.add('on');});
+  }
 }
 
 function removeTTInline(i){
