@@ -1820,21 +1820,21 @@ function selAgencyCat(el,cat){
   const subEl=document.getElementById('agSubPills');
   if(!subEl) return;
   if(cat==='🚒 소방'||cat==='🚔 경찰'){
-    const types=cat==='🚒 소방'?['구조','구급','항공대','기타']:['구조','구급','기타'];
     subEl.style.display='block';
+    const typeRow=cat==='🚒 소방'?`
+      <div style="margin-top:5px;">
+        <div style="font-size:10px;color:#4a7090;margin-bottom:3px;">종류</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;" id="agSubTypePills">
+          ${['구조','구급','항공대','기타'].map(t=>`<div class="pill" onclick="selAgencySubType(this,'${t}')" style="font-size:11px;cursor:pointer;">${t}</div>`).join('')}
+        </div>
+      </div>`:'';
     subEl.innerHTML=`
-      <div style="margin-bottom:5px;">
+      <div>
         <div style="font-size:10px;color:#4a7090;margin-bottom:3px;">지역</div>
         <div style="display:flex;gap:4px;flex-wrap:wrap;" id="agSubLocPills">
           ${['양양','인제','속초','기타'].map(l=>`<div class="pill" onclick="selAgencySubLoc(this,'${l}')" style="font-size:11px;cursor:pointer;">${l}</div>`).join('')}
         </div>
-      </div>
-      <div>
-        <div style="font-size:10px;color:#4a7090;margin-bottom:3px;">종류</div>
-        <div style="display:flex;gap:4px;flex-wrap:wrap;" id="agSubTypePills">
-          ${types.map(t=>`<div class="pill" onclick="selAgencySubType(this,'${t}')" style="font-size:11px;cursor:pointer;">${t}</div>`).join('')}
-        </div>
-      </div>`;
+      </div>${typeRow}`;
   } else {
     subEl.style.display='none';
     subEl.innerHTML='';
