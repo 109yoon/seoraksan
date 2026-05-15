@@ -1803,6 +1803,8 @@ function getExtraTeams(){ return _extraTeams.filter(t=>t.members.length>0); }
 // 유관기관 동적 (카테고리+기관명+인원수)
 let _fireAgencies=[]; // [{cat, name, count}]
 let _agSelectedCat='';
+let _agSubLoc='';
+let _agSubType='';
 function initFireAgencies(prefill){
   const raw=(prefill&&prefill.agencies&&prefill.agencies.fireAgencies)||[];
   // 이전 포맷({name}) → 새 포맷({cat,name,count}) 호환
@@ -1814,6 +1816,51 @@ function selAgencyCat(el,cat){
   document.querySelectorAll('#agCatPills .pill').forEach(p=>p.classList.remove('on'));
   el.classList.add('on');
   _agSelectedCat=cat;
+  _agSubLoc='';_agSubType='';
+  const subEl=document.getElementById('agSubPills');
+  if(!subEl) return;
+  if(cat==='🚒 소방'||cat==='🚔 경찰'){
+    const types=cat==='🚒 소방'?['구조','구급','항공대','기타']:['구조','구급','기타'];
+    subEl.style.display='block';
+    subEl.innerHTML=`
+      <div style="margin-bottom:5px;">
+        <div style="font-size:10px;color:#4a7090;margin-bottom:3px;">지역</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;" id="agSubLocPills">
+          ${['양양','인제','속초','기타'].map(l=>`<div class="pill" onclick="selAgencySubLoc(this,'${l}')" style="font-size:11px;cursor:pointer;">${l}</div>`).join('')}
+        </div>
+      </div>
+      <div>
+        <div style="font-size:10px;color:#4a7090;margin-bottom:3px;">종류</div>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;" id="agSubTypePills">
+          ${types.map(t=>`<div class="pill" onclick="selAgencySubType(this,'${t}')" style="font-size:11px;cursor:pointer;">${t}</div>`).join('')}
+        </div>
+      </div>`;
+  } else {
+    subEl.style.display='none';
+    subEl.innerHTML='';
+    document.getElementById('agNameIn').value='';
+  }
+}
+function selAgencySubLoc(el,loc){
+  document.querySelectorAll('#agSubLocPills .pill').forEach(p=>p.classList.remove('on'));
+  el.classList.add('on');
+  _agSubLoc=loc;
+  _updateAgencyNameAuto();
+}
+function selAgencySubType(el,type){
+  document.querySelectorAll('#agSubTypePills .pill').forEach(p=>p.classList.remove('on'));
+  el.classList.add('on');
+  _agSubType=type;
+  _updateAgencyNameAuto();
+}
+function _updateAgencyNameAuto(){
+  const nameEl=document.getElementById('agNameIn');
+  if(!nameEl) return;
+  const base=_agSelectedCat==='🚒 소방'?'소방':_agSelectedCat==='🚔 경찰'?'경찰':'';
+  if(!base) return;
+  let name=(_agSubLoc?_agSubLoc:'')+base;
+  if(_agSubType) name+=' '+_agSubType;
+  nameEl.value=name;
 }
 function addAgencyEntry(){
   const cat=_agSelectedCat||'🏢 기타';
@@ -1824,7 +1871,9 @@ function addAgencyEntry(){
   document.getElementById('agNameIn').value='';
   document.getElementById('agCountIn').value='';
   document.querySelectorAll('#agCatPills .pill').forEach(p=>p.classList.remove('on'));
-  _agSelectedCat='';
+  _agSelectedCat='';_agSubLoc='';_agSubType='';
+  const subEl=document.getElementById('agSubPills');
+  if(subEl){subEl.style.display='none';subEl.innerHTML='';}
   renderFireAgencies();
 }
 function removeFireAgency(idx){
@@ -2759,7 +2808,8 @@ function render1BoForm(prefill=null){
             <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px;" id="agCatPills">
               ${['🚒 소방','🚔 경찰','🌲 산림청','🏢 기타'].map(c=>`<div class="pill" onclick="selAgencyCat(this,'${c}')" style="font-size:11px;cursor:pointer;">${c}</div>`).join('')}
             </div>
-            <input type="text" id="agNameIn" class="fi" placeholder="기관명 (예: 양양소방서)" style="margin-bottom:5px;">
+            <div id="agSubPills" style="display:none;margin-bottom:6px;padding:8px;background:rgba(255,255,255,.03);border-radius:7px;border:1px solid rgba(255,255,255,.06);"></div>
+            <input type="text" id="agNameIn" class="fi" placeholder="기관명 (예: 양양소방 구조)" style="margin-bottom:5px;">
             <div style="display:flex;gap:6px;align-items:center;">
               <input type="number" id="agCountIn" class="fi" placeholder="인원" min="1" style="width:70px;text-align:center;">
               <span style="font-size:11px;color:#4a7090;flex-shrink:0;">명</span>
