@@ -13,18 +13,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Java
+      - name: Setup Java 17
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK 35
-        run: |
-          sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -37,30 +30,37 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Make gradlew executable
-        run: chmod +x android/gradlew
+      - name: Accept Android licenses & install SDK 35
+        run: |
+          yes | ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager --licenses || true
+          ${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
+            "platform-tools"
 
-      - name: Build APK
+      - name: Build Release APK
         working-directory: android
-        run: ./gradlew assembleRelease --no-daemon -x test
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon -x test
 
       - name: Sign APK
-        uses: r0adkll/sign-android-release@v1
-        id: sign_app
-        with:
-          releaseDirectory: android/app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.SIGNING_KEY }}
-          alias: ${{ secrets.KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
-          keyPassword: ${{ secrets.KEY_PASSWORD }}
-        env:
-          BUILD_TOOLS_VERSION: "35.0.0"
+        run: |
+          echo "${{ secrets.SIGNING_KEY }}" | base64 -d > /tmp/keystore.jks
+          UNSIGNED=android/app/build/outputs/apk/release/app-release-unsigned.apk
+          SIGNED=seoraksan-signed.apk
+          ${ANDROID_SDK_ROOT}/build-tools/35.0.0/apksigner sign \
+            --ks /tmp/keystore.jks \
+            --ks-key-alias "${{ secrets.KEY_ALIAS }}" \
+            --ks-pass "pass:${{ secrets.KEY_STORE_PASSWORD }}" \
+            --key-pass "pass:${{ secrets.KEY_PASSWORD }}" \
+            --out $SIGNED \
+            $UNSIGNED
+          echo "signed_apk=$SIGNED" >> $GITHUB_ENV
 
       - name: Get version
         id: version
-        run: |
-          VERSION=$(date +%Y%m%d-%H%M)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+        run: echo "version=$(date +%Y%m%d-%H%M)" >> $GITHUB_OUTPUT
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
@@ -71,11 +71,11 @@ jobs:
             ## 설악산 현장관리 앱
 
             ### 설치 방법
-            1. 아래 APK 파일을 다운로드
+            1. 아래 **seoraksan-signed.apk** 파일 다운로드
             2. 안드로이드 설정 → 보안 → **출처를 알 수 없는 앱 허용** 켜기
             3. 다운로드된 APK 실행하여 설치
 
             ### 변경사항
             ${{ github.event.head_commit.message }}
-          files: ${{ steps.sign_app.outputs.signedReleaseFile }}
+          files: seoraksan-signed.apk
           make_latest: true
