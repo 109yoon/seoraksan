@@ -1412,7 +1412,7 @@ function clearNotis(){DB.s('notis',[]);updateBell();closeNoti();toast('🗑️ �
 // 카카오맵
 // ══════════════════════════════════════════
 let mapI,mapR,iOvs=[],rOvs=[],myOv=null,mapIType='hybrid',mapRType='hybrid';
-const DC={lat:38.13900,lng:128.41141};
+const DC={lat:38.13309,lng:128.41175};
 function initMaps(){
   function doInit(){
     const c=new kakao.maps.LatLng(DC.lat,DC.lng),opt={center:c,level:9};
@@ -1494,12 +1494,12 @@ function openApp(mode){
     document.getElementById('nvl2').textContent='목록';
     showV('v-rescue-map');bn.style.display='flex';setNv();updateRescueCross();
     rMaps();setTimeout(()=>{try{if(window._saveMapCenter)window._saveMapCenter();}catch(e){}});
-    setTimeout(()=>{try{renderRescueMap();if(mapR&&!window._mapRInited){window._mapRInited=true;if(navigator.geolocation){navigator.geolocation.getCurrentPosition(p=>{try{mapR.setCenter(new kakao.maps.LatLng(p.coords.latitude,p.coords.longitude));mapR.setLevel(6);}catch(e){}},()=>{},{timeout:6000,maximumAge:30000});}};}catch(e){document.getElementById('nomapR').style.display='block';renderResList();}},130);
+    setTimeout(()=>{try{renderRescueMap();if(mapR&&!window._mapRInited){window._mapRInited=true;if(navigator.geolocation){navigator.geolocation.getCurrentPosition(p=>{try{if(p.coords.accuracy<2000){mapR.setCenter(new kakao.maps.LatLng(p.coords.latitude,p.coords.longitude));mapR.setLevel(6);}else{mapR.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));}}catch(e){}},()=>{try{mapR.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));}catch(e){}},{timeout:6000,maximumAge:30000,enableHighAccuracy:true});}else{mapR.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));}};}catch(e){document.getElementById('nomapR').style.display='block';renderResList();}},130);
   } else if(mode==='inspect'){
     document.getElementById('topTitle').textContent='시설물 점검';
     document.getElementById('nvl2').textContent='목록';
     showV('v-inspect-map');bn.style.display='flex';setNv();
-    rMaps();setTimeout(()=>{try{renderInspectMap();if(mapI&&!window._mapIInited){window._mapIInited=true;if(navigator.geolocation){navigator.geolocation.getCurrentPosition(p=>{try{mapI.setCenter(new kakao.maps.LatLng(p.coords.latitude,p.coords.longitude));mapI.setLevel(6);}catch(e){}},()=>{},{timeout:6000,maximumAge:30000});}else{mapI.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));}}}catch(e){document.getElementById('nomapI').style.display='block';renderFacList();}},130);
+    rMaps();setTimeout(()=>{try{renderInspectMap();if(mapI&&!window._mapIInited){window._mapIInited=true;if(navigator.geolocation){navigator.geolocation.getCurrentPosition(p=>{try{if(p.coords.accuracy<2000){mapI.setCenter(new kakao.maps.LatLng(p.coords.latitude,p.coords.longitude));mapI.setLevel(6);}else{mapI.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));}}catch(e){}},()=>{try{mapI.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));}catch(e){}},{timeout:6000,maximumAge:30000,enableHighAccuracy:true});}else{mapI.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));}}}catch(e){document.getElementById('nomapI').style.display='block';renderFacList();}},130);
   } else if(mode==='wiki'){
     document.getElementById('topTitle').textContent='설악위키';
     bn.style.display='none';showV('v-wiki');renderHotSearch();renderWikiList('');
