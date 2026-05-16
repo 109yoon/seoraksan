@@ -4560,15 +4560,20 @@ let mapPicker=null;
 
 function openMapPicker(){
   document.getElementById('modalMapPicker').classList.add('on');
+  // 현재 GPS 입력값으로 초기 위치 결정
+  const gpsVal=(document.getElementById('r_gps')?.value||'').split(',');
+  const initLat=gpsVal.length===2&&!isNaN(parseFloat(gpsVal[0]))?parseFloat(gpsVal[0]):(window._lastCrosshairCoord?.lat??DC.lat);
+  const initLng=gpsVal.length===2&&!isNaN(parseFloat(gpsVal[1]))?parseFloat(gpsVal[1]):(window._lastCrosshairCoord?.lng??DC.lng);
   setTimeout(()=>{
     if(!mapPicker){
       if(!window._KR){ toast('⚠️ 지도 로딩 중... 잠시 후 다시 시도'); return; }
       mapPicker=new kakao.maps.Map(document.getElementById('mapPicker'),{
-        center:new kakao.maps.LatLng(DC.lat,DC.lng), level:5
+        center:new kakao.maps.LatLng(initLat,initLng), level:5
       });
       mapPicker.setMapTypeId(kakao.maps.MapTypeId.HYBRID);
     } else {
       mapPicker.relayout();
+      mapPicker.setCenter(new kakao.maps.LatLng(initLat,initLng));
     }
     // 지도 이동 시 좌표 실시간 업데이트
     kakao.maps.event.addListener(mapPicker,'center_changed',function(){
@@ -4577,9 +4582,8 @@ function openMapPicker(){
       if(coordEl) coordEl.textContent=c.getLat().toFixed(5)+', '+c.getLng().toFixed(5);
     });
     // 초기 좌표 표시
-    const cc=mapPicker.getCenter();
     const coordEl=document.getElementById('pickerCoords');
-    if(coordEl) coordEl.textContent=cc.getLat().toFixed(5)+', '+cc.getLng().toFixed(5);
+    if(coordEl) coordEl.textContent=initLat.toFixed(5)+', '+initLng.toFixed(5);
   },200);
 }
 
@@ -4589,6 +4593,7 @@ function confirmMapPicker(){
   const coords=center.getLat().toFixed(5)+', '+center.getLng().toFixed(5);
   const gpsEl=document.getElementById('r_gps');
   if(gpsEl) gpsEl.value=coords;
+  syncFormMapFromInput();
   closeM('modalMapPicker');
   toast('📍 위치 선택 완료');
 }
