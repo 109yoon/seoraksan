@@ -1826,10 +1826,9 @@ function toggleExtraTeamMember(teamIdx,name,el){
 function getExtraTeams(){ return _extraTeams.filter(t=>t.members.length>0); }
 
 // 1보 폼 미니맵
-let _mapFormMini=null,_mapFormMiniMarker=null,_mapFormMiniReady=false;
+let _mapFormMini=null,_mapFormMiniMarker=null;
 function initFormMiniMap(lat,lng){
-  _mapFormMini=null;_mapFormMiniReady=false;
-  // GPS 입력값 우선, 그 다음 인수, 그 다음 마지막 십자선, 마지막 설악산 기본
+  _mapFormMini=null;
   const gpsVal=(document.getElementById('r_gps')?.value||'').split(',');
   let defLat=gpsVal.length===2?parseFloat(gpsVal[0]):NaN;
   let defLng=gpsVal.length===2?parseFloat(gpsVal[1]):NaN;
@@ -1841,27 +1840,30 @@ function initFormMiniMap(lat,lng){
     const container=document.getElementById('r_minimap');
     if(!container) return;
     try{
-      const center=new kakao.maps.LatLng(defLat,defLng);
-      _mapFormMini=new kakao.maps.Map(container,{center,level:4});
+      let _locked=new kakao.maps.LatLng(defLat,defLng);
+      let _dragging=false;
+      _mapFormMini=new kakao.maps.Map(container,{center:_locked,level:4});
       _mapFormMini.setMapTypeId(kakao.maps.MapTypeId.HYBRID);
-      // SDK가 자동 위치 감지로 중심을 바꿀 수 있으므로 강제 설정
       _mapFormMini.relayout();
-      _mapFormMini.setCenter(center);
+      _mapFormMini.setCenter(_locked);
+      // 드래그 중에만 GPS 업데이트, 나머지는 SDK가 위치를 바꿔도 되돌림
+      kakao.maps.event.addListener(_mapFormMini,'dragstart',()=>{ _dragging=true; });
+      kakao.maps.event.addListener(_mapFormMini,'dragend',()=>{
+        _locked=_mapFormMini.getCenter();
+        const v=_locked.getLat().toFixed(5)+', '+_locked.getLng().toFixed(5);
+        const gpsEl=document.getElementById('r_gps');if(gpsEl)gpsEl.value=v;
+        const cd=document.getElementById('r_minimap_coords');if(cd)cd.textContent=v;
+        setTimeout(()=>{ _dragging=false; },50);
+      });
+      kakao.maps.event.addListener(_mapFormMini,'center_changed',()=>{
+        if(!_dragging) _mapFormMini.setCenter(_locked);
+      });
       setTimeout(()=>{
-        if(_mapFormMini){_mapFormMini.relayout();_mapFormMini.setCenter(center);}
-        _mapFormMiniReady=true;
-        // 카카오맵 기본 컨트롤(줌버튼 등) 숨김
+        _mapFormMini.relayout();_mapFormMini.setCenter(_locked);
         container.querySelectorAll('a[href*="kakao"],div[class*="wrap_controllers"],div[class*="zoom_btn"]').forEach(el=>el.style.display='none');
         const v=defLat.toFixed(5)+', '+defLng.toFixed(5);
         const cd=document.getElementById('r_minimap_coords');if(cd)cd.textContent=v;
-      },200);
-      kakao.maps.event.addListener(_mapFormMini,'center_changed',function(){
-        if(!_mapFormMiniReady)return;
-        const c=_mapFormMini.getCenter();
-        const v=c.getLat().toFixed(5)+', '+c.getLng().toFixed(5);
-        const gpsEl=document.getElementById('r_gps');if(gpsEl)gpsEl.value=v;
-        const cd=document.getElementById('r_minimap_coords');if(cd)cd.textContent=v;
-      });
+      },300);
     }catch(e){console.warn('minimap fail',e);}
   },300);
 }
@@ -1870,10 +1872,11 @@ function gpsToFormMap(){
   navigator.geolocation.getCurrentPosition(pos=>{
     const lat=pos.coords.latitude,lng=pos.coords.longitude;
     if(_mapFormMini){
-      _mapFormMini.setCenter(new kakao.maps.LatLng(lat,lng));
+      const latlng=new kakao.maps.LatLng(lat,lng);
+      _mapFormMini.setCenter(latlng);
       if(_mapFormMiniMarker) _mapFormMiniMarker.setMap(null);
       _mapFormMiniMarker=new kakao.maps.CustomOverlay({
-        position:new kakao.maps.LatLng(lat,lng),
+        position:latlng,
         content:'<div style="width:10px;height:10px;border-radius:50%;background:#4fa8d0;border:2px solid #fff;box-shadow:0 0 0 3px rgba(79,168,208,.35);"></div>',
         zIndex:7
       });
