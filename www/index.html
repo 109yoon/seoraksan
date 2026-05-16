@@ -1450,7 +1450,7 @@ function openApp(mode){
     document.getElementById('topTitle').textContent='재난/구조 관리';
     document.getElementById('nvl2').textContent='목록';
     showV('v-rescue-map');bn.style.display='flex';setNv();updateRescueCross();
-    rMaps();setTimeout(()=>{try{renderRescueMap();if(mapR)mapR.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));}catch(e){document.getElementById('nomapR').style.display='block';renderResList();}},130);
+    rMaps();setTimeout(()=>{try{renderRescueMap();if(mapR){if(!window._mapRInited){window._mapRInited=true;if(navigator.geolocation){navigator.geolocation.getCurrentPosition(p=>{try{mapR.setCenter(new kakao.maps.LatLng(p.coords.latitude,p.coords.longitude));}catch(e){}},()=>{try{mapR.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));}catch(e){}},{timeout:6000,maximumAge:30000});}else{mapR.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));}}}catch(e){document.getElementById('nomapR').style.display='block';renderResList();}},130);
   } else if(mode==='inspect'){
     document.getElementById('topTitle').textContent='시설물 점검';
     document.getElementById('nvl2').textContent='목록';
@@ -2823,7 +2823,7 @@ function render1BoForm(prefill=null){
                 <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:4px;height:4px;border-radius:50%;background:#ff4444;"></div>
               </div>
             </div>
-            <div id="r_minimap_coords" style="position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,.6);color:#8ab4cc;font-size:9px;padding:2px 6px;border-radius:4px;z-index:6;pointer-events:none;font-family:monospace;"></div>
+            <div id="r_minimap_coords" style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,.6);color:#8ab4cc;font-size:9px;padding:2px 6px;border-radius:4px;z-index:6;pointer-events:none;font-family:monospace;"></div>
             <button onclick="gpsToFormMap()" style="position:absolute;bottom:4px;right:4px;z-index:6;background:rgba(11,28,48,.85);border:1px solid rgba(79,168,208,.35);color:#4fa8d0;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer;">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
             </button>
