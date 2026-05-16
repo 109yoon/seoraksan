@@ -1431,8 +1431,23 @@ function pushNoti(msg,ico,type='info',link=null){
   const s=DB.g('notiSetting')||{};if(type!=='info'&&s[type]===false)return;
   const ns=DB.g('notis')||[];ns.unshift({id:Date.now(),msg,ico,time:now(),read:false,link});
   if(ns.length>80)ns.splice(80);DB.s('notis',ns);updateBell();
-  if('Notification' in window&&Notification.permission==='granted'&&document.visibilityState==='hidden'){
-    try{new Notification('설악산 현장관리',{body:msg,icon:'/seoraksan/icon-192.png',tag:type,renotify:true});}catch(e){}
+  // 실제 폰 알림 발송
+  _sendDeviceNotif('설악산 현장관리',msg,type);
+}
+function _sendDeviceNotif(title,body,channel='info'){
+  // Capacitor LocalNotifications (APK)
+  const LN=window.Capacitor?.Plugins?.LocalNotifications;
+  if(LN){
+    LN.checkPermissions().then(p=>{
+      if(p.display==='granted'){
+        LN.schedule({notifications:[{title,body,id:Date.now()&0x7FFFFFFF,sound:'default',channelId:'seoraksan_alerts',smallIcon:'ic_notification',iconColor:'#4fa8d0'}]}).catch(()=>{});
+      }
+    }).catch(()=>{});
+    return;
+  }
+  // 웹 브라우저 Notification API 폴백
+  if('Notification' in window&&Notification.permission==='granted'){
+    try{new Notification(title,{body,icon:'/seoraksan/icon-192.png',tag:channel,renotify:true});}catch(e){}
   }
 }
 function updateBell(){
@@ -1548,7 +1563,11 @@ function gpsFromPhone(id){
 // ══════════════════════════════════════════
 let curApp='',curTab=1;
 // ── Haptic feedback ──
-const haptic=(t=6)=>{try{navigator.vibrate&&navigator.vibrate(t);}catch(e){}};
+const haptic=(t=6)=>{
+  const H=window.Capacitor?.Plugins?.Haptics;
+  if(H){try{H.impact({style:t>=10?'heavy':t>=7?'medium':'light'});}catch(e){}}
+  else{try{navigator.vibrate&&navigator.vibrate(t);}catch(e){}}
+};
 // ── Touch ripple ──
 function spawnRipple(e,host){
   if(!host)return;
@@ -4167,20 +4186,47 @@ function renderSettings(){
     </a>`;
   (function(){
     const btn=document.getElementById('notifPermBtn');if(!btn)return;
-    if(!('Notification' in window)){btn.textContent='이 브라우저는 알림 미지원';btn.disabled=true;return;}
-    if(Notification.permission==='granted'){btn.textContent='✅ 알림 권한 허용됨';btn.style.background='rgba(39,174,96,.1)';btn.style.color='#27ae60';btn.style.borderColor='rgba(39,174,96,.25)';}
-    else if(Notification.permission==='denied'){btn.textContent='⛔ 알림 권한 거부됨 (브라우저 설정에서 변경)';btn.disabled=true;}
+    const LN=window.Capacitor?.Plugins?.LocalNotifications;
+    if(LN){
+      LN.checkPermissions().then(p=>{
+        if(p.display==='granted'){btn.textContent='✅ 알림 권한 허용됨';btn.style.background='rgba(39,174,96,.1)';btn.style.color='#27ae60';btn.style.borderColor='rgba(39,174,96,.25)';}
+        else{btn.textContent='🔔 알림 권한 요청 (탭하여 허용)';}
+      }).catch(()=>{});
+    } else if(!('Notification' in window)){
+      btn.textContent='이 브라우저는 알림 미지원';btn.disabled=true;
+    } else if(Notification.permission==='granted'){
+      btn.textContent='✅ 알림 권한 허용됨';btn.style.background='rgba(39,174,96,.1)';btn.style.color='#27ae60';btn.style.borderColor='rgba(39,174,96,.25)';
+    } else if(Notification.permission==='denied'){
+      btn.textContent='⛔ 알림 권한 거부됨 (브라우저 설정에서 변경)';btn.disabled=true;
+    }
   })();
 }
 function reqNotifPerm(){
-  if(!('Notification' in window)){toast('⚠️ 이 브라우저는 알림 미지원');return;}
-  Notification.requestPermission().then(p=>{
-    if(p==='granted'){
-      toast('✅ 알림 권한 허용됨');
-      new Notification('설악산 현장관리',{body:'알림이 활성화되었습니다.',icon:'/seoraksan/icon-192.png'});
-    } else {toast('⛔ 알림 권한이 거부되었습니다');}
-    try{renderSettings();}catch(e){}
-  });
+  const LN=window.Capacitor?.Plugins?.LocalNotifications;
+  if(LN){
+    // APK: Capacitor LocalNotifications
+    LN.requestPermissions().then(p=>{
+      if(p.display==='granted'){
+        // 알림 채널 생성
+        LN.createChannel({id:'seoraksan_alerts',name:'설악산 알림',description:'구조·재난·시설물 알림',importance:4,sound:'default',vibration:true}).catch(()=>{});
+        // 테스트 알림
+        LN.schedule({notifications:[{title:'설악산 현장관리',body:'✅ 알림이 활성화되었습니다. 구조·재난 발생시 알림이 옵니다.',id:1,sound:'default',channelId:'seoraksan_alerts',smallIcon:'ic_notification',iconColor:'#4fa8d0'}]}).catch(()=>{});
+        toast('✅ 알림 권한 허용됨');
+      } else {toast('⛔ 알림 권한이 거부되었습니다');}
+      try{renderSettings();}catch(e){}
+    }).catch(()=>{toast('⚠️ 알림 설정 실패');});
+  } else if('Notification' in window){
+    // 브라우저 Notification API
+    Notification.requestPermission().then(p=>{
+      if(p==='granted'){
+        toast('✅ 알림 권한 허용됨');
+        try{new Notification('설악산 현장관리',{body:'알림이 활성화되었습니다.',icon:'/seoraksan/icon-192.png'});}catch(e){}
+      } else {toast('⛔ 알림 권한이 거부되었습니다');}
+      try{renderSettings();}catch(e){}
+    });
+  } else {
+    toast('⚠️ 이 환경은 알림 미지원');
+  }
 }
 function saveKakaoKey(){
   const key=document.getElementById('kakaoKeyIn').value.trim();
@@ -5111,17 +5157,37 @@ window.onload=function(){
     if(curApp!=='home'){openApp('home');return true;}
     const t=Date.now();
     if(t-_lastBack<2000){
-      try{if(window.Capacitor)Capacitor.Plugins.App.exitApp();}catch(e){}
+      haptic(15);
+      try{window.Capacitor?.Plugins?.App?.exitApp();}catch(e){}
       try{if(navigator.app)navigator.app.exitApp();}catch(e){}
-    } else {_lastBack=t;toast('뒤로 버튼을 한 번 더 누르면 종료됩니다');}
+    } else {
+      _lastBack=t;haptic(8);
+      toast('뒤로 버튼을 한 번 더 누르면 종료됩니다');
+    }
     return false;
   }
+  // Capacitor App plugin - 하드웨어 백버튼 (APK)
+  (function(){
+    const CapApp=window.Capacitor?.Plugins?.App;
+    if(CapApp){
+      CapApp.addListener('backButton',function(){_handleBack();});
+    }
+  })();
+  // popstate - 웹 브라우저 + 일부 Capacitor 환경
   history.pushState({s:1},'');
   window.addEventListener('popstate',function(){
     _handleBack();
     history.pushState({s:1},'');
   });
   document.addEventListener('backbutton',function(e){e.preventDefault();_handleBack();},false);
+
+  // Capacitor 플러그인 초기화
+  (function(){
+    const LN=window.Capacitor?.Plugins?.LocalNotifications;
+    if(LN){
+      LN.createChannel({id:'seoraksan_alerts',name:'설악산 알림',description:'구조·재난·시설물 알림',importance:4,sound:'default',vibration:true}).catch(()=>{});
+    }
+  })();
 
   initFirebase(function(){
     initDB();
