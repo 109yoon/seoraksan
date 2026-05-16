@@ -1574,30 +1574,42 @@ function hideLoginScreen(){
 }
 function openKakaoLogin(){
   if(!window.Kakao||!Kakao.isInitialized()){toast('⚠️ 카카오 SDK 로딩 중...');return;}
-  toast('💬 카카오 로그인 창 열기...');
-  Kakao.Auth.login({
-    success:function(authObj){
-      Kakao.API.request({
-        url:'/v2/user/me',
-        success:function(res){
-          const prof=(res.kakao_account?.profile)||{};
-          const name=prof.nickname||'';
-          const img=prof.profile_image_url||'';
-          const u=DB.g('currentUser')||{};
-          u.name=name;u.kakaoImg=img;
-          DB.s('currentUser',u);DB.s('authType','kakao');
-          applyAuthState();hideLoginScreen();
-          try{renderSettings();}catch(e){}
-          toast('✅ 안녕하세요, '+name+'님!');
-        },
-        fail:function(err){toast('❌ 프로필 조회 실패');}
-      });
-    },
-    fail:function(err){
-      console.error('Kakao login fail',err);
-      toast('❌ 로그인 실패 — 팝업 차단 확인');
-    }
-  });
+  const redirectUri=location.origin+location.pathname;
+  Kakao.Auth.authorize({redirectUri:redirectUri,scope:'profile_nickname,profile_image'});
+}
+function handleKakaoRedirect(){
+  const params=new URLSearchParams(location.search);
+  const code=params.get('code');
+  if(!code)return false;
+  // URL 정리
+  const clean=location.origin+location.pathname;
+  history.replaceState(null,'',clean);
+  // 인증코드로 토큰 요청 (Kakao SDK 클라이언트 사이드 처리)
+  if(!window.Kakao||!Kakao.isInitialized())return false;
+  fetch('https://kauth.kakao.com/oauth/token',{
+    method:'POST',
+    headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:'grant_type=authorization_code&client_id='+KAKAO_KEY+'&redirect_uri='+encodeURIComponent(clean)+'&code='+code
+  }).then(r=>r.json()).then(data=>{
+    if(!data.access_token){toast('❌ 토큰 오류');return;}
+    Kakao.Auth.setAccessToken(data.access_token);
+    Kakao.API.request({
+      url:'/v2/user/me',
+      success:function(res){
+        const prof=(res.kakao_account?.profile)||{};
+        const name=prof.nickname||'';
+        const img=prof.profile_image_url||'';
+        const u=DB.g('currentUser')||{};
+        u.name=name;u.kakaoImg=img;
+        DB.s('currentUser',u);DB.s('authType','kakao');
+        applyAuthState();hideLoginScreen();
+        try{renderSettings();}catch(e){}
+        toast('✅ 안녕하세요, '+name+'님!');
+      },
+      fail:function(){toast('❌ 프로필 조회 실패');}
+    });
+  }).catch(()=>toast('❌ 로그인 오류'));
+  return true;
 }
 function kakaoLogout(){
   function _clearKakao(){
@@ -4906,6 +4918,8 @@ window.onload=function(){
 
   initFirebase(function(){
     initDB();
+    // 카카오 리다이렉트 코드 처리 (로그인 후 돌아왔을 때)
+    if(location.search.includes('code=')){handleKakaoRedirect();}
     if(window._KR){ initMaps(); } else { window._KCB=function(){initMaps();}; }
     updateSummary();updateUserUI();renderHotSearch();
     const d=new Date();const days=['일','월','화','수','목','금','토'];
