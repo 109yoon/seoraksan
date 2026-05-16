@@ -1420,6 +1420,7 @@ function initMaps(){
       const cd=document.getElementById('rescueCoords');
       if(cd) cd.textContent=c.getLat().toFixed(5)+', '+c.getLng().toFixed(5);
     }
+    window._saveMapCenter=saveMapCenter;
     kakao.maps.event.addListener(mapR,'center_changed',saveMapCenter);
     saveMapCenter();
     if(window._hideLoading)setTimeout(window._hideLoading,600);
@@ -1435,6 +1436,7 @@ function rMaps(){
   setTimeout(()=>{
     try{if(mapI){mapI.relayout();mapI.setCenter(mapI.getCenter());}}catch(e){}
     try{if(mapR){mapR.relayout();mapR.setCenter(mapR.getCenter());}}catch(e){}
+    try{if(window._saveMapCenter)window._saveMapCenter();}catch(e){}
   },150);
 }
 function toggleMapType(m){
@@ -1481,7 +1483,8 @@ function openApp(mode){
     document.getElementById('topTitle').textContent='재난/구조 관리';
     document.getElementById('nvl2').textContent='목록';
     showV('v-rescue-map');bn.style.display='flex';setNv();updateRescueCross();
-    rMaps();setTimeout(()=>{try{renderRescueMap();if(mapR){if(!window._mapRInited){window._mapRInited=true;if(navigator.geolocation){navigator.geolocation.getCurrentPosition(p=>{try{mapR.setCenter(new kakao.maps.LatLng(p.coords.latitude,p.coords.longitude));}catch(e){}},()=>{try{mapR.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));}catch(e){}},{timeout:6000,maximumAge:30000});}else{mapR.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));}}}}catch(e){document.getElementById('nomapR').style.display='block';renderResList();}},130);
+    rMaps();setTimeout(()=>{try{if(window._saveMapCenter)window._saveMapCenter();}catch(e){}});
+    setTimeout(()=>{try{renderRescueMap();if(mapR){if(!window._mapRInited){window._mapRInited=true;if(navigator.geolocation){navigator.geolocation.getCurrentPosition(p=>{try{mapR.setCenter(new kakao.maps.LatLng(p.coords.latitude,p.coords.longitude));}catch(e){}},()=>{try{mapR.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));}catch(e){}},{timeout:6000,maximumAge:30000});}else{mapR.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));}}}}catch(e){document.getElementById('nomapR').style.display='block';renderResList();}},130);
   } else if(mode==='inspect'){
     document.getElementById('topTitle').textContent='시설물 점검';
     document.getElementById('nvl2').textContent='목록';
@@ -1504,7 +1507,7 @@ function openApp(mode){
 function switchTab(idx,el){
   [1,2,3].forEach(i=>document.getElementById('nv'+i).classList.remove('on'));if(el)el.classList.add('on');closeDB();
   if(curApp==='rescue'){
-    if(idx===1){showV('v-rescue-map');rMaps();updateRescueCross();}
+    if(idx===1){showV('v-rescue-map');rMaps();updateRescueCross();setTimeout(()=>{try{if(window._saveMapCenter)window._saveMapCenter();}catch(e){}},200);}
     else if(idx===2){showV('v-rescue-list');renderResList();}
     else{showV('v-rescue-stats');renderRescueStats();}
   } else if(curApp==='inspect'){
