@@ -1562,12 +1562,7 @@ function gpsFromPhone(id){
 // 네비게이션
 // ══════════════════════════════════════════
 let curApp='',curTab=1;
-// ── Haptic feedback ──
-const haptic=(t=6)=>{
-  const H=window.Capacitor?.Plugins?.Haptics;
-  if(H){try{H.impact({style:t>=10?'heavy':t>=7?'medium':'light'});}catch(e){}}
-  else{try{navigator.vibrate&&navigator.vibrate(t);}catch(e){}}
-};
+const haptic=()=>{};
 // ── Touch ripple ──
 function spawnRipple(e,host){
   if(!host)return;
@@ -1583,9 +1578,7 @@ function spawnRipple(e,host){
 }
 document.addEventListener('touchstart',function(e){
   const card=e.target.closest('.lcard,.haz-card');if(card){spawnRipple(e,card);}
-  const btn=e.target.closest('.mbtn,.mbtn-sm');if(btn){spawnRipple(e,btn);haptic(5);}
-  const ab=e.target.closest('.btn-submit');if(ab)haptic(10);
-  const nb=e.target.closest('#nv1,#nv2,#nv3,#nvl1,#nvl2,#nvl3');if(nb)haptic(4);
+  const btn=e.target.closest('.mbtn,.mbtn-sm');if(btn){spawnRipple(e,btn);}
 },{passive:true});
 // ── View transitions ──
 let _prevApp='home';
@@ -1606,12 +1599,12 @@ document.addEventListener('touchend',e=>{
   if(Math.abs(dx)<65||Math.abs(dy)>Math.abs(dx)*0.65)return;
   if(curApp!=='rescue'&&curApp!=='inspect')return;
   if(curTab===1)return;
-  if(dx<-65&&curTab<3){haptic(6);switchTab(curTab+1,document.getElementById('nv'+(curTab+1)));}
-  else if(dx>65&&curTab>1){haptic(6);switchTab(curTab-1,document.getElementById('nv'+(curTab-1)));}
+  if(dx<-65&&curTab<3){switchTab(curTab+1,document.getElementById('nv'+(curTab+1)));}
+  else if(dx>65&&curTab>1){switchTab(curTab-1,document.getElementById('nv'+(curTab-1)));}
 },{passive:true});
 function goHome(){showV('v-home');document.getElementById('appHdr').style.display='none';document.getElementById('bnav').style.display='none';closeDB();updateSummary();}
 function openApp(mode){
-  haptic(5);curApp=mode;
+  curApp=mode;
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
   document.getElementById('appHdr').style.display='block';
   const bn=document.getElementById('bnav');
@@ -1643,7 +1636,7 @@ function openApp(mode){
 }
 function switchTab(idx,el){
   curTab=idx;
-  [1,2,3].forEach(i=>document.getElementById('nv'+i).classList.remove('on'));if(el)el.classList.add('on');closeDB();haptic(4);
+  [1,2,3].forEach(i=>document.getElementById('nv'+i).classList.remove('on'));if(el)el.classList.add('on');closeDB();
   if(curApp==='rescue'){
     if(idx===1){showV('v-rescue-map');rMaps();updateRescueCross();setTimeout(()=>{try{if(window._saveMapCenter)window._saveMapCenter();}catch(e){}},200);}
     else if(idx===2){showV('v-rescue-list');renderResList();}
@@ -5154,14 +5147,13 @@ window.onload=function(){
     if(document.getElementById('notiPanel')?.classList.contains('on')){closeNoti();return true;}
     const wp=document.getElementById('wikiPageWrap');
     if(wp&&wp.style.display!=='none'){showWikiList();return true;}
-    if(curApp!=='home'){openApp('home');return true;}
+    if(curApp!=='home'){goHome();curApp='home';return true;}
     const t=Date.now();
     if(t-_lastBack<2000){
-      haptic(15);
       try{window.Capacitor?.Plugins?.App?.exitApp();}catch(e){}
       try{if(navigator.app)navigator.app.exitApp();}catch(e){}
     } else {
-      _lastBack=t;haptic(8);
+      _lastBack=t;
       toast('뒤로 버튼을 한 번 더 누르면 종료됩니다');
     }
     return false;
