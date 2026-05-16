@@ -147,6 +147,8 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .p-haz{border-color:#e67e22;background:#e67e22;color:#fff;}.p-etc{border-color:#5d6d7e;background:#4a5568;color:#fff;}.p-done{opacity:.4;}
 .p-me{border-color:#4fa8d0;background:#4fa8d0;color:#fff;}
 @keyframes blink{0%,100%{box-shadow:0 0 4px 2px rgba(192,57,43,.5);}50%{transform:scale(1.2);box-shadow:0 0 16px 6px rgba(192,57,43,.85);}}
+@keyframes rippleOut{to{transform:scale(3.2);opacity:0;}}
+.rw{position:absolute;border-radius:50%;pointer-events:none;transform:scale(0);animation:rippleOut .52s cubic-bezier(.25,.46,.45,.94) forwards;}
 .blink{animation:blink .95s infinite;}
 .dbcard{position:absolute;bottom:-420px;left:9px;right:9px;background:#0b1c30;border-radius:14px;padding:13px;border:1px solid rgba(79,168,208,.14);box-shadow:0 -4px 20px rgba(0,0,0,.7);transition:bottom .25s cubic-bezier(.4,0,.2,1);z-index:15;max-height:60vh;overflow-y:auto;}
 .dbcard.on{bottom:62px;}
@@ -245,26 +247,28 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .info-btn{background:rgba(79,168,208,.07);border:1px solid rgba(79,168,208,.18);color:#4fa8d0;border-radius:5px;padding:2px 6px;font-size:10px;cursor:pointer;margin-left:4px;}
 
 /* ─── 부드러운 트랜지션 (Toss-style) ─── */
-.modal .mbox{transform:translateY(20px);opacity:0;transition:transform .3s cubic-bezier(.22,1,.36,1),opacity .25s ease;will-change:transform,opacity;}
-.modal.on .mbox{transform:translateY(0);opacity:1;}
+.modal{background:rgba(0,0,0,0);transition:background .22s ease;}
+.modal.on{background:rgba(0,0,0,.6);}
+.modal .mbox{transform:translateY(32px) scale(.97);opacity:0;transition:transform .4s cubic-bezier(.22,1,.36,1),opacity .28s ease,scale .4s cubic-bezier(.22,1,.36,1);will-change:transform,opacity;}
+.modal.on .mbox{transform:none;scale:1;opacity:1;}
 :root{--sp:cubic-bezier(.22,1,.36,1);--qt:cubic-bezier(.4,0,.2,1);}
 /* ── 공통 상호작용 ── */
 .pill,.chk-item,.navi,.mbtn,.mbtn-sm,.lcard,.hstat,.sm-btn,.btn,.btn-submit,
 .fab,.fab-gps,.fab2,.map-ctrl,.dbclose,.mclose{user-select:none;}
 /* ── 리스트 카드 ── */
-.lcard{transition:transform .12s var(--qt),background .12s ease;}
-.lcard:active{transform:scale(.982);background:#0d1f32;}
+.lcard{transition:transform .14s cubic-bezier(.22,1,.36,1),background .12s ease;overflow:hidden;position:relative;}
+.lcard:active{transform:scale(.974);background:#0c1e30;}
 /* ── 일반 버튼 ── */
-.btn{transition:transform .1s var(--qt),opacity .1s ease;}
-.btn:active{transform:scale(.94);opacity:.8;}
+.btn{transition:transform .14s cubic-bezier(.22,1,.36,1),opacity .12s ease;}
+.btn:active{transform:scale(.91);opacity:.78;}
 /* ── 제출 버튼 (더 탱탱하게) ── */
-.btn-submit{transition:transform .1s var(--qt),opacity .1s ease;}
-.btn-submit:active{transform:scale(.95);opacity:.82;}
+.btn-submit{transition:transform .14s cubic-bezier(.22,1,.36,1),opacity .12s ease;}
+.btn-submit:active{transform:scale(.92);opacity:.8;}
 /* ── 홈 메뉴 버튼 ── */
-.mbtn{transition:transform .14s var(--sp);}
-.mbtn:active{transform:scale(.93);}
-.mbtn-sm{transition:transform .12s var(--sp);}
-.mbtn-sm:active{transform:scale(.95);}
+.mbtn{transition:transform .18s cubic-bezier(.22,1,.36,1),box-shadow .14s ease;}
+.mbtn:active{transform:scale(.91);}
+.mbtn-sm{transition:transform .16s cubic-bezier(.22,1,.36,1);}
+.mbtn-sm:active{transform:scale(.93);}
 /* ── 인풋 포커스 ── */
 .fi:focus,.fsel:focus,.fta:focus{border-color:rgba(79,168,208,.5);box-shadow:0 0 0 3px rgba(79,168,208,.1);transition:border-color .2s ease,box-shadow .2s ease;}
 /* ── pill (태그) ── */
@@ -304,7 +308,12 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .sm-btn{transition:background .12s ease,transform .1s var(--qt);}
 .sm-btn:active{transform:scale(.92);}
 /* ── 뷰 전환 ── */
-.view.on{animation:viewFadeIn .2s var(--qt) both;}
+.view.on{animation:vSlideIn .22s cubic-bezier(.25,.46,.45,.94) both;}
+.view.on.slide-back{animation:vSlideBack .22s cubic-bezier(.25,.46,.45,.94) both;}
+.view.on.slide-up{animation:vSlideUp .26s cubic-bezier(.22,1,.36,1) both;}
+@keyframes vSlideIn{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:none}}
+@keyframes vSlideBack{from{opacity:0;transform:translateX(-18px)}to{opacity:1;transform:none}}
+@keyframes vSlideUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
 @keyframes viewFadeIn{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
 
 /* ─── 위키 ─── */
@@ -399,8 +408,8 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .navi.on .navi-lbl{color:#4fa8d0;}
 
 /* ─── 토스트·기타 ─── */
-.toast{position:absolute;bottom:80px;left:50%;transform:translateX(-50%);background:#0b1c30;color:#e0edf8;padding:8px 16px;border-radius:24px;font-size:12px;font-weight:500;border:1px solid rgba(79,168,208,.2);box-shadow:0 4px 16px rgba(0,0,0,.5);z-index:100;opacity:0;transition:opacity .28s;white-space:nowrap;pointer-events:none;}
-.toast.on{opacity:1;}
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(14px);background:rgba(10,22,40,.96);color:#e0edf8;padding:10px 18px;border-radius:22px;font-size:12px;font-weight:600;border:1px solid rgba(79,168,208,.14);box-shadow:0 6px 24px rgba(0,0,0,.55);z-index:10001;opacity:0;transition:transform .3s cubic-bezier(.22,1,.36,1),opacity .22s ease;white-space:nowrap;pointer-events:none;backdrop-filter:blur(8px);}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0);}
 .empty{text-align:center;padding:32px 16px;color:rgba(255,255,255,.2);}
 .empty-ico{font-size:34px;margin-bottom:8px;}.empty-txt{font-size:12px;line-height:1.6;}
 .guide-item{padding:8px 0;border-bottom:.5px solid rgba(255,255,255,.06);}
@@ -1537,11 +1546,53 @@ function gpsFromPhone(id){
 // ══════════════════════════════════════════
 // 네비게이션
 // ══════════════════════════════════════════
-let curApp='';
-function showV(id){document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));document.getElementById(id).classList.add('on');}
+let curApp='',curTab=1;
+// ── Haptic feedback ──
+const haptic=(t=6)=>{try{navigator.vibrate&&navigator.vibrate(t);}catch(e){}};
+// ── Touch ripple ──
+function spawnRipple(e,host){
+  if(!host)return;
+  const r=host.getBoundingClientRect();
+  const size=Math.max(host.offsetWidth,host.offsetHeight)*2.2;
+  const cx=(e.touches?e.touches[0].clientX:e.clientX)-r.left;
+  const cy=(e.touches?e.touches[0].clientY:e.clientY)-r.top;
+  const d=document.createElement('div');
+  d.className='rw';
+  d.style.cssText=`width:${size}px;height:${size}px;left:${cx-size/2}px;top:${cy-size/2}px;background:rgba(255,255,255,.13);`;
+  host.appendChild(d);
+  setTimeout(()=>d.remove(),550);
+}
+document.addEventListener('touchstart',function(e){
+  const card=e.target.closest('.lcard,.haz-card');if(card){spawnRipple(e,card);}
+  const btn=e.target.closest('.mbtn,.mbtn-sm');if(btn){spawnRipple(e,btn);haptic(5);}
+  const ab=e.target.closest('.btn-submit');if(ab)haptic(10);
+  const nb=e.target.closest('#nv1,#nv2,#nv3,#nvl1,#nvl2,#nvl3');if(nb)haptic(4);
+},{passive:true});
+// ── View transitions ──
+let _prevApp='home';
+function showV(id,dir){
+  document.querySelectorAll('.view').forEach(v=>{v.classList.remove('on','slide-back','slide-up');});
+  const el=document.getElementById(id);
+  if(!el)return;
+  if(dir==='back')el.classList.add('slide-back');
+  else if(dir==='up')el.classList.add('slide-up');
+  el.classList.add('on');
+}
+// ── Tab swipe ──
+let _swX=0,_swY=0;
+document.addEventListener('touchstart',e=>{_swX=e.touches[0].clientX;_swY=e.touches[0].clientY;},{passive:true});
+document.addEventListener('touchend',e=>{
+  const dx=e.changedTouches[0].clientX-_swX;
+  const dy=e.changedTouches[0].clientY-_swY;
+  if(Math.abs(dx)<65||Math.abs(dy)>Math.abs(dx)*0.65)return;
+  if(curApp!=='rescue'&&curApp!=='inspect')return;
+  if(curTab===1)return;
+  if(dx<-65&&curTab<3){haptic(6);switchTab(curTab+1,document.getElementById('nv'+(curTab+1)));}
+  else if(dx>65&&curTab>1){haptic(6);switchTab(curTab-1,document.getElementById('nv'+(curTab-1)));}
+},{passive:true});
 function goHome(){showV('v-home');document.getElementById('appHdr').style.display='none';document.getElementById('bnav').style.display='none';closeDB();updateSummary();}
 function openApp(mode){
-  curApp=mode;
+  haptic(5);curApp=mode;
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
   document.getElementById('appHdr').style.display='block';
   const bn=document.getElementById('bnav');
@@ -1572,7 +1623,8 @@ function openApp(mode){
   }
 }
 function switchTab(idx,el){
-  [1,2,3].forEach(i=>document.getElementById('nv'+i).classList.remove('on'));if(el)el.classList.add('on');closeDB();
+  curTab=idx;
+  [1,2,3].forEach(i=>document.getElementById('nv'+i).classList.remove('on'));if(el)el.classList.add('on');closeDB();haptic(4);
   if(curApp==='rescue'){
     if(idx===1){showV('v-rescue-map');rMaps();updateRescueCross();setTimeout(()=>{try{if(window._saveMapCenter)window._saveMapCenter();}catch(e){}},200);}
     else if(idx===2){showV('v-rescue-list');renderResList();}
