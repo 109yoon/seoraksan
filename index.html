@@ -256,6 +256,8 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .pill.on{background:rgba(79,168,208,.15);color:#4fa8d0;border-color:rgba(79,168,208,.4);}
 .tt-stage-pill.on{background:#1a4a6e !important;color:#fff !important;border-color:#4fa8d0 !important;box-shadow:0 0 0 2px rgba(79,168,208,.25);}
 .tt-actor-pill.on{background:#7a3800 !important;color:#fff !important;border-color:#c05000 !important;}
+.tog-btn{padding:6px 14px;border-radius:7px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.04);color:rgba(255,255,255,.45);font-size:12px;cursor:pointer;transition:all .15s var(--qt);}
+.tog-btn.on{background:rgba(79,168,208,.18);border-color:rgba(79,168,208,.4);color:#4fa8d0;font-weight:700;}
 /* ── 체크박스 / 체크아이템 ── */
 .chk-item{transition:transform .1s var(--qt),background .14s ease,border-color .14s ease;}
 .chk-item:active{transform:scale(.94);}
@@ -1800,6 +1802,71 @@ function toggleExtraTeamMember(teamIdx,name,el){
 }
 function getExtraTeams(){ return _extraTeams.filter(t=>t.members.length>0); }
 
+// 장소구분 토글
+function selLoctype(val){
+  document.getElementById('r_loctype').value=val;
+  document.querySelectorAll('#loctypeBtns .tog-btn').forEach(b=>b.classList.toggle('on',b.dataset.val===val));
+  chkIllegal({value:val});autoGenTitle();
+}
+// 신고자 토글
+function selHasRep(val){
+  document.getElementById('r_hasRep').value=val;
+  document.querySelectorAll('#hasRepBtns .tog-btn').forEach(b=>b.classList.toggle('on',b.dataset.val===val));
+  document.getElementById('reporterWrap').style.display=val==='y'?'block':'none';
+}
+// 동반자 토글
+function selHasComp(val){
+  document.getElementById('r_hasComp').value=val;
+  document.querySelectorAll('#hasCompBtns .tog-btn').forEach(b=>b.classList.toggle('on',b.dataset.val===val));
+  document.getElementById('companionWrap').style.display=val==='y'?'block':'none';
+}
+
+// 부상 현황
+let _injuries=[];
+let _injType='',_injPart='',_injSide='';
+const _BILATERAL_PARTS=['어깨','팔꿈치','손목','손','무릎','발목','발'];
+function initInjuries(prefill){
+  _injuries=(prefill&&prefill.injuries)||[];
+  _injType='';_injPart='';_injSide='';
+  renderInjuries();
+}
+function selInjType(el,type){
+  document.querySelectorAll('#injTypePills .pill').forEach(p=>p.classList.remove('on'));
+  el.classList.add('on');_injType=type;
+}
+function selInjPart(el,part){
+  document.querySelectorAll('#injPartPills .pill').forEach(p=>p.classList.remove('on'));
+  el.classList.add('on');_injPart=part;_injSide='';
+  document.querySelectorAll('#injSidePills .pill').forEach(p=>p.classList.remove('on'));
+  const sw=document.getElementById('injSideWrap');
+  if(sw) sw.style.display=_BILATERAL_PARTS.includes(part)?'block':'none';
+}
+function selInjSide(el,side){
+  document.querySelectorAll('#injSidePills .pill').forEach(p=>p.classList.remove('on'));
+  el.classList.add('on');_injSide=side;
+}
+function addInjury(){
+  if(!_injType){toast('부상 유형을 선택하세요');return;}
+  if(!_injPart){toast('부상 부위를 선택하세요');return;}
+  _injuries.push({type:_injType,part:_injPart,side:_injSide});
+  _injType='';_injPart='';_injSide='';
+  document.querySelectorAll('#injTypePills .pill,#injPartPills .pill,#injSidePills .pill').forEach(p=>p.classList.remove('on'));
+  const sw=document.getElementById('injSideWrap');if(sw)sw.style.display='none';
+  renderInjuries();
+}
+function removeInjury(i){_injuries.splice(i,1);renderInjuries();}
+function renderInjuries(){
+  const el=document.getElementById('injuryList');
+  if(!el) return;
+  if(!_injuries.length){el.innerHTML='';return;}
+  el.innerHTML=_injuries.map((a,i)=>`
+    <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:#0b1c30;border-radius:7px;margin-bottom:4px;border:1px solid rgba(79,168,208,.1);">
+      <span style="font-size:12px;flex:1;color:#e0edf8;font-weight:600;">${a.type} ${a.part}${a.side?' '+a.side:''}</span>
+      <button onclick="removeInjury(${i})" style="background:none;border:none;color:#c0392b;font-size:15px;cursor:pointer;padding:0 2px;">×</button>
+    </div>`).join('');
+}
+function getInjuryStr(){return _injuries.map(a=>a.type+' '+a.part+(a.side?' '+a.side:'')).join(', ');}
+
 // 기상 특보
 let _weatherAlerts=[];
 let _wAlertType='';
@@ -2650,13 +2717,23 @@ function render1BoForm(prefill=null){
     <!-- ══ 섹터1: 위치·기상 ══ -->
     <div id="repSec1" class="rep-sec" style="padding:12px;overflow-y:auto;">
       <div class="rsec"><div class="rsec-t">📍 사고 위치</div>
+        <div class="fg">
+          <span class="fl">GPS 좌표</span>
+          <div class="gps-row">
+            <input type="text" id="r_gps" class="fi" placeholder="지도에서 선택 또는 직접 입력" value="${p.lat&&p.lng?(+p.lat).toFixed(5)+', '+(+p.lng).toFixed(5):''}">
+            <button class="sm-btn" onclick="openMapPicker()">🗺 지도</button>
+            <button class="sm-btn" onclick="gpsFromPhone('r_gps')">📍</button>
+          </div>
+          <div style="font-size:10px;color:#4a7090;margin-top:3px;">지도선택: 십자선을 위치에 맞추고 확인</div>
+        </div>
         <div class="fg"><span class="fl">사고 장소</span>
           <input type="text" id="r_loc" class="fi" placeholder="예: 비선대 직상부 암릉 구간" value="${p.location||''}" oninput="autoGenTitle()">
         </div>
-        <div class="fg"><span class="fl">장소구분 <span style="font-size:9px;color:#4a7090;font-weight:400;">(암빙벽, 비법정)</span></span>
-          <select id="r_loctype" class="fsel" onchange="chkIllegal(this);autoGenTitle()">
-            ${['법정탐방로','비법정탐방로','암벽','빙벽'].map(o=>`<option${p.loctype===o?' selected':''}>${o}</option>`).join('')}
-          </select>
+        <div class="fg"><span class="fl">장소구분</span>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;" id="loctypeBtns">
+            ${['법정탐방로','비법정탐방로','암벽','빙벽'].map(o=>`<button class="tog-btn${(p.loctype||'법정탐방로')===o?' on':''}" data-val="${o}" onclick="selLoctype('${o}')">${o}</button>`).join('')}
+          </div>
+          <input type="hidden" id="r_loctype" value="${p.loctype||'법정탐방로'}">
         </div>
         <div id="fineWrap" style="display:${p.loctype&&p.loctype.includes('비법정')?'block':'none'};" class="fg">
           <span class="fl" style="color:#e67e22;">⚠️ 과태료 여부</span>
@@ -2670,15 +2747,6 @@ function render1BoForm(prefill=null){
         </div>
         <div id="permitNote" style="display:${p.permit&&p.permit==='허가자 있음'?'block':'none'};" class="fg">
           <input type="text" id="r_permitNote" class="fi" placeholder="허가번호, 소속 등" value="${p.permitNote||''}">
-        </div>
-        <div class="fg">
-          <span class="fl">GPS 좌표</span>
-          <div class="gps-row">
-            <input type="text" id="r_gps" class="fi" placeholder="지도에서 선택 또는 직접 입력" value="${p.lat&&p.lng?(+p.lat).toFixed(5)+', '+(+p.lng).toFixed(5):''}">
-            <button class="sm-btn" onclick="openMapPicker()">🗺 지도</button>
-            <button class="sm-btn" onclick="gpsFromPhone('r_gps')">📍</button>
-          </div>
-          <div style="font-size:10px;color:#4a7090;margin-top:3px;">지도선택: 십자선을 위치에 맞추고 확인</div>
         </div>
       </div>
       <div class="rsec"><div class="rsec-t">🌤️ 기상 정보</div>
@@ -2712,25 +2780,37 @@ function render1BoForm(prefill=null){
         </div>
         <div class="fg"><span class="fl">사고 원인</span>
           <select id="r_cause" class="fsel" onchange="autoGenTitle()">
-            ${['실족','추락','낙석 피격','탈진/탈수','저체온','심혈관 이상','동물 피해','익수','기타'].map(o=>`<option${p.cause===o?' selected':''}>${o}</option>`).join('')}
+            ${['본인부주의','실족','추락','낙석 피격','탈진/탈수','저체온','심혈관 이상','동물 피해','익수','기타'].map(o=>`<option${(p.cause||'본인부주의')===o?' selected':''}>${o}</option>`).join('')}
           </select>
         </div>
         <div class="fg"><span class="fl">사고 경위 <span style="font-size:9px;color:#4a7090;font-weight:400;">(상세 기술)</span></span>
           <textarea id="r_sit" class="fta" rows="4" placeholder="예) 오전 09:00 비선대 주차장에서 산행 시작, 11:30경 천불동계곡 3km 지점 하산 중 실족하여 우측 발목 부상 발생">${p.situation||''}</textarea>
         </div>
       </div>
-      <div class="rsec"><div class="rsec-t">🩺 부상 현황 <button class="info-btn" onclick="openGuide('injury')">ℹ</button></div>
-        <div class="fg"><span class="fl">부상 부위 (복수) <button class="info-btn" onclick="openGuide('bodypart')">ℹ</button></span>
-          <div class="pills" id="injParts">${['머리/두부','경추/목','흉부','복부','골반','척추','상지(팔)','하지(다리)','발목','무릎','손/손목','없음(무상)'].map(o=>`<div class="pill${(p.injuryParts||[]).includes(o)?' on':''}" onclick="tPill(this)">${o}</div>`).join('')}</div>
-        </div>
-        <div class="fg"><span class="fl">부상 유형 (복수)</span>
-          <div class="pills" id="injTypes">${['골절','염좌/탈구','열상(찢김)','타박상','뇌진탕','저체온증','심정지','의식불명','통증호소','기타'].map(o=>`<div class="pill${(p.injuryTypes||[]).includes(o)?' on':''}" onclick="tPill(this)">${o}</div>`).join('')}</div>
+      <div class="rsec"><div class="rsec-t">🩺 부상 현황</div>
+        <div style="background:#060d1a;border-radius:8px;border:1px solid rgba(255,255,255,.07);padding:10px;margin-bottom:8px;">
+          <div style="font-size:10px;color:#4a7090;font-weight:700;margin-bottom:5px;">부상 유형</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;" id="injTypePills">
+            ${['골절','탈구','염좌','열상','타박상','두부손상','저체온증','심정지','익수','기타'].map(t=>`<div class="pill" onclick="selInjType(this,'${t}')" style="font-size:11px;cursor:pointer;">${t}</div>`).join('')}
+          </div>
+          <div style="font-size:10px;color:#4a7090;font-weight:700;margin-bottom:5px;">부상 부위</div>
+          <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;" id="injPartPills">
+            ${['머리','목','어깨','팔꿈치','손목','손','흉부','복부','허리','골반','무릎','발목','발','전신'].map(t=>`<div class="pill" onclick="selInjPart(this,'${t}')" style="font-size:11px;cursor:pointer;">${t}</div>`).join('')}
+          </div>
+          <div id="injSideWrap" style="display:none;margin-bottom:8px;">
+            <div style="font-size:10px;color:#4a7090;font-weight:700;margin-bottom:5px;">좌/우</div>
+            <div style="display:flex;gap:4px;" id="injSidePills">
+              ${['좌','우','양쪽'].map(s=>`<div class="pill" onclick="selInjSide(this,'${s}')" style="font-size:11px;cursor:pointer;">${s}</div>`).join('')}
+            </div>
+          </div>
+          <button onclick="addInjury()" style="width:100%;padding:7px;background:rgba(79,168,208,.15);border:1px solid rgba(79,168,208,.3);color:#4fa8d0;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">＋ 추가</button>
+          <div id="injuryList" style="margin-top:6px;"></div>
         </div>
         <div class="fg"><span class="fl">중증도 <button class="info-btn" onclick="openGuide('severity')">ℹ KTAS</button></span>
           <div class="pills" id="sevPills">${['KTAS 1 (소생)','KTAS 2 (긴급)','KTAS 3 (응급)','KTAS 4 (준응급)','KTAS 5 (비응급)'].map(o=>`<div class="pill${p.severity===o?' on':''}" onclick="sPill(this,'sevPills');autoGenTitle()">${o}</div>`).join('')}</div>
         </div>
         <div class="fg"><span class="fl">음주</span>
-          <select id="r_alc" class="fsel">${['알수없음','없음','의심','확인됨'].map(o=>`<option${(p.alcohol||'알수없음')===o?' selected':''}>${o}</option>`).join('')}</select>
+          <select id="r_alc" class="fsel">${['없음','의심','확인됨'].map(o=>`<option${(p.alcohol||'없음')===o?' selected':''}>${o}</option>`).join('')}</select>
         </div>
       </div>
       <div class="rsec"><div class="rsec-t">📸 현장 사진</div>
@@ -2773,10 +2853,11 @@ function render1BoForm(prefill=null){
       </div>
       <div class="rsec"><div class="rsec-t">📞 신고자</div>
         <div class="fg">
-          <select id="r_hasRep" class="fsel" onchange="chkReporter(this)">
-            <option value="n">신고자 없음</option>
-            <option value="y"${p.hasRep==='y'?' selected':''}>신고자 있음</option>
-          </select>
+          <div style="display:flex;gap:6px;" id="hasRepBtns">
+            <button class="tog-btn${p.hasRep==='y'?'':' on'}" data-val="n" onclick="selHasRep('n')">없음</button>
+            <button class="tog-btn${p.hasRep==='y'?' on':''}" data-val="y" onclick="selHasRep('y')">있음</button>
+          </div>
+          <input type="hidden" id="r_hasRep" value="${p.hasRep||'n'}">
         </div>
         <div id="reporterWrap" style="display:${p.hasRep==='y'?'block':'none'};">
           <div class="frow">
