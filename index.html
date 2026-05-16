@@ -599,18 +599,18 @@ body.guest-mode .guest-hide{display:none!important;}
   </div>
 
   <!-- 통계 칩 -->
-  <div class="home-chips">
-    <div class="hchip hchip-r" onclick="openApp('rescue')">
-      <div><div class="hchip-num" id="hs-og">0</div><div class="hchip-lbl">진행중</div></div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;flex-shrink:0;">
+    <div class="hchip hchip-r" onclick="openApp('rescue')" style="flex-direction:column;align-items:center;padding:10px 4px;gap:2px;">
+      <div class="hchip-num" id="hs-og">0</div><div class="hchip-lbl">진행중</div>
     </div>
-    <div class="hchip hchip-b" onclick="openApp('rescue')">
-      <div><div class="hchip-num" id="hs-tot">0</div><div class="hchip-lbl">이번달</div></div>
+    <div class="hchip hchip-b" onclick="openApp('rescue')" style="flex-direction:column;align-items:center;padding:10px 4px;gap:2px;">
+      <div class="hchip-num" id="hs-tot">0</div><div class="hchip-lbl">이번달</div>
     </div>
-    <div class="hchip hchip-o" onclick="openApp('inspect')">
-      <div><div class="hchip-num" id="hs-fb">0</div><div class="hchip-lbl">위험시설</div></div>
+    <div class="hchip hchip-o" onclick="openApp('inspect')" style="flex-direction:column;align-items:center;padding:10px 4px;gap:2px;">
+      <div class="hchip-num" id="hs-fb">0</div><div class="hchip-lbl">위험시설</div>
     </div>
-    <div class="hchip hchip-g" onclick="openApp('inspect')">
-      <div><div class="hchip-num" id="hs-ft">0</div><div class="hchip-lbl">전체시설</div></div>
+    <div class="hchip hchip-g" onclick="openApp('inspect')" style="flex-direction:column;align-items:center;padding:10px 4px;gap:2px;">
+      <div class="hchip-num" id="hs-ft">0</div><div class="hchip-lbl">전체시설</div>
     </div>
   </div>
 
@@ -642,6 +642,7 @@ body.guest-mode .guest-hide{display:none!important;}
         <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:3px;height:3px;border-radius:50%;background:#4fa8d0;"></div>
       </div>
     </div>
+    <div id="rescueMapFilterBar" style="position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:10;display:flex;gap:4px;pointer-events:auto;"></div>
     <button class="map-ctrl" onclick="toggleMapType('rescue')">위성/일반</button>
     <button class="fab-gps" onclick="gpsTo('rescue')" title="내 위치">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
@@ -705,6 +706,7 @@ body.guest-mode .guest-hide{display:none!important;}
         <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:3px;height:3px;border-radius:50%;background:#27ae60;"></div>
       </div>
     </div>
+    <div id="inspectMapFilterBar" style="position:absolute;top:8px;left:50%;transform:translateX(-50%);z-index:10;display:flex;gap:4px;pointer-events:auto;"></div>
     <button class="map-ctrl" onclick="toggleMapType('inspect')">위성/일반</button>
     <button class="fab-gps" onclick="gpsTo('inspect')">📍</button>
     <button class="fab" style="background:#0c4838;color:#fff;" onclick="openAddFac()">＋</button>
@@ -2260,12 +2262,17 @@ function updateUserUI(){
 // 재난/구조 — 지도
 // ══════════════════════════════════════════
 let selResId=null,curResId=null,resFilter='전체';
+let rescueMapFilter='전체',inspectMapFilter='전체';
 function renderRescueMap(){
   if(!mapR){document.getElementById('nomapR').style.display='block';return;}
   rOvs.forEach(o=>{try{o.setMap(null);}catch(e){}});rOvs=[];
+  const rmf=rescueMapFilter;
   // 구조 이력 핀
   (DB.g('rescues')||[]).forEach(r=>{
     if(!r.lat||!r.lng)return;
+    if(rmf==='위험상황')return;
+    if(rmf==='진행중'&&r.status!=='ongoing')return;
+    if(rmf==='종료'&&r.status!=='done')return;
     const isOg=r.status==='ongoing';const ti=RES_TYPES[r.type]||RES_TYPES['기타'];
     const el=document.createElement('div');el.className=`mpin ${ti.pc}${isOg?' blink':' p-done'}`;el.innerHTML=ti.ico;
     el.onclick=e=>{e.stopPropagation();openResPopup(r.id,'rescue');};
@@ -2273,14 +2280,22 @@ function renderRescueMap(){
     ov.setMap(mapR);rOvs.push(ov);
   });
   // 위험상황 핀
-  (DB.g('hazards')||[]).forEach(h=>{
-    if(!h.lat||!h.lng)return;
-    const done=h.hazStatus&&h.hazStatus!=='미조치'&&h.hazStatus!=='조치중';
-    const el=document.createElement('div');el.className=`mpin p-haz${done?' p-done':''}`;el.innerHTML='⚠️';
-    el.onclick=e=>{e.stopPropagation();openResPopup(h.id,'hazard');};
-    const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(h.lat,h.lng),content:el,clickable:true});
-    ov.setMap(mapR);rOvs.push(ov);
-  });
+  if(rmf==='전체'||rmf==='위험상황'){
+    (DB.g('hazards')||[]).forEach(h=>{
+      if(!h.lat||!h.lng)return;
+      const done=h.hazStatus&&h.hazStatus!=='미조치'&&h.hazStatus!=='조치중';
+      const el=document.createElement('div');el.className=`mpin p-haz${done?' p-done':''}`;el.innerHTML='⚠️';
+      el.onclick=e=>{e.stopPropagation();openResPopup(h.id,'hazard');};
+      const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(h.lat,h.lng),content:el,clickable:true});
+      ov.setMap(mapR);rOvs.push(ov);
+    });
+  }
+  // 지도 필터 바 렌더링
+  (function(){
+    const bar=document.getElementById('rescueMapFilterBar');if(!bar)return;
+    const fs=['전체','진행중','종료','위험상황'];
+    bar.innerHTML=fs.map(f=>`<div onclick="setRescueMapF('${f}')" style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;background:${f===rmf?'rgba(79,168,208,.9)':'rgba(6,13,26,.82)'};color:${f===rmf?'#fff':'rgba(255,255,255,.6)'};border:1px solid ${f===rmf?'rgba(79,168,208,.5)':'rgba(255,255,255,.12)'};backdrop-filter:blur(6px);">${f}</div>`).join('');
+  })();
   updateSummary();
 }
 
@@ -2343,6 +2358,8 @@ function renderResList(){
   document.getElementById('resListWrap').innerHTML=html||'<div class="empty"><div class="empty-ico">📋</div><div class="empty-txt">해당 항목 없음</div></div>';
 }
 function setResF(f){resFilter=f;renderResList();}
+function setRescueMapF(f){rescueMapFilter=f;renderRescueMap();}
+function setInspectMapF(f){inspectMapFilter=f;renderInspectMap();}
 
 // ══════════════════════════════════════════
 // 재난 통계
@@ -3404,13 +3421,23 @@ let selFacId=null,facStatusF='전체',facTypeF='전체',_editFacId=null;
 function renderInspectMap(){
   if(!mapI){document.getElementById('nomapI').style.display='block';return;}
   iOvs.forEach(o=>{try{o.setMap(null);}catch(e){}});iOvs=[];
+  const imf=inspectMapFilter;
+  const stMap={'양호':'ok','요주의':'warn','위험':'bad'};
   (DB.g('facilities')||[]).forEach(f=>{
     if(!f.lat||!f.lng)return;
+    if(imf!=='전체'&&f.status!==stMap[imf])return;
     const el=document.createElement('div');el.className=`mpin p-${f.status}${f.status==='bad'?' blink':''}`;el.innerHTML=f.type.split(' ')[0];
     el.onclick=e=>{e.stopPropagation();openFacDetail(f.id);};
     const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(f.lat,f.lng),content:el,clickable:true});
     ov.setMap(mapI);iOvs.push(ov);
   });
+  // 지도 필터 바 렌더링
+  (function(){
+    const bar=document.getElementById('inspectMapFilterBar');if(!bar)return;
+    const colMap={'전체':'rgba(79,168,208,.9)','양호':'rgba(39,174,96,.9)','요주의':'rgba(230,126,34,.9)','위험':'rgba(192,57,43,.9)'};
+    const fs=['전체','양호','요주의','위험'];
+    bar.innerHTML=fs.map(f=>`<div onclick="setInspectMapF('${f}')" style="padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;background:${f===imf?colMap[f]:'rgba(6,13,26,.82)'};color:${f===imf?'#fff':'rgba(255,255,255,.6)'};border:1px solid ${f===imf?'rgba(255,255,255,.3)':'rgba(255,255,255,.12)'};backdrop-filter:blur(6px);">${f}</div>`).join('');
+  })();
 }
 function renderFacList(){
   const facs=DB.g('facilities')||[];
@@ -4840,8 +4867,7 @@ window.onload=function(){
       function checkAuth(){
         updateUserUI();
         const authType=DB.g('authType');
-        const u=DB.g('currentUser')||{};
-        if(!authType&&!u.name){showLoginScreen();}
+        if(!authType){showLoginScreen();}
       }
       setTimeout(function(){
         var ls=document.getElementById('loadingScreen');
