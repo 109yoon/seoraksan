@@ -495,22 +495,32 @@ body.guest-mode .guest-hide{display:none!important;}
 
 </div>
 <script>
-// 외부 스크립트 로딩 지연과 무관하게 동작하는 절대 타임아웃
+// 로딩 화면 팁·바 애니메이션: window.onload 이전에 즉시 시작
 (function(){
-  var _t=setTimeout(function(){
+  var tips=["💡 GPS 좌표 등록 시 십자선 중심이 정확한 위치예요","💡 위험상황 보고는 지도 하단 버튼을 이용하세요","💡 알림을 탭하면 해당 현장으로 바로 이동해요","💡 보고서는 간편보기↔전체보기 전환이 가능해요","💡 설악위키 문서는 복사본을 만들어 수정할 수 있어요","💡 2보 추가 시 이전 보 요약을 먼저 확인하세요","💡 시설물 핀을 탭하면 점검일지를 바로 작성해요","💡 점검 저장 시 자동으로 관리자에게 알림이 가요"];
+  var ti=0,prog=0;
+  var tipEl=document.getElementById('loadTip');
+  var barEl=document.getElementById('loadBar');
+  if(tipEl){tipEl.style.transition='opacity .4s';tipEl.style.opacity='0';setTimeout(function(){tipEl.textContent=tips[0];tipEl.style.opacity='1';},300);}
+  window._loadTipTimer=setInterval(function(){
+    if(!tipEl)return;
+    tipEl.style.opacity='0';
+    setTimeout(function(){ti=(ti+1)%tips.length;tipEl.textContent=tips[ti];tipEl.style.opacity='1';},450);
+  },2800);
+  window._loadBarTimer=setInterval(function(){
+    prog=Math.min(prog+Math.random()*12+3,88);
+    if(barEl)barEl.style.width=prog+'%';
+  },500);
+  // 6초 절대 타임아웃: window.onload가 정의한 _hideLoading이 있으면 위임, 없으면 직접 처리
+  window._safeLoadingTimer=setTimeout(function(){
+    if(window._hideLoading){window._hideLoading();return;}
+    if(window._hideLoadingDone)return;
+    window._hideLoadingDone=true;
+    clearInterval(window._loadTipTimer);clearInterval(window._loadBarTimer);
+    if(barEl)barEl.style.width='100%';
     var ls=document.getElementById('loadingScreen');
-    if(!ls||!ls.parentNode)return;
-    ls.style.transition='opacity .5s';ls.style.opacity='0';
-    setTimeout(function(){
-      if(ls.parentNode)ls.parentNode.removeChild(ls);
-      // 앱 초기화가 완료됐으면 hideLoading에 맡기고, 아니면 로그인 화면 강제 표시
-      if(!window._hideLoadingDone){
-        var lsi=document.getElementById('loginScreen');
-        if(lsi)lsi.style.display='flex';
-      }
-    },500);
-  },10000);
-  window._safeLoadingTimer=_t;
+    if(ls){ls.style.pointerEvents='none';ls.style.transition='opacity .5s';ls.style.opacity='0';setTimeout(function(){if(ls.parentNode)ls.parentNode.removeChild(ls);var lsi=document.getElementById('loginScreen');if(lsi)lsi.style.display='flex';},500);}
+  },6000);
 })();
 </script>
 
@@ -4698,36 +4708,16 @@ document.addEventListener('input',e=>{
 
 
 window.onload=function(){
-  // ── 로딩 화면 ──
+  // ── 로딩 화면 ── (애니메이션은 loadingScreen 직후 인라인 스크립트에서 이미 시작됨)
   (function(){
-    var tips=["💡 GPS 좌표 등록 시 십자선 중심이 정확한 위치예요", "💡 위험상황 보고는 지도 하단 버튼을 이용하세요", "💡 알림을 탭하면 해당 현장으로 바로 이동해요", "💡 보고서는 간편보기↔전체보기 전환이 가능해요", "💡 설악위키 문서는 복사본을 만들어 수정할 수 있어요", "💡 2보 추가 시 이전 보 요약을 먼저 확인하세요", "💡 시설물 핀을 탭하면 점검일지를 바로 작성해요", "💡 점검 저장 시 자동으로 관리자에게 알림이 가요"];
-    var ti=0, prog=0;
-    var tipEl=document.getElementById('loadTip');
-    var barEl=document.getElementById('loadBar');
-    if(tipEl){ tipEl.style.transition='opacity .4s'; tipEl.style.opacity='0'; setTimeout(function(){tipEl.textContent=tips[0];tipEl.style.opacity='1';},300); }
-    var tipTimer=setInterval(function(){
-      if(!tipEl)return;
-      tipEl.style.transition='opacity .4s';
-      tipEl.style.opacity='0';
-      setTimeout(function(){
-        ti=(ti+1)%tips.length;
-        tipEl.textContent=tips[ti];
-        tipEl.style.opacity='1';
-      },450);
-    },2800);
-    var barTimer=setInterval(function(){
-      prog=Math.min(prog+Math.random()*12+3,88);
-      if(barEl)barEl.style.width=prog+'%';
-    },500);
     window._hideLoading=function(){
-      if(window._hideLoadingDone) return; // 중복 호출 방지
+      if(window._hideLoadingDone) return;
       window._hideLoadingDone=true;
       if(window._safeLoadingTimer)clearTimeout(window._safeLoadingTimer);
-      clearInterval(tipTimer);clearInterval(barTimer);
+      clearInterval(window._loadTipTimer);clearInterval(window._loadBarTimer);
+      var barEl=document.getElementById('loadBar');
       if(barEl)barEl.style.width='100%';
-      // 로그인 체크 — 세션(탭)마다 다시 로그인 필요
       function checkAuth(){
-        // 카카오 리다이렉트 콜백 처리
         const urlParams=new URLSearchParams(window.location.search);
         const kakaoCode=urlParams.get('code');
         if(kakaoCode){
@@ -4744,6 +4734,7 @@ window.onload=function(){
       setTimeout(function(){
         var ls=document.getElementById('loadingScreen');
         if(ls){
+          ls.style.pointerEvents='none';
           ls.style.transition='opacity .6s';ls.style.opacity='0';
           setTimeout(function(){
             if(ls.parentNode)ls.parentNode.removeChild(ls);
@@ -4754,7 +4745,7 @@ window.onload=function(){
         }
       },400);
     };
-    // 5초 강제 해제
+    // window.onload 기반 5초 폴백 (인라인 6초 타이머와 이중 보호)
     setTimeout(function(){if(window._hideLoading)window._hideLoading();},5000);
   })();
 
