@@ -3651,7 +3651,8 @@ function renderAdmSys(){
       <div style="font-size:12px;color:#b8d4e8;line-height:2.1;">시설물 <b>${(DB.g('facilities')||[]).length}개</b> · 점검이력 <b>${(DB.g('history')||[]).length}건</b><br>구조이력 <b>${(DB.g('rescues')||[]).length}건</b> · 위험상황 <b>${(DB.g('hazards')||[]).length}건</b><br>위키 <b>${(DB.g('wikis')||[]).length}건</b> · 대원 <b>${(DB.g('members')||[]).length}명</b></div>
     </div>
     <div class="scard" style="margin-bottom:8px;"><div class="stitle">📥 데이터 가져오기</div>
-      <button onclick="document.getElementById('facImportText').value='';document.getElementById('facImportPreview').textContent='';document.getElementById('modalFacImport').classList.add('on')" style="width:100%;background:rgba(79,168,208,.1);color:#4fa8d0;border:1px solid rgba(79,168,208,.25);padding:10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">🪧 시설물 목록 가져오기 (구글시트)</button>
+      <button onclick="document.getElementById('facImportText').value='';document.getElementById('facImportPreview').textContent='';document.getElementById('modalFacImport').classList.add('on')" style="width:100%;background:rgba(79,168,208,.1);color:#4fa8d0;border:1px solid rgba(79,168,208,.25);padding:10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;margin-bottom:8px;">🪧 시설물 목록 가져오기 (구글시트)</button>
+      <button onclick="if(confirm('기존 시설물 이름을 01-01 형식으로 재포맷합니다.'))reformatFacNames()" style="width:100%;background:rgba(79,168,208,.06);color:#7a9cb8;border:1px solid rgba(79,168,208,.15);padding:10px;border-radius:8px;font-size:12px;cursor:pointer;">🔄 시설물 이름 01-01 형식 재포맷</button>
     </div>
     <div class="scard"><div class="stitle" style="color:#c0392b;">⚠️ 위험 작업</div>
       <div style="display:flex;flex-direction:column;gap:7px;">
@@ -3710,6 +3711,29 @@ function doFacImport(){
   toast(`✅ ${rows.length}개 시설물 등록 완료`);
   renderAdmSys();updateSummary();
   try{renderInspectMap();}catch(e){}
+}
+function reformatFacNames(){
+  const facs=(DB.g('facilities')||[]).slice();
+  if(!facs.length){toast('⚠️ 시설물 없음');return;}
+  // loc별로 그룹핑 (import 순서 유지 = id 오름차순)
+  facs.sort((a,b)=>(+a.id||0)-(+b.id||0));
+  const groups={};
+  facs.forEach(f=>{const k=f.loc||'';(groups[k]=groups[k]||[]).push(f);});
+  facs.forEach(f=>{
+    const trailNum=((f.loc||'').match(/^(\d+)/)||[])[1]||'';
+    if(!trailNum)return;
+    const group=groups[f.loc||''];
+    const idx=(group.indexOf(f)+1);
+    const signNum=String(idx).padStart(2,'0');
+    // 이미 포맷된 이름(NN-NN 형식) 이면 상세지역 부분만 추출
+    const area=f.name.replace(/^\d{2}-\d{2}\s*/,'');
+    f.name=trailNum+'-'+signNum+' '+area;
+  });
+  DB.s('facilities',facs);
+  toast('✅ 이름 재포맷 완료 ('+facs.length+'개)');
+  renderAdmSys();updateSummary();
+  try{renderInspectMap();}catch(e){}
+  try{renderFacList();}catch(e){}
 }
 function resetAll(){if(!confirm('모든 데이터 초기화. 되돌릴 수 없습니다.'))return;['members','catFac','wikiCats','facilities','rescues','hazards','history','wikis','notis','hotSearch','notiSetting','currentUser','sheetsUrl'].forEach(k=>DB.d(k));initDB();toast('✅ 초기화');renderAdmSys();updateSummary();}
 function clearNotisOnly(){DB.s('notis',[]);updateBell();toast('🗑️ 알림 이력 삭제');renderAdmSys();}
