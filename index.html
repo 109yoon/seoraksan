@@ -494,6 +494,25 @@ body.guest-mode .guest-hide{display:none!important;}
   <div id="loadTip" style="margin-top:16px;font-size:12px;color:#4a7090;text-align:center;padding:0 32px;line-height:1.7;max-width:300px;min-height:40px;transition:opacity .3s;"></div>
 
 </div>
+<script>
+// 외부 스크립트 로딩 지연과 무관하게 동작하는 절대 타임아웃
+(function(){
+  var _t=setTimeout(function(){
+    var ls=document.getElementById('loadingScreen');
+    if(!ls||!ls.parentNode)return;
+    ls.style.transition='opacity .5s';ls.style.opacity='0';
+    setTimeout(function(){
+      if(ls.parentNode)ls.parentNode.removeChild(ls);
+      // 앱 초기화가 완료됐으면 hideLoading에 맡기고, 아니면 로그인 화면 강제 표시
+      if(!window._hideLoadingDone){
+        var lsi=document.getElementById('loginScreen');
+        if(lsi)lsi.style.display='flex';
+      }
+    },500);
+  },10000);
+  window._safeLoadingTimer=_t;
+})();
+</script>
 
 <!-- ══ 로그인 화면 ══ -->
 <div id="loginScreen" style="display:none;">
@@ -2051,7 +2070,7 @@ function initFireAgencies(prefill){
   const raw=(prefill&&prefill.agencies&&prefill.agencies.fireAgencies)||[];
   // 이전 포맷({name}) → 새 포맷({cat,name,count}) 호환
   _fireAgencies=raw.map(a=>typeof a==='string'?{cat:'🚒 소방',name:a,count:0}:{cat:a.cat||'🏢 기타',name:a.name||'',count:a.count||0});
-  _agSelectedCat='';
+  _agSelectedCat='';_agSubLoc='';_agSubType='';
   renderFireAgencies();
 }
 function selAgencyCat(el,cat){
@@ -2513,6 +2532,7 @@ function submitNBoFromForm(){
   }
   res[idx].reports.push(phaseData);
   DB.s('rescues',res);
+  _ttInlineEntries=[];
   const phaseNum=res[idx].reports.length;
   pushNoti(`📋 ${phaseNum+1}보: ${res[idx].title}`,'📋','info',{app:'rescue',tab:2,id:res[idx].id});
   toast(`✅ ${phaseNum+1}보 저장 완료`);
@@ -3220,6 +3240,7 @@ function submit1Bo(){
   _1boSubmitting=true;
   const _btn=document.querySelector('#rep1BoFooter .btn-submit');
   if(_btn){_btn.disabled=true;_btn.style.opacity='.5';}
+  try{
   autoGenTitle();
   const title=document.getElementById('r_title').value.trim()||autoGenTitle(true);
   const gps=(document.getElementById('r_gps')?.value||'').split(',');
@@ -3238,7 +3259,7 @@ function submit1Bo(){
     date:nowStr,
     reception:document.getElementById('r_recv')?.value||'',
     weather:getSelPills('weatherPills')[0]||'',
-    weatherAlert:document.getElementById('r_wAlert')?.value||'',
+    weatherAlert:getWeatherAlertStr()||'',
     lat, lng,
     location:document.getElementById('r_loc')?.value||'',
     loctype:document.getElementById('r_loctype')?.value||'',
@@ -3283,9 +3304,12 @@ function submit1Bo(){
   DB.s('rescues',res);
   pushNoti('🚨 구조 1보: '+title+' ('+r.type+')',RES_TYPES[r.type]?.ico||'🚨',r.type,{app:'rescue',tab:2,id:r.id});
   syncToSheets('rescue',{id:r.id,title,type:r.type,date:r.date,author:r.author});
-  _1boSubmitting=false;
   toast('🚨 1보 등록 완료');
   openApp('rescue');
+  }finally{
+    _1boSubmitting=false;
+    if(_btn){_btn.disabled=false;_btn.style.opacity='1';}
+  }
 }
 
 // ══════════════════════════════════════════
@@ -4614,16 +4638,15 @@ function openMapPicker(){
         center:new kakao.maps.LatLng(initLat,initLng), level:5
       });
       mapPicker.setMapTypeId(kakao.maps.MapTypeId.HYBRID);
+      kakao.maps.event.addListener(mapPicker,'center_changed',function(){
+        const c=mapPicker.getCenter();
+        const coordEl=document.getElementById('pickerCoords');
+        if(coordEl) coordEl.textContent=c.getLat().toFixed(5)+', '+c.getLng().toFixed(5);
+      });
     } else {
       mapPicker.relayout();
       mapPicker.setCenter(new kakao.maps.LatLng(initLat,initLng));
     }
-    // 지도 이동 시 좌표 실시간 업데이트
-    kakao.maps.event.addListener(mapPicker,'center_changed',function(){
-      const c=mapPicker.getCenter();
-      const coordEl=document.getElementById('pickerCoords');
-      if(coordEl) coordEl.textContent=c.getLat().toFixed(5)+', '+c.getLng().toFixed(5);
-    });
     // 초기 좌표 표시
     const coordEl=document.getElementById('pickerCoords');
     if(coordEl) coordEl.textContent=initLat.toFixed(5)+', '+initLng.toFixed(5);
@@ -4699,6 +4722,7 @@ window.onload=function(){
     window._hideLoading=function(){
       if(window._hideLoadingDone) return; // 중복 호출 방지
       window._hideLoadingDone=true;
+      if(window._safeLoadingTimer)clearTimeout(window._safeLoadingTimer);
       clearInterval(tipTimer);clearInterval(barTimer);
       if(barEl)barEl.style.width='100%';
       // 로그인 체크 — 세션(탭)마다 다시 로그인 필요
