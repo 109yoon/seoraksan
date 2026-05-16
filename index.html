@@ -329,12 +329,12 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .wiki-toc-item{font-size:11px;color:#4fa8d0;padding:2px 0 2px 0;cursor:pointer;text-decoration:underline;display:block;}
 .wiki-toc-sub{font-size:11px;color:#6a9ab8;padding:2px 0 2px 12px;cursor:pointer;text-decoration:underline;display:block;}
 .wiki-toc-sub2{font-size:11px;color:#5a8090;padding:2px 0 2px 22px;cursor:pointer;text-decoration:underline;display:block;}
-.wiki-body{padding:11px 13px;border-top:1px solid rgba(255,255,255,.05);}
+.wiki-body{padding:11px 13px;border-top:1px solid rgba(255,255,255,.05);user-select:text;-webkit-user-select:text;}
 .wiki-h1{font-size:14px;font-weight:700;color:#e0edf8;margin:12px 0 5px;padding:6px 10px;background:rgba(79,168,208,.1);border-left:3px solid #4fa8d0;border-radius:0 5px 5px 0;}
 .wiki-h1:first-child{margin-top:0;}
 .wiki-h2{font-size:13px;font-weight:700;color:#b8d4e8;margin:9px 0 4px;padding:4px 8px;background:rgba(79,168,208,.05);border-left:2px solid rgba(79,168,208,.4);}
 .wiki-h3{font-size:12px;font-weight:700;color:#9abece;margin:6px 0 3px;padding:3px 8px 3px 14px;border-left:1px dashed rgba(79,168,208,.3);}
-.wiki-txt{font-size:12px;color:#7a9cb8;line-height:1.85;margin-bottom:5px;}
+.wiki-txt{font-size:12px;color:#7a9cb8;line-height:1.85;margin-bottom:5px;user-select:text;-webkit-user-select:text;}
 .wiki-quote{border-left:3px solid rgba(79,168,208,.3);padding:4px 10px;margin:5px 0;color:#5a8aa0;font-style:italic;font-size:12px;}
 .wlink{color:#4fa8d0;text-decoration:underline;cursor:pointer;font-weight:600;}
 .wiki-img-el{width:100%;border-radius:7px;margin:7px 0;max-height:160px;object-fit:cover;}
@@ -1466,6 +1466,9 @@ function initMaps(){
     window._saveMapCenter=saveMapCenter;
     kakao.maps.event.addListener(mapR,'center_changed',saveMapCenter);
     saveMapCenter();
+    kakao.maps.event.addListener(mapI,'center_changed',()=>{
+      try{const ic=mapI.getCenter();window._lastInspectCoord={lat:ic.getLat(),lng:ic.getLng()};}catch(e){}
+    });
     if(window._hideLoading)setTimeout(window._hideLoading,600);
   }
   if(window._KR)doInit();else window._KCB=doInit;
@@ -1840,8 +1843,8 @@ function initFacMiniMap(lat,lng){
   const gpsVal=(document.getElementById('facGpsIn')?.value||'').split(',');
   let defLat=parseFloat(gpsVal[0]),defLng=parseFloat(gpsVal[1]);
   if(isNaN(defLat)||isNaN(defLng)){
-    defLat=(lat!=null&&!isNaN(+lat))?+lat:(window._lastCrosshairCoord?.lat??DC.lat);
-    defLng=(lng!=null&&!isNaN(+lng))?+lng:(window._lastCrosshairCoord?.lng??DC.lng);
+    defLat=(lat!=null&&!isNaN(+lat))?+lat:(window._lastInspectCoord?.lat??window._lastCrosshairCoord?.lat??DC.lat);
+    defLng=(lng!=null&&!isNaN(+lng))?+lng:(window._lastInspectCoord?.lng??window._lastCrosshairCoord?.lng??DC.lng);
   }
   setTimeout(()=>{
     const container=document.getElementById('fac_minimap');if(!container)return;
@@ -2268,7 +2271,7 @@ function updateUserUI(){
 // 재난/구조 — 지도
 // ══════════════════════════════════════════
 let selResId=null,curResId=null,resFilter='전체';
-let rescueMapFilter='전체';
+let rescueMapFilter='전체',wikiCatF='';
 let inspectMapF={levels:[],types:[]};
 function renderRescueMap(){
   if(!mapR){document.getElementById('nomapR').style.display='block';return;}
@@ -3428,12 +3431,10 @@ let selFacId=null,facStatusF='전체',facTypeF='전체',_editFacId=null;
 function renderInspectMap(){
   if(!mapI){document.getElementById('nomapI').style.display='block';return;}
   iOvs.forEach(o=>{try{o.setMap(null);}catch(e){}});iOvs=[];
-  const stMap={'양호':'ok','요주의':'warn','위험':'bad'};
   const lvls=inspectMapF.levels;const typs=inspectMapF.types;
   (DB.g('facilities')||[]).forEach(f=>{
     if(!f.lat||!f.lng)return;
     if(lvls.length&&!lvls.includes(f.status))return;
-    const typeLabel=f.type.split(' ').slice(1).join(' ')||f.type;
     if(typs.length&&!typs.some(t=>f.type.includes(t)))return;
     const el=document.createElement('div');el.className=`mpin p-${f.status}${f.status==='bad'?' blink':''}`;el.innerHTML=f.type.split(' ')[0];
     el.onclick=e=>{e.stopPropagation();openFacDetail(f.id);};
@@ -3442,21 +3443,22 @@ function renderInspectMap(){
   });
   (function(){
     const bar=document.getElementById('inspectMapFilterBar');if(!bar)return;
-    const colMap={'ok':'rgba(39,174,96,.9)','warn':'rgba(230,126,34,.9)','bad':'rgba(192,57,43,.9)'};
-    const labelMap={'ok':'양호','warn':'요주의','bad':'위험'};
-    const lvlKeys=['ok','warn','bad'];
-    const allTypes=[...new Set((DB.g('facilities')||[]).map(f=>f.type.split(' ').slice(1).join(' ')||f.type))].slice(0,8);
-    const pill=(label,active,col,onclick)=>`<div onclick="${onclick}" style="padding:3px 9px;border-radius:16px;font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;background:${active?col:'rgba(6,13,26,.82)'};color:${active?'#fff':'rgba(255,255,255,.55)'};border:1px solid ${active?'rgba(255,255,255,.3)':'rgba(255,255,255,.1)'};backdrop-filter:blur(6px);">${label}</div>`;
-    let html=`<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start;">`;
-    html+=`<div style="display:flex;gap:3px;flex-wrap:nowrap;">`;
-    lvlKeys.forEach(k=>{const on=lvls.includes(k);html+=pill(labelMap[k],on,colMap[k],`toggleInspF('level','${k}')`)});
+    bar.style.cssText='position:absolute;top:8px;left:8px;right:56px;z-index:10;pointer-events:none;display:flex;flex-direction:column;gap:4px;';
+    const colMap={ok:'#27ae60',warn:'#e67e22',bad:'#c0392b'};
+    const labelMap={ok:'양호',warn:'요주의',bad:'위험'};
+    const pill=(label,active,bg,fn)=>`<button onclick="${fn}" style="padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;pointer-events:auto;background:${active?bg:'rgba(10,20,38,.88)'};color:${active?'#fff':'rgba(224,237,248,.75)'};border:1.5px solid ${active?bg:'rgba(255,255,255,.18)'};box-shadow:0 1px 4px rgba(0,0,0,.4);backdrop-filter:blur(8px);">${label}</button>`;
+    const allTypes=[...new Set((DB.g('facilities')||[]).map(f=>f.type.split(' ').slice(1).join(' ')||f.type))].filter(Boolean).slice(0,8);
+    let html=`<div style="display:flex;gap:4px;flex-wrap:wrap;">`;
+    ['ok','warn','bad'].forEach(k=>{html+=pill(labelMap[k],lvls.includes(k),colMap[k],`toggleInspF('level','${k}')`)});
     html+=`</div>`;
     if(allTypes.length){
-      html+=`<div style="display:flex;gap:3px;flex-wrap:nowrap;overflow-x:auto;max-width:95vw;">`;
-      allTypes.forEach(t=>{const on=typs.includes(t);html+=pill(t,on,'rgba(79,168,208,.9)',`toggleInspF('type','${t}')`)});
+      html+=`<div style="display:flex;gap:4px;flex-wrap:wrap;">`;
+      allTypes.forEach(t=>{
+        const safe=t.replace(/'/g,'');
+        html+=pill(safe,typs.includes(t),'rgba(79,168,208,.9)',`toggleInspF('type','${safe}')`);
+      });
       html+=`</div>`;
     }
-    html+=`</div>`;
     bar.innerHTML=html;
   })();
 }
@@ -3490,13 +3492,22 @@ function setFacF(t,v){if(t==='s')facStatusF=v;else facTypeF=v;renderFacList();}
 
 function renderInspectStats(){
   const facs=DB.g('facilities')||[];const hist=(DB.g('history')||[]).slice().reverse().slice(0,8);
+  const tot=facs.length||1;
+  const badC=facs.filter(f=>f.status==='bad').length;
+  const warnC=facs.filter(f=>f.status==='warn').length;
+  const okC=facs.filter(f=>f.status==='ok').length;
   document.getElementById('fs-tot').textContent=facs.length;
-  document.getElementById('fs-bad').textContent=facs.filter(f=>f.status==='bad').length;
-  document.getElementById('fs-warn').textContent=facs.filter(f=>f.status==='warn').length;
-  document.getElementById('fs-ok').textContent=facs.filter(f=>f.status==='ok').length;
-  const tm={};facs.forEach(f=>{tm[f.type]=(tm[f.type]||0)+1;});
-  document.getElementById('facTypeStatWrap').innerHTML=Object.entries(tm).map(([k,v])=>
-    `<div class="type-row" style="pointer-events:none;"><span class="t-ico">${k.split(' ')[0]}</span><span class="t-lbl">${k.split(' ').slice(1).join(' ')}</span><span class="t-cnt">${v}개</span></div>`).join('');
+  document.getElementById('fs-bad').textContent=badC;
+  document.getElementById('fs-warn').textContent=warnC;
+  document.getElementById('fs-ok').textContent=okC;
+  const bar=(pct,col)=>`<div style="flex:1;background:rgba(255,255,255,.06);border-radius:6px;height:10px;overflow:hidden;"><div style="background:${col};height:100%;width:${Math.max(pct,2)}%;border-radius:6px;transition:width .6s ease;"></div></div>`;
+  document.getElementById('facTypeStatWrap').innerHTML=`
+    <div style="margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;"><span style="font-size:10px;color:#27ae60;font-weight:700;width:36px;">양호</span>${bar(Math.round(okC/tot*100),'#27ae60')}<span style="font-size:11px;color:#7a9cb8;width:24px;text-align:right;">${okC}</span></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;"><span style="font-size:10px;color:#e67e22;font-weight:700;width:36px;">요주의</span>${bar(Math.round(warnC/tot*100),'#e67e22')}<span style="font-size:11px;color:#7a9cb8;width:24px;text-align:right;">${warnC}</span></div>
+      <div style="display:flex;align-items:center;gap:8px;"><span style="font-size:10px;color:#c0392b;font-weight:700;width:36px;">위험</span>${bar(Math.round(badC/tot*100),'#c0392b')}<span style="font-size:11px;color:#7a9cb8;width:24px;text-align:right;">${badC}</span></div>
+    </div>
+    ${(()=>{const tm={};facs.forEach(f=>{tm[f.type]=(tm[f.type]||0)+1;});const maxV=Math.max(...Object.values(tm),1);return Object.entries(tm).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;"><span style="font-size:12px;flex-shrink:0;">${k.split(' ')[0]}</span><span style="font-size:10px;color:#7a9cb8;width:70px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;">${k.split(' ').slice(1).join(' ')}</span>${bar(Math.round(v/maxV*100),'rgba(79,168,208,.7)')}<span style="font-size:11px;color:#4fa8d0;width:24px;text-align:right;">${v}</span></div>`).join('');})()}`;
   document.getElementById('facRecentWrap').innerHTML=hist.length?hist.map(h=>
     `<div style="background:#060d1a;border-radius:8px;padding:9px 11px;margin-bottom:5px;"><div style="font-size:10px;color:rgba(255,255,255,.25);">${h.date} · ${h.author||'-'}</div><div style="font-size:12px;font-weight:600;color:${SC(h.status)};margin-top:2px;">${h.facName} — ${SL(h.status)}</div>${h.note?`<div style="font-size:11px;color:rgba(255,255,255,.35);margin-top:3px;">${h.note}</div>`:''}</div>`).join(''):'<div class="muted" style="font-size:12px;padding:5px 0;">점검 이력 없음</div>';
 }
@@ -3585,6 +3596,7 @@ function openAddFac(){
   document.getElementById('facInitSt').value='ok';
   document.getElementById('prevFac').innerHTML='📸 촬영 또는 앨범';
   document.getElementById('modalAddFac').classList.add('on');
+  if(mapI){try{const ic=mapI.getCenter();window._lastInspectCoord={lat:ic.getLat(),lng:ic.getLng()};}catch(e){}}
   initFacMiniMap();
 }
 function openEditFac(id){
@@ -3654,17 +3666,34 @@ function renderHotSearch(){
   if(!sorted.length){w.innerHTML='';return;}
   w.innerHTML=`<div class="hot-wrap"><div class="hot-title">🔥 24시간 인기검색어</div><div class="hot-tags">${sorted.map(([k,c],i)=>`<div class="hot-tag" onclick="document.getElementById('wikiSearch').value='${k}';onWikiSearch('${k}');"><span class="hot-rank">${i+1}</span>${k}<span style="font-size:9px;color:#3a6a8a;"> ${c}</span></div>`).join('')}</div></div>`;
 }
+function setWikiCatF(c){wikiCatF=wikiCatF===c?'':c;renderWikiList(document.getElementById('wikiSearch')?.value||'');}
 function renderWikiList(filter=''){
   document.getElementById('wikiPageWrap').style.display='none';document.getElementById('wikiListWrap').style.display='block';
-  const wikis=DB.g('wikis')||[];const list=filter?wikis.filter(w=>w.title.includes(filter)||w.body.includes(filter)):wikis;
-  document.getElementById('wikiListWrap').innerHTML=list.length?list.map(w=>`
+  const wikis=DB.g('wikis')||[];
+  const list=wikis.filter(w=>{
+    const textOk=!filter||(w.title.includes(filter)||w.body.includes(filter));
+    const catOk=!wikiCatF||(w.cats||[]).includes(wikiCatF);
+    return textOk&&catOk;
+  });
+  const cats=DB.g('wikiCats')||[];
+  const catCounts={};wikis.forEach(w=>(w.cats||[]).forEach(c=>{catCounts[c]=(catCounts[c]||0)+1;}));
+  const catIcons={'지형':'🏔️','안전':'⛑️','장비':'🎒','법령':'📜','응급':'🚑','탐방로':'🥾','시설':'🏗️','동식물':'🌿','기상':'⛅','기타':'📁'};
+  const catGrid=cats.length?`<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:8px 0 10px;">
+    ${cats.map(c=>`<div onclick="setWikiCatF('${c}')" style="background:${c===wikiCatF?'rgba(79,168,208,.22)':'rgba(11,28,48,.8)'};border:1.5px solid ${c===wikiCatF?'rgba(79,168,208,.6)':'rgba(255,255,255,.08)'};border-radius:10px;padding:8px 4px;text-align:center;cursor:pointer;">
+      <div style="font-size:18px;">${catIcons[c]||'📁'}</div>
+      <div style="font-size:10px;font-weight:700;color:${c===wikiCatF?'#4fa8d0':'#c8dff0'};margin-top:2px;">${c}</div>
+      <div style="font-size:9px;color:#3a6a8a;margin-top:1px;">${catCounts[c]||0}건</div>
+    </div>`).join('')}
+  </div>`:'';
+  document.getElementById('wikiListWrap').innerHTML=catGrid+
+    (list.length?list.map(w=>`
     <div class="lcard" onclick="openWikiPage(${w.id})">
       <div style="font-size:20px;flex-shrink:0;">📄</div>
       <div class="linfo"><div class="lname">${w.title}</div>
-        <div class="lmeta">${(w.cats||[]).map(c=>`<span style="background:rgba(79,168,208,.08);color:#4fa8d0;padding:1px 6px;border-radius:20px;font-size:9px;margin-right:2px;">${c}</span>`).join('')}</div>
+        <div class="lmeta">${(w.cats||[]).map(c=>`<span style="background:rgba(79,168,208,.1);color:#4fa8d0;padding:2px 7px;border-radius:20px;font-size:9px;font-weight:600;margin-right:2px;border:1px solid rgba(79,168,208,.2);">${c}</span>`).join('')}</div>
         <div class="lmeta">v${(w.versions||[]).length+1} · ${w.author||'-'}</div>
       </div>
-    </div>`).join(''):'<div class="empty"><div class="empty-ico">📚</div><div class="empty-txt">검색 결과 없음</div></div>';
+    </div>`).join(''):'<div class="empty"><div class="empty-ico">📚</div><div class="empty-txt">검색 결과 없음</div></div>');
 }
 function openWikiPage(id){
   const wikis=DB.g('wikis')||[];const w=wikis.find(x=>x.id===id);if(!w)return;
@@ -4951,22 +4980,28 @@ window.onload=function(){
     setTimeout(function(){if(window._hideLoading)window._hideLoading();},3000);
   })();
 
-  // 안드로이드 하드웨어 뒤로가기 처리
-  document.addEventListener('backbutton', function(e){
-    e.preventDefault();
-    const homeActive=document.getElementById('v-home').classList.contains('on');
-    if(homeActive){
-      if(confirm('앱을 종료하시겠습니까?')){
-        if(window.Capacitor&&Capacitor.Plugins&&Capacitor.Plugins.App){
-          Capacitor.Plugins.App.exitApp();
-        } else if(navigator.app&&navigator.app.exitApp){
-          navigator.app.exitApp();
-        }
-      }
-    } else {
-      goHome();
-    }
-  }, false);
+  // 뒤로가기 처리 (Android 하드웨어 버튼 + popstate)
+  let _lastBack=0;
+  function _handleBack(){
+    const m=document.querySelector('.modal.on');
+    if(m){closeM(m.id);return true;}
+    if(document.getElementById('notiPanel')?.classList.contains('on')){closeNoti();return true;}
+    const wp=document.getElementById('wikiPageWrap');
+    if(wp&&wp.style.display!=='none'){showWikiList();return true;}
+    if(curApp!=='home'){openApp('home');return true;}
+    const t=Date.now();
+    if(t-_lastBack<2000){
+      try{if(window.Capacitor)Capacitor.Plugins.App.exitApp();}catch(e){}
+      try{if(navigator.app)navigator.app.exitApp();}catch(e){}
+    } else {_lastBack=t;toast('뒤로 버튼을 한 번 더 누르면 종료됩니다');}
+    return false;
+  }
+  history.pushState({s:1},'');
+  window.addEventListener('popstate',function(){
+    _handleBack();
+    history.pushState({s:1},'');
+  });
+  document.addEventListener('backbutton',function(e){e.preventDefault();_handleBack();},false);
 
   initFirebase(function(){
     initDB();
