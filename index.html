@@ -98,9 +98,9 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .home-menu-bottom{display:grid;grid-template-columns:1fr 1fr;gap:6px;flex-shrink:0;margin-top:6px;}
 .mbtn{border-radius:11px;padding:11px 11px 10px;font-weight:700;color:#fff;border:none;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;text-align:left;transition:transform .1s;overflow:hidden;min-height:0;}
 .mbtn:active{transform:scale(.96);}
-.mbtn-ico{font-size:20px;margin-bottom:4px;}
-.mbtn-title{font-size:12px;font-weight:700;line-height:1.2;}
-.mbtn-desc{font-size:9px;font-weight:400;opacity:.72;margin-top:2px;line-height:1.3;}
+.mbtn-ico{font-size:26px;margin-bottom:6px;}
+.mbtn-title{font-size:13px;font-weight:700;line-height:1.2;}
+.mbtn-desc{font-size:10px;font-weight:400;opacity:.72;margin-top:2px;line-height:1.3;}
 .mb-red{background:linear-gradient(145deg,#7a1818,#601010);}
 .mb-teal{background:linear-gradient(145deg,#0c4838,#082e23);}
 .mb-navy{background:linear-gradient(145deg,#112e50,#0a1e36);}
@@ -114,6 +114,23 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .mbtn-sm-text{flex:1;}
 .mbtn-sm-title{font-size:12px;font-weight:600;color:#e0edf8;}
 .mbtn-sm-desc{font-size:10px;color:#3a6a8a;margin-top:1px;}
+.mb-wiki{background:linear-gradient(145deg,#163c5e,#0e2640);}
+.home-alert{background:linear-gradient(90deg,rgba(192,57,43,.18),rgba(192,57,43,.08));border:1px solid rgba(192,57,43,.4);border-radius:10px;padding:9px 13px;display:flex;align-items:center;gap:10px;flex-shrink:0;cursor:pointer;}
+.home-alert-ico{font-size:16px;}
+.home-alert-text{flex:1;font-size:11px;font-weight:700;color:#ff8a80;line-height:1.4;}
+.home-chips{display:flex;gap:5px;overflow-x:auto;flex-shrink:0;}
+.home-chips::-webkit-scrollbar{display:none;}
+.hchip{display:flex;align-items:center;gap:7px;padding:8px 12px;border-radius:9px;flex-shrink:0;cursor:pointer;}
+.hchip-num{font-size:17px;font-weight:800;line-height:1;}
+.hchip-lbl{font-size:9px;font-weight:600;opacity:.8;margin-top:1px;}
+.hchip-r{background:rgba(192,57,43,.1);border:1px solid rgba(192,57,43,.25);}
+.hchip-r .hchip-num{color:#ff6b6b;}.hchip-r .hchip-lbl{color:#cc5555;}
+.hchip-b{background:rgba(79,168,208,.09);border:1px solid rgba(79,168,208,.2);}
+.hchip-b .hchip-num{color:#4fa8d0;}.hchip-b .hchip-lbl{color:#3a7a9a;}
+.hchip-o{background:rgba(230,126,34,.09);border:1px solid rgba(230,126,34,.22);}
+.hchip-o .hchip-num{color:#e67e22;}.hchip-o .hchip-lbl{color:#b06010;}
+.hchip-g{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);}
+.hchip-g .hchip-num{color:#c0d8ec;}.hchip-g .hchip-lbl{color:#3a6a8a;}
 
 /* ═══ 지도 ═══ */
 .mapwrap{position:absolute;inset:0;overflow:hidden;}
@@ -555,19 +572,42 @@ body.guest-mode .guest-hide{display:none!important;}
     </div>
   </div>
 
+  <!-- 긴급 알림 배너 (진행중 구조 시 표시) -->
+  <div id="homeAlertBanner" class="home-alert" style="display:none;" onclick="openApp('rescue')">
+    <span class="home-alert-ico">🚨</span>
+    <div class="home-alert-text" id="homeAlertText">구조 진행중</div>
+    <span style="font-size:11px;color:rgba(255,138,128,.6);">→</span>
+  </div>
+
   <!-- 내 정보 카드 -->
-  <div class="my-card" onclick="openChangeUser()" style="flex-shrink:0;margin-bottom:0;margin-top:10px;">
+  <div class="my-card" onclick="openChangeUser()" style="flex-shrink:0;margin-bottom:0;">
     <div class="my-avatar" id="myAvatar">👤</div>
     <div class="my-info"><div class="my-name" id="myName">작성자를 선택하세요</div><div class="my-sub" id="mySub">탭하여 설정</div></div>
     <div class="my-change-btn">변경</div>
+  </div>
+
+  <!-- 통계 칩 -->
+  <div class="home-chips">
+    <div class="hchip hchip-r" onclick="openApp('rescue')">
+      <div><div class="hchip-num" id="hs-og">0</div><div class="hchip-lbl">진행중</div></div>
+    </div>
+    <div class="hchip hchip-b" onclick="openApp('rescue')">
+      <div><div class="hchip-num" id="hs-tot">0</div><div class="hchip-lbl">이번달</div></div>
+    </div>
+    <div class="hchip hchip-o" onclick="openApp('inspect')">
+      <div><div class="hchip-num" id="hs-fb">0</div><div class="hchip-lbl">위험시설</div></div>
+    </div>
+    <div class="hchip hchip-g" onclick="openApp('inspect')">
+      <div><div class="hchip-num" id="hs-ft">0</div><div class="hchip-lbl">전체시설</div></div>
+    </div>
   </div>
 
   <!-- 4칸 메인 메뉴 -->
   <div class="home-menu" style="flex:1;min-height:0;">
     <button class="mbtn mb-red" onclick="openApp('rescue')"><div class="mbtn-ico">🚨</div><div><div class="mbtn-title">재난/구조</div><div class="mbtn-desc" id="hdR">구조보고·위험상황</div></div></button>
     <button class="mbtn mb-teal" onclick="openApp('inspect')"><div class="mbtn-ico">🛠️</div><div><div class="mbtn-title">시설물 점검</div><div class="mbtn-desc" id="hdI">시설 관리·이력</div></div></button>
-    <button class="mbtn mb-navy" onclick="openApp('wiki')"><div class="mbtn-ico">📚</div><div><div class="mbtn-title">설악위키</div><div class="mbtn-desc" id="hdW">현장 지식 DB</div></div></button>
-    <button class="mbtn mb-navy" onclick="openApp('stats')"><div class="mbtn-ico">📊</div><div><div class="mbtn-title">전체 통계</div><div class="mbtn-desc">현황 분석</div></div></button>
+    <button class="mbtn mb-wiki" onclick="openApp('wiki')"><div class="mbtn-ico">📚</div><div><div class="mbtn-title">설악위키</div><div class="mbtn-desc" id="hdW">현장 지식 DB</div></div></button>
+    <button class="mbtn mb-purple" onclick="openApp('stats')"><div class="mbtn-ico">📊</div><div><div class="mbtn-title">전체 통계</div><div class="mbtn-desc">현황 분석</div></div></button>
   </div>
 
   <!-- 하단 2칸 소형 메뉴 -->
@@ -575,11 +615,6 @@ body.guest-mode .guest-hide{display:none!important;}
     <button class="mbtn-sm" onclick="openApp('settings')"><span class="mbtn-sm-ico">⚙️</span><div class="mbtn-sm-text"><div class="mbtn-sm-title">내 설정</div><div class="mbtn-sm-desc">알림·계정·API키</div></div></button>
     <button class="mbtn-sm guest-hide" style="background:#150e2a;border:1px solid rgba(139,92,246,.2);" onclick="openApp('admin')"><span class="mbtn-sm-ico">🔐</span><div class="mbtn-sm-text"><div class="mbtn-sm-title" style="color:#c4b5fd;">관리자 전용</div><div class="mbtn-sm-desc">관제·데이터 관리</div></div></button>
   </div>
-  <a href="https://github.com/109yoon/seoraksan/releases/latest" target="_blank" style="display:flex;align-items:center;gap:8px;background:#0b1c30;border:1px solid rgba(79,168,208,.18);border-radius:10px;padding:9px 12px;margin-top:6px;text-decoration:none;flex-shrink:0;">
-    <span style="font-size:16px;">📱</span>
-    <div><div style="font-size:12px;font-weight:700;color:#e0edf8;">안드로이드 앱 다운로드</div><div style="font-size:10px;color:#3a6a8a;">최신 APK 받기 (GitHub Releases)</div></div>
-    <span style="margin-left:auto;font-size:11px;color:#4fa8d0;">↗</span>
-  </a>
 </div>
 </div>
 
@@ -3743,10 +3778,15 @@ function renderSettings(){
       <div style="font-size:11px;color:#7a9cb8;margin-bottom:8px;">카카오 계정으로 로그인하면 작성자 정보가 자동 설정됩니다.</div>
       <button onclick="openKakaoLogin()" style="width:100%;background:rgba(254,229,0,.12);color:#f0d900;border:1px solid rgba(254,229,0,.3);padding:9px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">💬 카카오 로그인 (준비중)</button>
     </div>
-    <div class="scard">
+    <div class="scard" style="margin-bottom:8px;">
       <div class="stitle">🔔 알림 설정</div>
       ${items.map(it=>`<div class="tog-row"><div><div class="tog-lbl">${it.ico} ${it.l}</div><div class="tog-sub">${it.sub}</div></div><div class="toggle ${s[it.k]!==false?'on':'off'}" onclick="togNotiSet('${it.k}',this)"></div></div>`).join('')}
-    </div>`;
+    </div>
+    <a href="https://github.com/109yoon/seoraksan/releases/latest" target="_blank" style="display:flex;align-items:center;gap:10px;background:#0b1c30;border:1px solid rgba(79,168,208,.18);border-radius:10px;padding:11px 13px;text-decoration:none;flex-shrink:0;">
+      <span style="font-size:18px;">📱</span>
+      <div style="flex:1;"><div style="font-size:12px;font-weight:700;color:#e0edf8;">안드로이드 APK 다운로드</div><div style="font-size:10px;color:#3a6a8a;margin-top:1px;">최신 빌드 받기 (GitHub Releases)</div></div>
+      <span style="font-size:11px;color:#4fa8d0;">↗</span>
+    </a>`;
 }
 function saveKakaoKey(){
   const key=document.getElementById('kakaoKeyIn').value.trim();
@@ -3823,14 +3863,17 @@ function updateSummary(){
   const og=res.filter(r=>r.status==='ongoing');const bad=facs.filter(f=>f.status==='bad');const warn=facs.filter(f=>f.status==='warn');const ok=facs.filter(f=>f.status==='ok');
   const thisMonth=res.filter(r=>r.date&&r.date.startsWith(today().slice(0,7))).length;
   function se(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
-  se('hs-og',og.length);se('hs-og-sub',og.length?og.map(r=>r.type).join(', '):'현재 없음');
-  se('hs-tot',res.length);se('hs-tot-sub','이번달 '+thisMonth+'건');
-  se('hs-fb',bad.length);se('hs-fw-sub','요주의 '+warn.length+'개');
-  se('hs-ft',facs.length);se('hs-ft-sub','양호 '+ok.length+'개');
+  se('hs-og',og.length);
+  se('hs-tot',thisMonth);
+  se('hs-fb',bad.length);
+  se('hs-ft',facs.length);
+  const banner=document.getElementById('homeAlertBanner');
+  const bannerText=document.getElementById('homeAlertText');
+  if(banner){banner.style.display=og.length?'flex':'none';if(bannerText&&og.length)bannerText.textContent=`구조 ${og.length}건 진행중 — ${og.map(r=>r.type||'').filter(Boolean).join(', ')}`;}
   function sd(id,v,col){const e=document.getElementById(id);if(!e)return;e.textContent=v;e.style.color=col||'';}
   sd('hdR',og.length?`⚠️ ${og.length}건 진행중`:'구조보고·위험상황',og.length?'#ffaaaa':'');
   sd('hdI',bad.length?`⚠️ 위험 ${bad.length}개`:'시설 관리·이력',bad.length?'#ffaaaa':'');
-  sd('hdW',`문서 ${(DB.g('wikis')||[]).length}건`,'');sd('hdS',`직원 ${(DB.g('staff')||[]).length}명`,'');
+  sd('hdW',`문서 ${(DB.g('wikis')||[]).length}건`,'');
   updateBell();
 }
 const pad2=n=>String(n).padStart(2,'0');
