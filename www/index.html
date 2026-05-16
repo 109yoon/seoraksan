@@ -772,6 +772,26 @@ body.guest-mode .guest-hide{display:none!important;}
 
 </div><!-- /vc -->
 
+<!-- 시설물 가져오기 모달 -->
+<div id="modalFacImport" class="modal" onclick="if(event.target===this)closeM('modalFacImport')">
+  <div class="mbox">
+    <div class="mhdr"><span class="mtitle">📥 시설물 가져오기</span><button class="mclose" onclick="closeM('modalFacImport')">×</button></div>
+    <div style="font-size:11px;color:#7a9cb8;margin-bottom:10px;line-height:1.7;">
+      구글시트에서 데이터 셀 전체 선택 후 복사(Ctrl+C) → 아래에 붙여넣기<br>
+      <b style="color:#4fa8d0;">컬럼: 위경도 · 탐방로구간 · 번호 · 상세지역 · 시설물종류</b>
+    </div>
+    <textarea id="facImportText" style="width:100%;height:160px;background:#0b1c30;border:1px solid rgba(79,168,208,.2);border-radius:8px;color:#c0d8ec;font-size:11px;padding:8px;resize:none;box-sizing:border-box;font-family:monospace;" placeholder="여기에 붙여넣기..."></textarea>
+    <div style="margin-top:8px;display:flex;align-items:center;gap:10px;">
+      <label style="display:flex;align-items:center;gap:5px;font-size:11px;color:#7a9cb8;cursor:pointer;"><input type="checkbox" id="facImportReplace"> 기존 시설물 모두 교체</label>
+    </div>
+    <div id="facImportPreview" style="font-size:11px;color:#4fa8d0;margin-top:8px;min-height:18px;"></div>
+    <div style="margin-top:10px;display:flex;gap:8px;">
+      <button onclick="previewFacImport()" style="flex:1;background:rgba(79,168,208,.12);color:#4fa8d0;border:1px solid rgba(79,168,208,.25);padding:10px;border-radius:8px;font-size:12px;cursor:pointer;">미리보기</button>
+      <button onclick="doFacImport()" style="flex:1;background:#0c4838;color:#4ae;border:none;padding:10px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">✅ 가져오기</button>
+    </div>
+  </div>
+</div>
+
 <!-- 하단 네비 -->
 <div class="bnav" id="bnav">
   <div class="navi on" id="nv1" onclick="switchTab(1,this)"><div class="navi-ico">🗺️</div><span class="navi-lbl">지도</span></div>
@@ -3630,12 +3650,62 @@ function renderAdmSys(){
     <div class="scard" style="margin-bottom:8px;"><div class="stitle">📊 데이터 현황</div>
       <div style="font-size:12px;color:#b8d4e8;line-height:2.1;">시설물 <b>${(DB.g('facilities')||[]).length}개</b> · 점검이력 <b>${(DB.g('history')||[]).length}건</b><br>구조이력 <b>${(DB.g('rescues')||[]).length}건</b> · 위험상황 <b>${(DB.g('hazards')||[]).length}건</b><br>위키 <b>${(DB.g('wikis')||[]).length}건</b> · 대원 <b>${(DB.g('members')||[]).length}명</b></div>
     </div>
+    <div class="scard" style="margin-bottom:8px;"><div class="stitle">📥 데이터 가져오기</div>
+      <button onclick="document.getElementById('facImportText').value='';document.getElementById('facImportPreview').textContent='';document.getElementById('modalFacImport').classList.add('on')" style="width:100%;background:rgba(79,168,208,.1);color:#4fa8d0;border:1px solid rgba(79,168,208,.25);padding:10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">🪧 시설물 목록 가져오기 (구글시트)</button>
+    </div>
     <div class="scard"><div class="stitle" style="color:#c0392b;">⚠️ 위험 작업</div>
       <div style="display:flex;flex-direction:column;gap:7px;">
         <button onclick="resetAll()" style="width:100%;background:rgba(192,57,43,.1);color:#c0392b;border:1px solid rgba(192,57,43,.28);padding:10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">전체 데이터 초기화</button>
         <button onclick="clearNotisOnly()" style="width:100%;background:rgba(255,255,255,.05);color:#b8d4e8;border:none;padding:10px;border-radius:8px;font-size:12px;cursor:pointer;">알림 이력만 삭제</button>
       </div>
     </div>`;
+}
+function parseFacImportText(){
+  const text=(document.getElementById('facImportText')?.value||'').trim();
+  if(!text)return[];
+  const TYPE_MAP={'다목적위치표지판':'🪧 다목적위치표지판','교량':'🌉 교량','안전난간':'🛡️ 안전난간','화장실':'🚻 화장실','대피소':'🏠 대피소','탐방로':'🥾 탐방로','기타':'🏗️ 기타'};
+  const existing=DB.g('facilities')||[];
+  let nextId=Math.max(0,...existing.map(f=>+f.id||0))+1;
+  const rows=[];
+  text.split('\n').forEach(line=>{
+    const cols=line.split('\t');
+    if(cols.length<4)return;
+    const coordStr=(cols[0]||'').trim();
+    if(!coordStr||coordStr==='위경도')return;
+    const parts=coordStr.split(',');
+    if(parts.length<2)return;
+    const lat=parseFloat(parts[0]),lng=parseFloat(parts[1]);
+    if(isNaN(lat)||isNaN(lng))return;
+    const loc=(cols[1]||'').trim();
+    const name=(cols[3]||'').trim()||loc;
+    const typeRaw=(cols[4]||'기타').trim();
+    const type=TYPE_MAP[typeRaw]||('🏗️ '+typeRaw);
+    rows.push({id:nextId++,type,name,loc,status:'ok',lat,lng,install:'',note:'',author:''});
+  });
+  return rows;
+}
+function previewFacImport(){
+  const rows=parseFacImportText();
+  const el=document.getElementById('facImportPreview');
+  if(!rows.length){el.textContent='⚠️ 인식된 데이터 없음';el.style.color='#c0392b';return;}
+  el.textContent=`✅ ${rows.length}개 시설물 인식 — 첫번째: ${rows[0].name} (${rows[0].lat.toFixed(4)}, ${rows[0].lng.toFixed(4)})`;
+  el.style.color='#4fa8d0';
+}
+function doFacImport(){
+  const rows=parseFacImportText();
+  if(!rows.length){toast('⚠️ 데이터 없음');return;}
+  const replace=document.getElementById('facImportReplace')?.checked;
+  const base=replace?[]:(DB.g('facilities')||[]);
+  if(replace){
+    let maxId=Math.max(0,...rows.map(r=>+r.id||0));
+    rows.forEach(r=>{r.id=++maxId-rows.length+(rows.indexOf(r));});
+    let id2=1;rows.forEach(r=>{r.id=id2++;});
+  }
+  DB.s('facilities',[...base,...rows]);
+  closeM('modalFacImport');
+  toast(`✅ ${rows.length}개 시설물 등록 완료`);
+  renderAdmSys();updateSummary();
+  try{renderInspectMap();}catch(e){}
 }
 function resetAll(){if(!confirm('모든 데이터 초기화. 되돌릴 수 없습니다.'))return;['members','catFac','wikiCats','facilities','rescues','hazards','history','wikis','notis','hotSearch','notiSetting','currentUser','sheetsUrl'].forEach(k=>DB.d(k));initDB();toast('✅ 초기화');renderAdmSys();updateSummary();}
 function clearNotisOnly(){DB.s('notis',[]);updateBell();toast('🗑️ 알림 이력 삭제');renderAdmSys();}
