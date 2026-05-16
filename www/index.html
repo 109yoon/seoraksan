@@ -3677,7 +3677,11 @@ function parseFacImportText(){
     const lat=parseFloat(parts[0]),lng=parseFloat(parts[1]);
     if(isNaN(lat)||isNaN(lng))return;
     const loc=(cols[1]||'').trim();
-    const name=(cols[3]||'').trim()||loc;
+    const trailNum=(loc.match(/^(\d+)/)||[])[1]||'';
+    const signNum=(cols[2]||'').trim().padStart(2,'0');
+    const area=(cols[3]||'').trim();
+    const prefix=trailNum&&signNum?trailNum+'-'+signNum+' ':'';
+    const name=prefix+area||(loc+' '+signNum);
     const typeRaw=(cols[4]||'기타').trim();
     const type=TYPE_MAP[typeRaw]||('🏗️ '+typeRaw);
     rows.push({id:nextId++,type,name,loc,status:'ok',lat,lng,install:'',note:'',author:''});
