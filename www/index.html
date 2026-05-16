@@ -971,10 +971,19 @@ body.guest-mode .guest-hide{display:none!important;}
     <div class="fg"><span class="fl">위치 설명</span><input type="text" id="facLocIn" class="fi" placeholder="예: 대청봉 1.2km 지점"></div>
     <div class="fg">
       <span class="fl">GPS 좌표 <span class="muted" style="font-weight:400;">(선택 — 지명만도 OK)</span></span>
-      <div class="gps-row"><input type="text" id="facGpsIn" class="fi" placeholder="위도, 경도">
-        <button class="sm-btn" onclick="gpsFromMap('facGpsIn','inspect')">🗺</button>
-        <button class="sm-btn" onclick="gpsFromPhone('facGpsIn')">📍GPS</button>
+      <div style="position:relative;border-radius:9px;overflow:hidden;clip-path:inset(0 round 9px);margin-bottom:6px;height:150px;border:1px solid rgba(79,168,208,.2);">
+        <div id="fac_minimap" style="width:100%;height:100%;position:relative;z-index:1;"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:5;pointer-events:none;">
+          <div style="position:relative;width:20px;height:20px;">
+            <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:rgba(255,80,80,.85);transform:translateY(-50%);"></div>
+            <div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(255,80,80,.85);transform:translateX(-50%);"></div>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:4px;height:4px;border-radius:50%;background:#ff4444;"></div>
+          </div>
+        </div>
+        <div id="fac_minimap_coords" style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,.6);color:#8ab4cc;font-size:9px;padding:2px 6px;border-radius:4px;z-index:6;pointer-events:none;font-family:monospace;"></div>
+        <button onclick="gpsFacToMap()" style="position:absolute;bottom:4px;right:4px;z-index:6;background:rgba(11,28,48,.85);border:1px solid rgba(79,168,208,.35);color:#4fa8d0;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer;">📍내위치</button>
       </div>
+      <input type="text" id="facGpsIn" class="fi" placeholder="지도에서 선택 또는 직접 입력" oninput="syncFacMapFromInput()">
     </div>
     <div class="fg"><span class="fl">설치일</span><input type="date" id="facInstall" class="fi"></div>
     <div class="fg"><span class="fl">초기 상태</span>
@@ -1278,7 +1287,8 @@ function initDB(){
     {name:'양지석',dept:'특수산악구조대',rank:'주임'},
     {name:'윤태종',dept:'특수산악구조대',rank:'주임'},
   ]);
-  if(!DB.g('catFac'))     DB.s('catFac',['🪧 위치표지판','🛤️ 데크/계단','🌉 교량','🏠 대피소','🛡️ 안전난간','🪵 목재계단','🚿 계곡시설']);
+  if(!DB.g('catFac'))     DB.s('catFac',['🪧 다목적위치표지판','🪧 위치표지판','🛤️ 데크/계단','🌉 교량','🏠 대피소','🛡️ 안전난간','🪵 목재계단','🚿 계곡시설']);
+  else{const cf=DB.g('catFac');if(!cf.includes('🪧 다목적위치표지판')){cf.unshift('🪧 다목적위치표지판');DB.s('catFac',cf);}}
   if(!DB.g('wikiCats'))   DB.s('wikiCats',['지형','안전','장비','법령','응급','탐방로','시설','동식물','기상']);
   if(!DB.g('facilities')) DB.s('facilities',[
     {id:1,type:'🌉 교량',name:'설악-01 출렁다리',loc:'소공원 입구',status:'bad',lat:38.170,lng:128.480,install:'2025-05-10',note:'강철 와이어 부식',author:'손경완'},
@@ -1747,6 +1757,62 @@ function getExtraTeams(){ return _extraTeams.filter(t=>t.members.length>0); }
 
 // 1보 폼 미니맵
 let _mapFormMini=null,_mapFormMiniMarker=null,_mapFormMiniLocked=null;
+let _mapFacMini=null,_mapFacMiniLocked=null;
+function initFacMiniMap(lat,lng){
+  _mapFacMini=null;_mapFacMiniLocked=null;
+  const gpsVal=(document.getElementById('facGpsIn')?.value||'').split(',');
+  let defLat=parseFloat(gpsVal[0]),defLng=parseFloat(gpsVal[1]);
+  if(isNaN(defLat)||isNaN(defLng)){
+    defLat=(lat!=null&&!isNaN(+lat))?+lat:(window._lastCrosshairCoord?.lat??DC.lat);
+    defLng=(lng!=null&&!isNaN(+lng))?+lng:(window._lastCrosshairCoord?.lng??DC.lng);
+  }
+  setTimeout(()=>{
+    const container=document.getElementById('fac_minimap');if(!container)return;
+    try{
+      _mapFacMiniLocked=new kakao.maps.LatLng(defLat,defLng);
+      let _drag=false;
+      _mapFacMini=new kakao.maps.Map(container,{center:_mapFacMiniLocked,level:4});
+      _mapFacMini.setMapTypeId(kakao.maps.MapTypeId.HYBRID);
+      _mapFacMini.relayout();_mapFacMini.setCenter(_mapFacMiniLocked);
+      kakao.maps.event.addListener(_mapFacMini,'dragstart',()=>{_drag=true;});
+      kakao.maps.event.addListener(_mapFacMini,'dragend',()=>{
+        _mapFacMiniLocked=_mapFacMini.getCenter();
+        const v=_mapFacMiniLocked.getLat().toFixed(5)+', '+_mapFacMiniLocked.getLng().toFixed(5);
+        const el=document.getElementById('facGpsIn');if(el)el.value=v;
+        const cd=document.getElementById('fac_minimap_coords');if(cd)cd.textContent=v;
+        setTimeout(()=>{_drag=false;},50);
+      });
+      kakao.maps.event.addListener(_mapFacMini,'center_changed',()=>{if(!_drag)_mapFacMini.setCenter(_mapFacMiniLocked);});
+      setTimeout(()=>{
+        _mapFacMini.relayout();_mapFacMini.setCenter(_mapFacMiniLocked);
+        container.querySelectorAll('a[href*="kakao"],div[class*="wrap_controllers"],div[class*="zoom_btn"]').forEach(el=>el.style.display='none');
+        const cd=document.getElementById('fac_minimap_coords');if(cd)cd.textContent=defLat.toFixed(5)+', '+defLng.toFixed(5);
+      },300);
+    }catch(e){}
+  },300);
+}
+function syncFacMapFromInput(){
+  const v=(document.getElementById('facGpsIn')?.value||'').split(',');
+  if(v.length===2&&_mapFacMini){
+    const lat=parseFloat(v[0]),lng=parseFloat(v[1]);
+    if(!isNaN(lat)&&!isNaN(lng)){
+      _mapFacMiniLocked=new kakao.maps.LatLng(lat,lng);
+      _mapFacMini.setCenter(_mapFacMiniLocked);
+      const cd=document.getElementById('fac_minimap_coords');if(cd)cd.textContent=lat.toFixed(5)+', '+lng.toFixed(5);
+    }
+  }
+}
+function gpsFacToMap(){
+  if(!navigator.geolocation){toast('⚠️ GPS 미지원');return;}
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const lat=pos.coords.latitude,lng=pos.coords.longitude;
+    if(_mapFacMini){_mapFacMiniLocked=new kakao.maps.LatLng(lat,lng);_mapFacMini.setCenter(_mapFacMiniLocked);}
+    const v=lat.toFixed(5)+', '+lng.toFixed(5);
+    const el=document.getElementById('facGpsIn');if(el)el.value=v;
+    const cd=document.getElementById('fac_minimap_coords');if(cd)cd.textContent=v;
+    toast('📍 현재 위치');
+  },()=>toast('⚠️ GPS 실패'),{enableHighAccuracy:true,timeout:8000});
+}
 function initFormMiniMap(lat,lng){
   _mapFormMini=null;
   _mapFormMiniLocked=null;
@@ -3327,7 +3393,7 @@ function openFacDetail(id){
         <div style="font-size:12px;color:${SC(f.status)};font-weight:600;margin-top:2px;">${SL(f.status)}</div>
       </div>
     </div>
-    ${f.photo?`<div style="width:100%;border-radius:9px;overflow:hidden;margin-bottom:10px;max-height:180px;"><img src="${f.photo}" style="width:100%;height:180px;object-fit:cover;display:block;"></div>`:''}
+    ${(()=>{const latestPhotoH=[...hist].reverse().find(h=>h.photo);const ip=f.photo,cp=latestPhotoH?.photo;if(!ip&&!cp)return '';if(ip&&cp&&ip===cp)return `<div style="margin-bottom:10px;"><div style="font-size:10px;color:rgba(255,255,255,.3);margin-bottom:3px;">최초 사진</div><div style="border-radius:9px;overflow:hidden;"><img src="${ip}" style="width:100%;height:160px;object-fit:cover;display:block;"></div></div>`;return `<div style="display:grid;grid-template-columns:${ip&&cp?'1fr 1fr':'1fr'};gap:6px;margin-bottom:10px;">${ip?`<div><div style="font-size:10px;color:rgba(255,255,255,.3);margin-bottom:3px;">최초 사진</div><div style="border-radius:8px;overflow:hidden;"><img src="${ip}" style="width:100%;height:120px;object-fit:cover;display:block;"></div></div>`:''} ${cp?`<div><div style="font-size:10px;color:rgba(255,255,255,.3);margin-bottom:3px;">현재 사진</div><div style="border-radius:8px;overflow:hidden;"><img src="${cp}" style="width:100%;height:120px;object-fit:cover;display:block;"></div></div>`:''}</div>`;})()}
     <div style="background:#060d1a;border-radius:9px;padding:11px 12px;font-size:12px;color:#7a9cb8;line-height:2.1;">
       <b style="color:#c0d8ec;">종류:</b> ${f.type}<br>
       <b style="color:#c0d8ec;">위치:</b> ${f.loc||'-'}<br>
@@ -3365,7 +3431,9 @@ function submitInsp(){
   facs[idx].status=ns;
   const hist=DB.g('history')||[];
   const inspDT=document.getElementById('inspDateTime')?.value||now();
-  const h={id:Date.now(),facId:selFacId,facName:facs[idx].name,date:inspDT,status:ns,note,author};
+  const inspPhotoImg=document.getElementById('prevInsp').querySelector('img');
+  const inspPhoto=inspPhotoImg?inspPhotoImg.src:'';
+  const h={id:Date.now(),facId:selFacId,facName:facs[idx].name,date:inspDT,status:ns,note,author,...(inspPhoto?{photo:inspPhoto}:{})};
   hist.push(h);DB.s('facilities',facs);DB.s('history',hist);
   if(ns==='bad')pushNoti(`점검 위험: ${facs[idx].name}`,'🚨','fac_bad',{app:'inspect',tab:2,id:selFacId});
   else if(ns==='warn')pushNoti(`보수필요: ${facs[idx].name}`,'⚠️','fac_warn',{app:'inspect',tab:2,id:selFacId});
@@ -3394,8 +3462,8 @@ function openAddFac(){
   document.getElementById('facAuthor').value=getAuthor();
   document.getElementById('facInitSt').value='ok';
   document.getElementById('prevFac').innerHTML='📸 촬영 또는 앨범';
-  try{gpsFromMap('facGpsIn','inspect');}catch(e){}
   document.getElementById('modalAddFac').classList.add('on');
+  initFacMiniMap();
 }
 function openEditFac(id){
   const f=(DB.g('facilities')||[]).find(x=>x.id===id);if(!f)return;
@@ -3414,10 +3482,12 @@ function openEditFac(id){
   document.getElementById('facAuthor').value=f.author||'';
   document.getElementById('prevFac').innerHTML=f.photo?`<img src="${f.photo}">`:'📸 촬영 또는 앨범';
   document.getElementById('modalAddFac').classList.add('on');
+  initFacMiniMap(f.lat,f.lng);
 }
 function submitAddFac(){
   const name=document.getElementById('facNameIn').value.trim();if(!name){toast('⚠️ 명칭 입력');return;}
-  const gs=document.getElementById('facGpsIn').value;
+  let gs=document.getElementById('facGpsIn').value;
+  if(!gs&&_mapFacMiniLocked)gs=_mapFacMiniLocked.getLat().toFixed(5)+','+_mapFacMiniLocked.getLng().toFixed(5);
   let lat=null,lng=null;
   if(gs){const p=gs.split(',');lat=parseFloat(p[0]);lng=parseFloat(p[1]);if(isNaN(lat)||isNaN(lng)){lat=null;lng=null;}}
   const status=document.getElementById('facInitSt').value;
