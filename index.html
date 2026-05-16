@@ -1765,9 +1765,10 @@ function toggleExtraTeamMember(teamIdx,name,el){
 function getExtraTeams(){ return _extraTeams.filter(t=>t.members.length>0); }
 
 // 1보 폼 미니맵
-let _mapFormMini=null,_mapFormMiniMarker=null;
+let _mapFormMini=null,_mapFormMiniMarker=null,_mapFormMiniLocked=null;
 function initFormMiniMap(lat,lng){
   _mapFormMini=null;
+  _mapFormMiniLocked=null;
   const gpsVal=(document.getElementById('r_gps')?.value||'').split(',');
   let defLat=gpsVal.length===2?parseFloat(gpsVal[0]):NaN;
   let defLng=gpsVal.length===2?parseFloat(gpsVal[1]):NaN;
@@ -1779,26 +1780,26 @@ function initFormMiniMap(lat,lng){
     const container=document.getElementById('r_minimap');
     if(!container) return;
     try{
-      let _locked=new kakao.maps.LatLng(defLat,defLng);
+      _mapFormMiniLocked=new kakao.maps.LatLng(defLat,defLng);
       let _dragging=false;
-      _mapFormMini=new kakao.maps.Map(container,{center:_locked,level:4});
+      _mapFormMini=new kakao.maps.Map(container,{center:_mapFormMiniLocked,level:4});
       _mapFormMini.setMapTypeId(kakao.maps.MapTypeId.HYBRID);
       _mapFormMini.relayout();
-      _mapFormMini.setCenter(_locked);
-      // 드래그 중에만 GPS 업데이트, 나머지는 SDK가 위치를 바꿔도 되돌림
+      _mapFormMini.setCenter(_mapFormMiniLocked);
       kakao.maps.event.addListener(_mapFormMini,'dragstart',()=>{ _dragging=true; });
       kakao.maps.event.addListener(_mapFormMini,'dragend',()=>{
-        _locked=_mapFormMini.getCenter();
-        const v=_locked.getLat().toFixed(5)+', '+_locked.getLng().toFixed(5);
+        _mapFormMiniLocked=_mapFormMini.getCenter();
+        const v=_mapFormMiniLocked.getLat().toFixed(5)+', '+_mapFormMiniLocked.getLng().toFixed(5);
         const gpsEl=document.getElementById('r_gps');if(gpsEl)gpsEl.value=v;
         const cd=document.getElementById('r_minimap_coords');if(cd)cd.textContent=v;
+        window._lastCrosshairCoord={lat:_mapFormMiniLocked.getLat(),lng:_mapFormMiniLocked.getLng()};
         setTimeout(()=>{ _dragging=false; },50);
       });
       kakao.maps.event.addListener(_mapFormMini,'center_changed',()=>{
-        if(!_dragging) _mapFormMini.setCenter(_locked);
+        if(!_dragging) _mapFormMini.setCenter(_mapFormMiniLocked);
       });
       setTimeout(()=>{
-        _mapFormMini.relayout();_mapFormMini.setCenter(_locked);
+        _mapFormMini.relayout();_mapFormMini.setCenter(_mapFormMiniLocked);
         container.querySelectorAll('a[href*="kakao"],div[class*="wrap_controllers"],div[class*="zoom_btn"]').forEach(el=>el.style.display='none');
         const v=defLat.toFixed(5)+', '+defLng.toFixed(5);
         const cd=document.getElementById('r_minimap_coords');if(cd)cd.textContent=v;
@@ -1812,6 +1813,7 @@ function gpsToFormMap(){
     const lat=pos.coords.latitude,lng=pos.coords.longitude;
     if(_mapFormMini){
       const latlng=new kakao.maps.LatLng(lat,lng);
+      _mapFormMiniLocked=latlng;
       _mapFormMini.setCenter(latlng);
       if(_mapFormMiniMarker) _mapFormMiniMarker.setMap(null);
       _mapFormMiniMarker=new kakao.maps.CustomOverlay({
@@ -1830,7 +1832,12 @@ function syncFormMapFromInput(){
   const v=(document.getElementById('r_gps')?.value||'').split(',');
   if(v.length===2&&_mapFormMini){
     const lat=parseFloat(v[0]),lng=parseFloat(v[1]);
-    if(!isNaN(lat)&&!isNaN(lng)) _mapFormMini.setCenter(new kakao.maps.LatLng(lat,lng));
+    if(!isNaN(lat)&&!isNaN(lng)){
+      _mapFormMiniLocked=new kakao.maps.LatLng(lat,lng);
+      _mapFormMini.setCenter(_mapFormMiniLocked);
+      const cd=document.getElementById('r_minimap_coords');
+      if(cd) cd.textContent=lat.toFixed(5)+', '+lng.toFixed(5);
+    }
   }
 }
 
