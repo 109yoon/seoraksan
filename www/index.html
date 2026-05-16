@@ -1826,31 +1826,44 @@ function toggleExtraTeamMember(teamIdx,name,el){
 function getExtraTeams(){ return _extraTeams.filter(t=>t.members.length>0); }
 
 // 1보 폼 미니맵
-let _mapFormMini=null,_mapFormMiniMarker=null;
+let _mapFormMini=null,_mapFormMiniMarker=null,_mapFormMiniReady=false;
 function initFormMiniMap(lat,lng){
-  const container=document.getElementById('r_minimap');
-  if(!container) return;
-  if(_mapFormMini){try{_mapFormMini=null;}catch(e){}}
-  const defLat=lat||(window._lastCrosshairCoord&&window._lastCrosshairCoord.lat)||38.1724;
-  const defLng=lng||(window._lastCrosshairCoord&&window._lastCrosshairCoord.lng)||128.4862;
+  _mapFormMini=null;_mapFormMiniReady=false;
+  // GPS 입력값 우선, 그 다음 인수, 그 다음 마지막 십자선, 마지막 설악산 기본
+  const gpsVal=(document.getElementById('r_gps')?.value||'').split(',');
+  let defLat=gpsVal.length===2?parseFloat(gpsVal[0]):NaN;
+  let defLng=gpsVal.length===2?parseFloat(gpsVal[1]):NaN;
+  if(isNaN(defLat)||isNaN(defLng)){
+    defLat=(lat!=null&&!isNaN(+lat))?+lat:(window._lastCrosshairCoord?.lat??38.1724);
+    defLng=(lng!=null&&!isNaN(+lng))?+lng:(window._lastCrosshairCoord?.lng??128.4862);
+  }
   setTimeout(()=>{
+    const container=document.getElementById('r_minimap');
+    if(!container) return;
     try{
       const center=new kakao.maps.LatLng(defLat,defLng);
       _mapFormMini=new kakao.maps.Map(container,{center,level:4});
       _mapFormMini.setMapTypeId(kakao.maps.MapTypeId.HYBRID);
+      // SDK가 자동 위치 감지로 중심을 바꿀 수 있으므로 강제 설정
+      _mapFormMini.relayout();
+      _mapFormMini.setCenter(center);
+      setTimeout(()=>{
+        if(_mapFormMini){_mapFormMini.relayout();_mapFormMini.setCenter(center);}
+        _mapFormMiniReady=true;
+        // 카카오맵 기본 컨트롤(줌버튼 등) 숨김
+        container.querySelectorAll('a[href*="kakao"],div[class*="wrap_controllers"],div[class*="zoom_btn"]').forEach(el=>el.style.display='none');
+        const v=defLat.toFixed(5)+', '+defLng.toFixed(5);
+        const cd=document.getElementById('r_minimap_coords');if(cd)cd.textContent=v;
+      },200);
       kakao.maps.event.addListener(_mapFormMini,'center_changed',function(){
+        if(!_mapFormMiniReady)return;
         const c=_mapFormMini.getCenter();
         const v=c.getLat().toFixed(5)+', '+c.getLng().toFixed(5);
-        const gpsEl=document.getElementById('r_gps');
-        if(gpsEl) gpsEl.value=v;
-        const cd=document.getElementById('r_minimap_coords');
-        if(cd) cd.textContent=v;
+        const gpsEl=document.getElementById('r_gps');if(gpsEl)gpsEl.value=v;
+        const cd=document.getElementById('r_minimap_coords');if(cd)cd.textContent=v;
       });
-      const cc=_mapFormMini.getCenter();
-      const cd=document.getElementById('r_minimap_coords');
-      if(cd) cd.textContent=cc.getLat().toFixed(5)+', '+cc.getLng().toFixed(5);
-    }catch(e){console.warn('minimap init fail',e);}
-  },250);
+    }catch(e){console.warn('minimap fail',e);}
+  },300);
 }
 function gpsToFormMap(){
   if(!navigator.geolocation){toast('⚠️ GPS 미지원');return;}
@@ -1867,8 +1880,7 @@ function gpsToFormMap(){
       _mapFormMiniMarker.setMap(_mapFormMini);
     }
     const v=lat.toFixed(5)+', '+lng.toFixed(5);
-    const gpsEl=document.getElementById('r_gps');
-    if(gpsEl) gpsEl.value=v;
+    const gpsEl=document.getElementById('r_gps');if(gpsEl)gpsEl.value=v;
     toast('📍 현재 위치');
   },()=>toast('⚠️ GPS 실패'));
 }
@@ -2799,8 +2811,8 @@ function render1BoForm(prefill=null){
       <div class="rsec"><div class="rsec-t">📍 사고 위치</div>
         <div class="fg">
           <span class="fl">GPS 좌표</span>
-          <div style="position:relative;border-radius:9px;overflow:hidden;margin-bottom:6px;height:150px;border:1px solid rgba(79,168,208,.2);">
-            <div id="r_minimap" style="width:100%;height:100%;"></div>
+          <div style="position:relative;border-radius:9px;overflow:hidden;clip-path:inset(0 round 9px);margin-bottom:6px;height:150px;border:1px solid rgba(79,168,208,.2);">
+            <div id="r_minimap" style="width:100%;height:100%;position:relative;z-index:1;"></div>
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:5;pointer-events:none;">
               <div style="position:relative;width:20px;height:20px;">
                 <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:rgba(255,80,80,.85);transform:translateY(-50%);"></div>
