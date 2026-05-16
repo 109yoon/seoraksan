@@ -147,8 +147,6 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .p-haz{border-color:#e67e22;background:#e67e22;color:#fff;}.p-etc{border-color:#5d6d7e;background:#4a5568;color:#fff;}.p-done{opacity:.4;}
 .p-me{border-color:#4fa8d0;background:#4fa8d0;color:#fff;}
 @keyframes blink{0%,100%{box-shadow:0 0 4px 2px rgba(192,57,43,.5);}50%{transform:scale(1.2);box-shadow:0 0 16px 6px rgba(192,57,43,.85);}}
-@keyframes rippleOut{to{transform:scale(3.2);opacity:0;}}
-.rw{position:absolute;border-radius:50%;pointer-events:none;transform:scale(0);animation:rippleOut .52s cubic-bezier(.25,.46,.45,.94) forwards;}
 .blink{animation:blink .95s infinite;}
 .dbcard{position:absolute;bottom:-420px;left:9px;right:9px;background:#0b1c30;border-radius:14px;padding:13px;border:1px solid rgba(79,168,208,.14);box-shadow:0 -4px 20px rgba(0,0,0,.7);transition:bottom .25s cubic-bezier(.4,0,.2,1);z-index:15;max-height:60vh;overflow-y:auto;}
 .dbcard.on{bottom:62px;}
@@ -1563,23 +1561,6 @@ function gpsFromPhone(id){
 // ══════════════════════════════════════════
 let curApp='',curTab=1;
 const haptic=()=>{};
-// ── Touch ripple ──
-function spawnRipple(e,host){
-  if(!host)return;
-  const r=host.getBoundingClientRect();
-  const size=Math.max(host.offsetWidth,host.offsetHeight)*2.2;
-  const cx=(e.touches?e.touches[0].clientX:e.clientX)-r.left;
-  const cy=(e.touches?e.touches[0].clientY:e.clientY)-r.top;
-  const d=document.createElement('div');
-  d.className='rw';
-  d.style.cssText=`width:${size}px;height:${size}px;left:${cx-size/2}px;top:${cy-size/2}px;background:rgba(255,255,255,.13);`;
-  host.appendChild(d);
-  setTimeout(()=>d.remove(),550);
-}
-document.addEventListener('touchstart',function(e){
-  const card=e.target.closest('.lcard,.haz-card');if(card){spawnRipple(e,card);}
-  const btn=e.target.closest('.mbtn,.mbtn-sm');if(btn){spawnRipple(e,btn);}
-},{passive:true});
 // ── View transitions ──
 let _prevApp='home';
 function showV(id,dir){
@@ -5147,7 +5128,8 @@ window.onload=function(){
     if(document.getElementById('notiPanel')?.classList.contains('on')){closeNoti();return true;}
     const wp=document.getElementById('wikiPageWrap');
     if(wp&&wp.style.display!=='none'){showWikiList();return true;}
-    if(curApp!=='home'){goHome();curApp='home';return true;}
+    if(curApp!=='home'){goHome();curApp='home';_lastBack=0;return true;}
+    // 홈에서만 더블탭 종료
     const t=Date.now();
     if(t-_lastBack<2000){
       try{window.Capacitor?.Plugins?.App?.exitApp();}catch(e){}
