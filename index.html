@@ -596,7 +596,10 @@ body.guest-mode .guest-hide{display:none!important;}
       </div>
     </div>
     <button class="map-ctrl" onclick="toggleMapType('rescue')">위성/일반</button>
-    <button class="fab-gps" onclick="gpsTo('rescue')">📍</button>
+    <button class="fab-gps" onclick="gpsTo('rescue')" title="내 위치">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
+    </button>
+    <div id="rescueCoords" style="position:absolute;bottom:130px;left:10px;background:rgba(0,0,0,.6);color:#8ab4cc;font-size:10px;padding:3px 8px;border-radius:5px;z-index:9;pointer-events:none;font-family:monospace;backdrop-filter:blur(4px);letter-spacing:.3px;">--</div>
     <button class="fab guest-hide" style="background:#7a1818;color:#fff;" onclick="openNewRescue()">🚨</button>
     <button class="fab2 guest-hide" onclick="openNewHazard()">⚠️ 위험상황 보고</button>
     <div class="nomap-banner" id="nomapR">📍 API 키 설정 후 지도 사용 가능 — 목록탭 이용</div>
@@ -1376,10 +1379,15 @@ function initMaps(){
         const h=mapEl.offsetHeight||mapEl.clientHeight;
         if(h>0){
           const coord=mapR.getProjection().coordsFromContainerPoint(new kakao.maps.Point(mapEl.offsetWidth/2,(h-bnavH)/2));
-          window._lastCrosshairCoord={lat:coord.getLat(),lng:coord.getLng()};return;
+          window._lastCrosshairCoord={lat:coord.getLat(),lng:coord.getLng()};
+          const cd=document.getElementById('rescueCoords');
+          if(cd) cd.textContent=coord.getLat().toFixed(5)+', '+coord.getLng().toFixed(5);
+          return;
         }
       }catch(e){}
       const c=mapR.getCenter();window._lastCrosshairCoord={lat:c.getLat(),lng:c.getLng()};
+      const cd=document.getElementById('rescueCoords');
+      if(cd) cd.textContent=c.getLat().toFixed(5)+', '+c.getLng().toFixed(5);
     }
     kakao.maps.event.addListener(mapR,'center_changed',saveMapCenter);
     saveMapCenter();
@@ -1816,6 +1824,61 @@ function toggleExtraTeamMember(teamIdx,name,el){
   }
 }
 function getExtraTeams(){ return _extraTeams.filter(t=>t.members.length>0); }
+
+// 1보 폼 미니맵
+let _mapFormMini=null,_mapFormMiniMarker=null;
+function initFormMiniMap(lat,lng){
+  const container=document.getElementById('r_minimap');
+  if(!container) return;
+  if(_mapFormMini){try{_mapFormMini=null;}catch(e){}}
+  const defLat=lat||(window._lastCrosshairCoord&&window._lastCrosshairCoord.lat)||38.1724;
+  const defLng=lng||(window._lastCrosshairCoord&&window._lastCrosshairCoord.lng)||128.4862;
+  setTimeout(()=>{
+    try{
+      const center=new kakao.maps.LatLng(defLat,defLng);
+      _mapFormMini=new kakao.maps.Map(container,{center,level:4});
+      _mapFormMini.setMapTypeId(kakao.maps.MapTypeId.HYBRID);
+      kakao.maps.event.addListener(_mapFormMini,'center_changed',function(){
+        const c=_mapFormMini.getCenter();
+        const v=c.getLat().toFixed(5)+', '+c.getLng().toFixed(5);
+        const gpsEl=document.getElementById('r_gps');
+        if(gpsEl) gpsEl.value=v;
+        const cd=document.getElementById('r_minimap_coords');
+        if(cd) cd.textContent=v;
+      });
+      const cc=_mapFormMini.getCenter();
+      const cd=document.getElementById('r_minimap_coords');
+      if(cd) cd.textContent=cc.getLat().toFixed(5)+', '+cc.getLng().toFixed(5);
+    }catch(e){console.warn('minimap init fail',e);}
+  },250);
+}
+function gpsToFormMap(){
+  if(!navigator.geolocation){toast('⚠️ GPS 미지원');return;}
+  navigator.geolocation.getCurrentPosition(pos=>{
+    const lat=pos.coords.latitude,lng=pos.coords.longitude;
+    if(_mapFormMini){
+      _mapFormMini.setCenter(new kakao.maps.LatLng(lat,lng));
+      if(_mapFormMiniMarker) _mapFormMiniMarker.setMap(null);
+      _mapFormMiniMarker=new kakao.maps.CustomOverlay({
+        position:new kakao.maps.LatLng(lat,lng),
+        content:'<div style="width:10px;height:10px;border-radius:50%;background:#4fa8d0;border:2px solid #fff;box-shadow:0 0 0 3px rgba(79,168,208,.35);"></div>',
+        zIndex:7
+      });
+      _mapFormMiniMarker.setMap(_mapFormMini);
+    }
+    const v=lat.toFixed(5)+', '+lng.toFixed(5);
+    const gpsEl=document.getElementById('r_gps');
+    if(gpsEl) gpsEl.value=v;
+    toast('📍 현재 위치');
+  },()=>toast('⚠️ GPS 실패'));
+}
+function syncFormMapFromInput(){
+  const v=(document.getElementById('r_gps')?.value||'').split(',');
+  if(v.length===2&&_mapFormMini){
+    const lat=parseFloat(v[0]),lng=parseFloat(v[1]);
+    if(!isNaN(lat)&&!isNaN(lng)) _mapFormMini.setCenter(new kakao.maps.LatLng(lat,lng));
+  }
+}
 
 // 장소구분 토글
 function selLoctype(val){
@@ -2736,12 +2799,24 @@ function render1BoForm(prefill=null){
       <div class="rsec"><div class="rsec-t">📍 사고 위치</div>
         <div class="fg">
           <span class="fl">GPS 좌표</span>
-          <div class="gps-row">
-            <input type="text" id="r_gps" class="fi" placeholder="지도에서 선택 또는 직접 입력" value="${p.lat&&p.lng?(+p.lat).toFixed(5)+', '+(+p.lng).toFixed(5):''}">
-            <button class="sm-btn" onclick="openMapPicker()">🗺 지도</button>
-            <button class="sm-btn" onclick="gpsFromPhone('r_gps')">📍</button>
+          <div style="position:relative;border-radius:9px;overflow:hidden;margin-bottom:6px;height:150px;border:1px solid rgba(79,168,208,.2);">
+            <div id="r_minimap" style="width:100%;height:100%;"></div>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:5;pointer-events:none;">
+              <div style="position:relative;width:20px;height:20px;">
+                <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:rgba(255,80,80,.85);transform:translateY(-50%);"></div>
+                <div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(255,80,80,.85);transform:translateX(-50%);"></div>
+                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:4px;height:4px;border-radius:50%;background:#ff4444;"></div>
+              </div>
+            </div>
+            <div id="r_minimap_coords" style="position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,.6);color:#8ab4cc;font-size:9px;padding:2px 6px;border-radius:4px;z-index:6;pointer-events:none;font-family:monospace;"></div>
+            <button onclick="gpsToFormMap()" style="position:absolute;bottom:4px;right:4px;z-index:6;background:rgba(11,28,48,.85);border:1px solid rgba(79,168,208,.35);color:#4fa8d0;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer;">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
+            </button>
           </div>
-          <div style="font-size:10px;color:#4a7090;margin-top:3px;">지도선택: 십자선을 위치에 맞추고 확인</div>
+          <div class="gps-row">
+            <input type="text" id="r_gps" class="fi" placeholder="지도에서 선택 또는 직접 입력" value="${p.lat&&p.lng?(+p.lat).toFixed(5)+', '+(+p.lng).toFixed(5):''}" oninput="syncFormMapFromInput()">
+            <button class="sm-btn" onclick="openMapPicker()">🗺</button>
+          </div>
         </div>
         <div class="fg"><span class="fl">사고 장소</span>
           <input type="text" id="r_loc" class="fi" placeholder="예: 비선대 직상부 암릉 구간" value="${p.location||''}" oninput="autoGenTitle()">
@@ -3041,6 +3116,7 @@ function render1BoForm(prefill=null){
   initWAlerts(p);
   initInjuries(p);
   initFireAgencies(p);
+  initFormMiniMap(p.lat,p.lng);
 }
 
 function openTimelineTab(){
