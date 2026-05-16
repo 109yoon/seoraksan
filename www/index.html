@@ -1368,6 +1368,21 @@ function initMaps(){
     mapR.setMapTypeId(kakao.maps.MapTypeId.HYBRID);
     kakao.maps.event.addListener(mapI,'click',closeDB);
     kakao.maps.event.addListener(mapR,'click',closeDB);
+    function saveMapCenter(){
+      try{
+        const bnavEl=document.getElementById('bnav');
+        const bnavH=(bnavEl&&bnavEl.offsetHeight)||0;
+        const mapEl=document.getElementById('mapRescue');
+        const h=mapEl.offsetHeight||mapEl.clientHeight;
+        if(h>0){
+          const coord=mapR.getProjection().coordsFromContainerPoint(new kakao.maps.Point(mapEl.offsetWidth/2,(h-bnavH)/2));
+          window._lastCrosshairCoord={lat:coord.getLat(),lng:coord.getLng()};return;
+        }
+      }catch(e){}
+      const c=mapR.getCenter();window._lastCrosshairCoord={lat:c.getLat(),lng:c.getLng()};
+    }
+    kakao.maps.event.addListener(mapR,'center_changed',saveMapCenter);
+    saveMapCenter();
     if(window._hideLoading)setTimeout(window._hideLoading,600);
   }
   if(window._KR)doInit();else window._KCB=doInit;
@@ -2275,8 +2290,9 @@ function updateRescueCross(){
 }
 function openNewRescue(){
   curResId=null;
-  let gpsPre=null;
-  if(mapR){
+  // 마지막으로 저장된 십자선 중앙 좌표 우선 사용
+  let gpsPre=window._lastCrosshairCoord||null;
+  if(!gpsPre&&mapR){
     try{
       const bnavEl=document.getElementById('bnav');
       const bnavH=bnavEl?bnavEl.offsetHeight:0;
