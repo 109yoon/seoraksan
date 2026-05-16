@@ -1800,6 +1800,53 @@ function toggleExtraTeamMember(teamIdx,name,el){
 }
 function getExtraTeams(){ return _extraTeams.filter(t=>t.members.length>0); }
 
+// 기상 특보
+let _weatherAlerts=[];
+let _wAlertType='';
+let _wAlertLevel='';
+function initWAlerts(prefill){
+  const existing=(prefill&&prefill.weatherAlert)||'';
+  _weatherAlerts=[];
+  if(existing){
+    existing.split(',').forEach(s=>{
+      s=s.trim();if(!s)return;
+      const lvs=['특보','경보','주의보'];
+      for(const lv of lvs){if(s.endsWith(lv)){_weatherAlerts.push({type:s.slice(0,-lv.length),level:lv});return;}}
+      _weatherAlerts.push({type:s,level:''});
+    });
+  }
+  _wAlertType='';_wAlertLevel='';
+  renderWAlerts();
+}
+function selWAlertType(el,type){
+  document.querySelectorAll('#wAlertTypePills .pill').forEach(p=>p.classList.remove('on'));
+  el.classList.add('on');_wAlertType=type;
+}
+function selWAlertLevel(el,level){
+  document.querySelectorAll('#wAlertLevelPills .pill').forEach(p=>p.classList.remove('on'));
+  el.classList.add('on');_wAlertLevel=level;
+}
+function addWAlert(){
+  if(!_wAlertType){toast('종류를 선택하세요');return;}
+  if(!_wAlertLevel){toast('단계를 선택하세요');return;}
+  _weatherAlerts.push({type:_wAlertType,level:_wAlertLevel});
+  _wAlertType='';_wAlertLevel='';
+  document.querySelectorAll('#wAlertTypePills .pill,#wAlertLevelPills .pill').forEach(p=>p.classList.remove('on'));
+  renderWAlerts();
+}
+function removeWAlert(i){_weatherAlerts.splice(i,1);renderWAlerts();}
+function renderWAlerts(){
+  const el=document.getElementById('wAlertList');
+  if(!el) return;
+  if(!_weatherAlerts.length){el.innerHTML='';return;}
+  el.innerHTML=_weatherAlerts.map((a,i)=>`
+    <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;background:#0b1c30;border-radius:7px;margin-bottom:4px;border:1px solid rgba(79,168,208,.1);">
+      <span style="font-size:12px;flex:1;color:#e0edf8;font-weight:600;">${a.type}${a.level}</span>
+      <button onclick="removeWAlert(${i})" style="background:none;border:none;color:#c0392b;font-size:15px;cursor:pointer;padding:0 2px;">×</button>
+    </div>`).join('');
+}
+function getWeatherAlertStr(){return _weatherAlerts.map(a=>a.type+a.level).join(', ');}
+
 // 유관기관 동적 (카테고리+기관명+인원수)
 let _fireAgencies=[]; // [{cat, name, count}]
 let _agSelectedCat='';
@@ -2216,7 +2263,7 @@ function submitNBoFromForm(){
     type: document.getElementById('r_type')?.value||res[idx].type,
     date: document.getElementById('r_accdt')?.value?.replace('T',' ')||now(),
     weather: getSelPills('weatherPills')[0]||res[idx].weather||'',
-    weatherAlert: document.getElementById('r_wAlert')?.value||'',
+    weatherAlert: getWeatherAlertStr(),
     location: document.getElementById('r_loc')?.value||res[idx].location,
     loctype: document.getElementById('r_loctype')?.value||res[idx].loctype,
     vName: document.getElementById('r_vName')?.value||res[idx].vName,
@@ -2636,10 +2683,21 @@ function render1BoForm(prefill=null){
       </div>
       <div class="rsec"><div class="rsec-t">🌤️ 기상 정보</div>
         <div class="fg"><span class="fl">기상 상황</span>
-          <div class="pills" id="weatherPills">${['맑음','흐림','비','눈','강풍','폭우','폭설','안개'].map(o=>`<div class="pill${p.weather===o?' on':''}" onclick="sPill(this,'weatherPills')">${o}</div>`).join('')}</div>
+          <div class="pills" id="weatherPills">${['맑음','흐림','비','눈','강풍','안개'].map(o=>`<div class="pill${p.weather===o?' on':''}" onclick="sPill(this,'weatherPills')">${o}</div>`).join('')}</div>
         </div>
         <div class="fg"><span class="fl">기상 특보</span>
-          <input type="text" id="r_wAlert" class="fi" placeholder="없음 또는 강풍주의보 등" value="${p.weatherAlert||''}">
+          <div style="background:#060d1a;border-radius:8px;border:1px solid rgba(255,255,255,.07);padding:10px;margin-top:4px;">
+            <div style="font-size:10px;color:#4a7090;font-weight:700;margin-bottom:5px;">종류</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;" id="wAlertTypePills">
+              ${['강풍','호우','대설','폭염','한파','안개','건조','기타'].map(t=>`<div class="pill" onclick="selWAlertType(this,'${t}')" style="font-size:11px;cursor:pointer;">${t}</div>`).join('')}
+            </div>
+            <div style="font-size:10px;color:#4a7090;font-weight:700;margin-bottom:5px;">단계</div>
+            <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;" id="wAlertLevelPills">
+              ${['주의보','경보','특보'].map(l=>`<div class="pill" onclick="selWAlertLevel(this,'${l}')" style="font-size:11px;cursor:pointer;">${l}</div>`).join('')}
+            </div>
+            <button onclick="addWAlert()" style="width:100%;padding:7px;background:rgba(79,168,208,.15);border:1px solid rgba(79,168,208,.3);color:#4fa8d0;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;">＋ 추가</button>
+            <div id="wAlertList" style="margin-top:6px;"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -2881,6 +2939,7 @@ function render1BoForm(prefill=null){
   initTTInline(p.timetable||[],p.members||[],ms);
   initExtraDispatch(p);
   initExtraTeams(p);
+  initWAlerts(p);
   initFireAgencies(p);
 }
 
