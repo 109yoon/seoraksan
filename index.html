@@ -4745,8 +4745,8 @@ window.onload=function(){
         }
       },400);
     };
-    // window.onload 기반 5초 폴백 (인라인 6초 타이머와 이중 보호)
-    setTimeout(function(){if(window._hideLoading)window._hideLoading();},5000);
+    // 3초 폴백: initFirebase가 느릴 경우 강제 전환
+    setTimeout(function(){if(window._hideLoading)window._hideLoading();},3000);
   })();
 
   // 안드로이드 하드웨어 뒤로가기 처리
@@ -4772,6 +4772,8 @@ window.onload=function(){
     updateSummary();updateUserUI();renderHotSearch();
     const d=new Date();const days=['일','월','화','수','목','금','토'];
     document.getElementById('homeDate').textContent=d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+days[d.getDay()]+')';
+    // Firebase 준비 완료 시 즉시 로딩 해제 (3초 폴백보다 빠르면 여기서 처리됨)
+    if(window._hideLoading) window._hideLoading();
   });
 };
 
