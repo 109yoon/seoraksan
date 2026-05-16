@@ -993,7 +993,7 @@ body.guest-mode .guest-hide{display:none!important;}
 </div>
 
 <!-- ══ 모달: 시설물 상세 ══ -->
-<div id="modalFacDetail" class="modal">
+<div id="modalFacDetail" class="modal" onclick="if(event.target===this)closeM('modalFacDetail')">
   <div class="mbox">
     <div class="mhdr"><span class="mtitle" id="facDetailTitle">시설물 상세</span><button class="mclose" onclick="closeM('modalFacDetail')">×</button></div>
     <div id="facDetailContent"></div>
