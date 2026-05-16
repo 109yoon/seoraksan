@@ -519,7 +519,19 @@ body.guest-mode .guest-hide{display:none!important;}
     clearInterval(window._loadTipTimer);clearInterval(window._loadBarTimer);
     if(barEl)barEl.style.width='100%';
     var ls=document.getElementById('loadingScreen');
-    if(ls){ls.style.pointerEvents='none';ls.style.transition='opacity .5s';ls.style.opacity='0';setTimeout(function(){if(ls.parentNode)ls.parentNode.removeChild(ls);var lsi=document.getElementById('loginScreen');if(lsi)lsi.style.display='flex';},500);}
+    if(!ls)return;
+    ls.style.pointerEvents='none';ls.style.transition='opacity .5s';ls.style.opacity='0';
+    setTimeout(function(){
+      if(ls.parentNode)ls.parentNode.removeChild(ls);
+      // 이미 로그인된 경우 applyAuthState, 아니면 로그인 화면
+      var authType;try{authType=JSON.parse(localStorage.getItem('v7_authType')||'null');}catch(e){}
+      if(authType&&window.applyAuthState){
+        window.applyAuthState();
+      } else {
+        var lsi=document.getElementById('loginScreen');
+        if(lsi)lsi.style.display='flex';
+      }
+    },500);
   },6000);
 })();
 </script>
