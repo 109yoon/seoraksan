@@ -2349,7 +2349,8 @@ function submitNBoFromForm(){
     injuryTypes: getSelPills('injTypes'),
     cause: document.getElementById('r_cause')?.value||res[idx].cause,
     situation: document.getElementById('r_sit')?.value||'',
-    alcohol: document.getElementById('r_alc')?.value||res[idx].alcohol,
+    alcohol: document.getElementById('r_alc')?.value||'없음',
+    injuries: _injuries,
     rescueMethod: getSelPills('rescMeth'),
     members,
     extraTeams: getExtraTeams(),
@@ -2757,7 +2758,7 @@ function render1BoForm(prefill=null){
           <div style="background:#060d1a;border-radius:8px;border:1px solid rgba(255,255,255,.07);padding:10px;margin-top:4px;">
             <div style="font-size:10px;color:#4a7090;font-weight:700;margin-bottom:5px;">종류</div>
             <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;" id="wAlertTypePills">
-              ${['강풍','호우','대설','폭염','한파','안개','건조','기타'].map(t=>`<div class="pill" onclick="selWAlertType(this,'${t}')" style="font-size:11px;cursor:pointer;">${t}</div>`).join('')}
+              ${['강풍','호우','대설','건조','한파','폭염','황사','태풍'].map(t=>`<div class="pill" onclick="selWAlertType(this,'${t}')" style="font-size:11px;cursor:pointer;">${t}</div>`).join('')}
             </div>
             <div style="font-size:10px;color:#4a7090;font-weight:700;margin-bottom:5px;">단계</div>
             <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;" id="wAlertLevelPills">
@@ -2868,10 +2869,11 @@ function render1BoForm(prefill=null){
       </div>
       <div class="rsec"><div class="rsec-t">👥 동반자</div>
         <div class="fg">
-          <select id="r_hasComp" class="fsel" onchange="chkCompanion(this)">
-            <option value="n">동반자 없음</option>
-            <option value="y"${(p.companions&&p.companions.length)?' selected':''}>동반자 있음</option>
-          </select>
+          <div style="display:flex;gap:6px;" id="hasCompBtns">
+            <button class="tog-btn${(p.companions&&p.companions.length)?'':' on'}" data-val="n" onclick="selHasComp('n')">없음</button>
+            <button class="tog-btn${(p.companions&&p.companions.length)?' on':''}" data-val="y" onclick="selHasComp('y')">있음</button>
+          </div>
+          <input type="hidden" id="r_hasComp" value="${(p.companions&&p.companions.length)?'y':'n'}">
         </div>
         <div id="companionWrap" style="display:${(p.companions&&p.companions.length)?'block':'none'};">
           <div id="companionList">
@@ -3021,6 +3023,7 @@ function render1BoForm(prefill=null){
   initExtraDispatch(p);
   initExtraTeams(p);
   initWAlerts(p);
+  initInjuries(p);
   initFireAgencies(p);
 }
 
@@ -3113,7 +3116,8 @@ function submit1Bo(){
     injuryParts:getSelPills('injParts'),
     injuryTypes:getSelPills('injTypes'),
     severity:getSelPills('sevPills')[0]||'',
-    alcohol:document.getElementById('r_alc')?.value||'알수없음',
+    alcohol:document.getElementById('r_alc')?.value||'없음',
+    injuries:_injuries,
     situation:document.getElementById('r_sit')?.value||'',
     rescueMethod:getSelPills('rescMeth'),
     members, extraMembers,
