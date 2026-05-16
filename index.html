@@ -1404,11 +1404,25 @@ function initMaps(){
     kakao.maps.event.addListener(mapR,'click',closeDB);
     function saveMapCenter(){
       try{
-        const c=mapR.getCenter();
-        window._lastCrosshairCoord={lat:c.getLat(),lng:c.getLng()};
-        const cd=document.getElementById('rescueCoords');
-        if(cd) cd.textContent=c.getLat().toFixed(5)+', '+c.getLng().toFixed(5);
+        const headerEl=document.getElementById('appHdr');
+        const headerH=(headerEl&&headerEl.offsetHeight)||0;
+        const bnavEl=document.getElementById('bnav');
+        const bnavH=(bnavEl&&bnavEl.offsetHeight)||0;
+        const mapEl=document.getElementById('mapRescue');
+        const h=mapEl.offsetHeight||mapEl.clientHeight;
+        if(h>0){
+          const crossY=headerH+(h-headerH-bnavH)/2;
+          const coord=mapR.getProjection().coordsFromContainerPoint(new kakao.maps.Point(mapEl.offsetWidth/2,crossY));
+          window._lastCrosshairCoord={lat:coord.getLat(),lng:coord.getLng()};
+          const cd=document.getElementById('rescueCoords');
+          if(cd) cd.textContent=coord.getLat().toFixed(5)+', '+coord.getLng().toFixed(5);
+          return;
+        }
       }catch(e){}
+      const c=mapR.getCenter();
+      window._lastCrosshairCoord={lat:c.getLat(),lng:c.getLng()};
+      const cd=document.getElementById('rescueCoords');
+      if(cd) cd.textContent=c.getLat().toFixed(5)+', '+c.getLng().toFixed(5);
     }
     window._saveMapCenter=saveMapCenter;
     kakao.maps.event.addListener(mapR,'center_changed',saveMapCenter);
@@ -2267,9 +2281,13 @@ function openHazDetail(id){
 // ══════════════════════════════════════════
 function updateRescueCross(){
   const el=document.getElementById('rescueCross');if(!el)return;
+  const headerEl=document.getElementById('appHdr');
+  const headerH=(headerEl&&headerEl.offsetHeight)||0;
   const bnavEl=document.getElementById('bnav');
   const bnavH=(bnavEl&&bnavEl.style.display!=='none')?bnavEl.offsetHeight:0;
-  el.style.top='calc(50% - '+Math.round(bnavH/2)+'px)';
+  const container=document.getElementById('v-rescue-map');
+  const vh=container?container.offsetHeight:window.innerHeight;
+  el.style.top=(headerH+(vh-headerH-bnavH)/2)+'px';
 }
 function openNewRescue(){
   curResId=null;
