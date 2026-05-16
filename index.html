@@ -1404,21 +1404,11 @@ function initMaps(){
     kakao.maps.event.addListener(mapR,'click',closeDB);
     function saveMapCenter(){
       try{
-        const bnavEl=document.getElementById('bnav');
-        const bnavH=(bnavEl&&bnavEl.offsetHeight)||0;
-        const mapEl=document.getElementById('mapRescue');
-        const h=mapEl.offsetHeight||mapEl.clientHeight;
-        if(h>0){
-          const coord=mapR.getProjection().coordsFromContainerPoint(new kakao.maps.Point(mapEl.offsetWidth/2,(h-bnavH)/2));
-          window._lastCrosshairCoord={lat:coord.getLat(),lng:coord.getLng()};
-          const cd=document.getElementById('rescueCoords');
-          if(cd) cd.textContent=coord.getLat().toFixed(5)+', '+coord.getLng().toFixed(5);
-          return;
-        }
+        const c=mapR.getCenter();
+        window._lastCrosshairCoord={lat:c.getLat(),lng:c.getLng()};
+        const cd=document.getElementById('rescueCoords');
+        if(cd) cd.textContent=c.getLat().toFixed(5)+', '+c.getLng().toFixed(5);
       }catch(e){}
-      const c=mapR.getCenter();window._lastCrosshairCoord={lat:c.getLat(),lng:c.getLng()};
-      const cd=document.getElementById('rescueCoords');
-      if(cd) cd.textContent=c.getLat().toFixed(5)+', '+c.getLng().toFixed(5);
     }
     window._saveMapCenter=saveMapCenter;
     kakao.maps.event.addListener(mapR,'center_changed',saveMapCenter);
