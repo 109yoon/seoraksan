@@ -1759,8 +1759,9 @@ function showLoginScreen(){
 function hideLoginScreen(){
   const ls=document.getElementById('loginScreen');
   if(!ls)return;
-  ls.style.transition='opacity .4s';ls.style.opacity='0';
-  setTimeout(()=>{if(ls.parentNode)ls.parentNode.removeChild(ls);},400);
+  ls.style.pointerEvents='none'; // 즉시 클릭 차단 해제
+  ls.style.transition='opacity .35s';ls.style.opacity='0';
+  setTimeout(()=>{try{if(ls.parentNode)ls.parentNode.removeChild(ls);}catch(e){}},400);
 }
 // 카카오 로그인 성공 후 프로필 조회 공통
 function _kakaoGetProfile(token){
@@ -1798,12 +1799,14 @@ function _kakaoGetProfile(token){
           pushNoti(`접속 승인 요청: ${u.name}${email?' ('+email+')':''}`, '👤','user_pending',{app:'admin'});
         }
       }
+      window._processingAuth=false;
       applyAuthState();hideLoginScreen();
       try{renderSettings();}catch(e){}
       const msg=isAdmin?'관리자로 로그인':isApproved?'환영합니다':'접속 승인 대기 중입니다. 관리자 승인 후 이용 가능합니다.';
       toast('✅ 안녕하세요, '+u.name+'님! '+msg);
     })
     .catch(function(err){
+      window._processingAuth=false;
       toast('❌ 프로필 조회 실패: '+(err?.msg||JSON.stringify(err)||''));
       showLoginScreen();
     });
@@ -1824,6 +1827,7 @@ async function handleKakaoRedirect(){
   const params=new URLSearchParams(location.search);
   const code=params.get('code');
   if(code){
+    window._processingAuth=true; // checkAuth()가 로그인 화면 띄우지 않도록 플래그
     history.replaceState(null,'',location.origin+location.pathname);
     const rdr=window.Capacitor?_KAKAO_APK_RDR:_KAKAO_WEB_RDR;
     // APK는 REST키, 웹은 JS키 (authorize와 동일 키 사용)
@@ -1848,7 +1852,7 @@ async function handleKakaoRedirect(){
       if(d.access_token){await _kakaoGetProfile(d.access_token);return true;}
       toast('❌ 토큰 오류: '+(d.error_description||JSON.stringify(d)));
     }catch(e){toast('❌ 토큰 교환 실패: '+e.message);}
-    return false;
+    window._processingAuth=false;showLoginScreen();return false;
   }
   // 호환: #access_token=XXX (implicit grant 잔존 처리)
   const hash=new URLSearchParams(location.hash.replace(/^#/,''));
@@ -5612,6 +5616,7 @@ window.onload=function(){
       if(barEl)barEl.style.width='100%';
       function checkAuth(){
         updateUserUI();
+        if(window._processingAuth)return; // 카카오 리다이렉트 처리 중엔 스킵
         const authType=DB.g('authType')||'';
         if(!authType){showLoginScreen();}
         else{applyAuthState();}
