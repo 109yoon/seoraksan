@@ -2143,6 +2143,17 @@ function selHasComp(val){
 let _injuries=[];
 let _injType='',_injPart='',_injSide='';
 const _BILATERAL_PARTS=['어깨','팔꿈치','손목','손','무릎','발목','발'];
+const _ALL_PARTS=['머리','목','어깨','팔꿈치','손목','손','흉부','복부','허리','골반','무릎','발목','발','전신'];
+// 유형별 허용 부위 (null = 전부, [] = 부위선택 불필요 → 자동 전신)
+const _INJ_PART_MAP={
+  '심정지':{auto:'전신',parts:[]},
+  '익수':  {auto:'전신',parts:[]},
+  '저체온증':{auto:'전신',parts:[]},
+  '두부손상':{auto:null,parts:['머리','목']},
+  '골절':  {auto:null,parts:['어깨','팔꿈치','손목','손','흉부','복부','허리','골반','무릎','발목','발']},
+  '탈구':  {auto:null,parts:['어깨','팔꿈치','손목','손','골반','무릎','발목','발']},
+  '염좌':  {auto:null,parts:['어깨','손목','허리','무릎','발목','발']},
+};
 function initInjuries(prefill){
   _injuries=(prefill&&prefill.injuries)||[];
   _injType='';_injPart='';_injSide='';
@@ -2150,7 +2161,22 @@ function initInjuries(prefill){
 }
 function selInjType(el,type){
   document.querySelectorAll('#injTypePills .pill').forEach(p=>p.classList.remove('on'));
-  el.classList.add('on');_injType=type;
+  el.classList.add('on');_injType=type;_injPart='';_injSide='';
+  const cfg=_INJ_PART_MAP[type];
+  const partWrap=document.getElementById('injPartWrap');
+  const sw=document.getElementById('injSideWrap');if(sw)sw.style.display='none';
+  if(cfg&&cfg.parts&&cfg.parts.length===0){
+    // 전신 자동 — 부위 선택 숨김
+    _injPart=cfg.auto;
+    if(partWrap)partWrap.style.display='none';
+  } else {
+    if(partWrap)partWrap.style.display='block';
+    const allowed=cfg?.parts||_ALL_PARTS;
+    const pills=document.getElementById('injPartPills');
+    if(pills){
+      pills.innerHTML=allowed.map(t=>`<div class="pill" onclick="selInjPart(this,'${t}')" style="font-size:11px;cursor:pointer;">${t}</div>`).join('');
+    }
+  }
 }
 function selInjPart(el,part){
   document.querySelectorAll('#injPartPills .pill').forEach(p=>p.classList.remove('on'));
@@ -2170,6 +2196,12 @@ function addInjury(){
   _injType='';_injPart='';_injSide='';
   document.querySelectorAll('#injTypePills .pill,#injPartPills .pill,#injSidePills .pill').forEach(p=>p.classList.remove('on'));
   const sw=document.getElementById('injSideWrap');if(sw)sw.style.display='none';
+  const partWrap=document.getElementById('injPartWrap');
+  if(partWrap){
+    partWrap.style.display='block';
+    const pills=document.getElementById('injPartPills');
+    if(pills)pills.innerHTML=_ALL_PARTS.map(t=>`<div class="pill" onclick="selInjPart(this,'${t}')" style="font-size:11px;cursor:pointer;">${t}</div>`).join('');
+  }
   renderInjuries();
 }
 function removeInjury(i){_injuries.splice(i,1);renderInjuries();}
@@ -3182,9 +3214,11 @@ function render1BoForm(prefill=null){
           <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;" id="injTypePills">
             ${['골절','탈구','염좌','열상','타박상','두부손상','저체온증','심정지','익수','기타'].map(t=>`<div class="pill" onclick="selInjType(this,'${t}')" style="font-size:11px;cursor:pointer;">${t}</div>`).join('')}
           </div>
+          <div id="injPartWrap">
           <div style="font-size:10px;color:#4a7090;font-weight:700;margin-bottom:5px;">부상 부위</div>
           <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px;" id="injPartPills">
             ${['머리','목','어깨','팔꿈치','손목','손','흉부','복부','허리','골반','무릎','발목','발','전신'].map(t=>`<div class="pill" onclick="selInjPart(this,'${t}')" style="font-size:11px;cursor:pointer;">${t}</div>`).join('')}
+          </div>
           </div>
           <div id="injSideWrap" style="display:none;margin-bottom:8px;">
             <div style="font-size:10px;color:#4a7090;font-weight:700;margin-bottom:5px;">좌/우</div>
