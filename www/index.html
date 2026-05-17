@@ -259,7 +259,8 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 :root{--sp:cubic-bezier(.22,1,.36,1);--qt:cubic-bezier(.4,0,.2,1);}
 /* ── 공통 상호작용 ── */
 .pill,.chk-item,.navi,.mbtn,.mbtn-sm,.lcard,.hstat,.sm-btn,.btn,.btn-submit,
-.fab,.fab-gps,.fab2,.map-ctrl,.dbclose,.mclose{user-select:none;}
+.fab,.fab-gps,.fab2,.map-ctrl,.dbclose,.mclose{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;}
+.mbtn,.mbtn-sm,.navi,.hchip,.lcard,.btn,.btn-submit,.sm-btn,.pill,.chk-item{touch-action:manipulation;}
 /* ── 리스트 카드 ── */
 .lcard{transition:transform .14s cubic-bezier(.22,1,.36,1),background .12s ease;overflow:hidden;position:relative;}
 .lcard:active{transform:scale(.974);background:#0c1e30;}
@@ -1755,26 +1756,28 @@ function _checkAdminCode(code,kakaoId){
 }
 function isGuest(){ return false; }
 function isLoggedIn(){ return true; }
+var _hideLoginTimer=null;
 function showLoginScreen(){
+  if(_hideLoginTimer){clearTimeout(_hideLoginTimer);_hideLoginTimer=null;}
   const ls=document.getElementById('loginScreen');
   if(!ls)return;
-  ls.style.pointerEvents='auto';
+  ls.style.pointerEvents='none'; // 투명한 동안 클릭 차단 유지
   ls.style.opacity='0';
   ls.style.display='flex';
-  // 강제 reflow 후 fade in (requestAnimationFrame 2회로 display change 반영 보장)
   requestAnimationFrame(function(){
     requestAnimationFrame(function(){
       ls.style.opacity='1';
+      ls.style.pointerEvents='auto'; // 완전히 보일 때만 인터랙션 허용
     });
   });
 }
 function hideLoginScreen(){
   const ls=document.getElementById('loginScreen');
   if(!ls||ls.style.display==='none')return;
-  ls.style.pointerEvents='none'; // 즉시 클릭 차단 해제
+  ls.style.pointerEvents='none';
   ls.style.opacity='0';
-  // removeChild 대신 display:none — DOM에 보존하여 재표시 가능
-  setTimeout(()=>{ls.style.display='none';},380);
+  if(_hideLoginTimer)clearTimeout(_hideLoginTimer);
+  _hideLoginTimer=setTimeout(()=>{_hideLoginTimer=null;ls.style.display='none';},380);
 }
 // 카카오 로그인 성공 후 프로필 조회 공통
 function _kakaoGetProfile(token){
