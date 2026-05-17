@@ -1652,71 +1652,54 @@ function hideLoginScreen(){
   setTimeout(()=>{if(ls.parentNode)ls.parentNode.removeChild(ls);},400);
 }
 // 카카오 로그인 성공 후 프로필 조회 공통
-function _kakaoGetProfile(){
-  Kakao.API.request({
-    url:'/v2/user/me',
-    success:function(res){
-      const prof=(res.kakao_account?.profile)||{};
-      const u=DB.g('currentUser')||{};
-      u.name=prof.nickname||'';u.kakaoImg=prof.profile_image_url||'';
-      DB.s('currentUser',u);DB.s('authType','kakao');
-      applyAuthState();hideLoginScreen();
-      try{renderSettings();}catch(e){}
-      toast('✅ 안녕하세요, '+u.name+'님!');
-    },
-    fail:function(){toast('❌ 프로필 조회 실패');}
-  });
+async function _kakaoGetProfile(token){
+  try{
+    // token이 있으면 직접 fetch, 없으면 SDK 내부 토큰 사용
+    const res=await fetch('https://kapi.kakao.com/v2/user/me',{
+      headers:{Authorization:'Bearer '+(token||Kakao.Auth.getAccessToken()||'')}
+    });
+    const data=await res.json();
+    if(data.code&&data.code<0)throw new Error(data.msg||'API 오류');
+    const prof=(data.kakao_account?.profile)||{};
+    const u=DB.g('currentUser')||{};
+    u.name=prof.nickname||'';u.kakaoImg=prof.profile_image_url||'';
+    DB.s('currentUser',u);DB.s('authType','kakao');
+    applyAuthState();hideLoginScreen();
+    try{renderSettings();}catch(e){}
+    toast('✅ 안녕하세요, '+u.name+'님!');
+  }catch(e){toast('❌ 프로필 조회 실패');showLoginScreen();}
 }
-// APK 리다이렉트용 URI (hostname과 일치)
+// APK 리다이렉트용 URI (capacitor.config hostname과 일치)
 const _KAKAO_RDR='https://109yoon.github.io/';
 function openKakaoLogin(){
-  if(!window.Kakao||!Kakao.isInitialized()){toast('⚠️ 카카오 SDK 초기화 중...');return;}
+  if(!window.Kakao||!Kakao.isInitialized()){toast('⚠️ 카카오 SDK 로딩 중...');return;}
   if(window.Capacitor){
-    // APK: 전체 페이지 리다이렉트 방식 (팝업은 Capacitor 웹뷰에서 동작 안 함)
-    Kakao.Auth.authorize({redirectUri:_KAKAO_RDR});
+    // APK: implicit grant — 토큰이 해시(#access_token)로 바로 반환됨, 별도 교환 불필요
+    const uri=encodeURIComponent(_KAKAO_RDR);
+    location.href=`https://kauth.kakao.com/oauth/authorize?client_id=${KAKAO_KEY}&redirect_uri=${uri}&response_type=token&scope=profile_nickname,profile_image`;
   } else {
-    // 웹: 팝업 방식
+    // 웹: SDK 팝업 방식
     Kakao.Auth.login({
-      success:function(){_kakaoGetProfile();},
-      fail:function(err){toast('❌ 카카오 로그인 실패');}
+      success:function(auth){_kakaoGetProfile(auth.access_token);},
+      fail:function(err){toast('❌ 카카오 로그인 실패: '+(err?.error_description||''));}
     });
   }
 }
 async function handleKakaoRedirect(){
-  // 1. 해시에 access_token (implicit grant 방식)
+  // APK implicit grant 복귀: #access_token=XXX
   const hash=new URLSearchParams(location.hash.replace(/^#/,''));
-  const hashToken=hash.get('access_token');
-  if(hashToken){
+  const token=hash.get('access_token');
+  if(token){
     history.replaceState(null,'',location.origin+location.pathname);
-    if(window.Kakao&&Kakao.isInitialized()){Kakao.Auth.setAccessToken(hashToken);_kakaoGetProfile();}
+    await _kakaoGetProfile(token);
     return true;
   }
-  // 2. 쿼리에 authorization code
+  // authorization code 방식 (미사용, 호환 유지)
   const params=new URLSearchParams(location.search);
   const code=params.get('code');
   if(!code)return false;
   history.replaceState(null,'',location.origin+location.pathname);
-  toast('🔐 카카오 로그인 처리 중...');
-  try{
-    const body=`grant_type=authorization_code&client_id=${KAKAO_KEY}&redirect_uri=${encodeURIComponent(_KAKAO_RDR)}&code=${code}`;
-    const CH=window.Capacitor?.Plugins?.CapacitorHttp;
-    let td;
-    if(CH){
-      // 네이티브 HTTP → CORS 없음
-      const r=await CH.request({method:'POST',url:'https://kauth.kakao.com/oauth/token',headers:{'Content-Type':'application/x-www-form-urlencoded'},data:body});
-      td=typeof r.data==='string'?JSON.parse(r.data):r.data;
-    } else {
-      const r=await fetch('https://kauth.kakao.com/oauth/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body});
-      td=await r.json();
-    }
-    if(!td?.access_token)throw new Error(td?.error_description||'토큰 없음');
-    Kakao.Auth.setAccessToken(td.access_token);
-    _kakaoGetProfile();
-  }catch(e){
-    toast('❌ 로그인 실패: '+e.message);
-    showLoginScreen();
-  }
-  return true;
+  return false;
 }
 function kakaoLogout(){
   function _clearKakao(){
