@@ -5199,7 +5199,7 @@ function autoGenTitle(returnOnly=false){
   const signM=/인근 \(약 (\d+)m\)/.exec(loc);
   let title;
   if(signM){
-    title=mm+'-'+dd+' (약 '+signM[1]+'m)';
+    title=mm+'-'+dd+' 약 '+signM[1]+'m 근방';
   } else {
     const parts=[];
     if(loc)     parts.push(loc.slice(0,12)+(loc.length>12?'...':''));
