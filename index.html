@@ -1716,10 +1716,8 @@ function hideLoginScreen(){
 function _kakaoGetProfile(token){
   // 외부 토큰이 있으면 SDK에 주입 (implicit grant 복귀 시)
   if(token){try{Kakao.Auth.setAccessToken(token);}catch(e){}}
-  // SDK 내장 요청 사용 (CORS 자동 처리)
-  Kakao.API.request({
-    url:'/v2/user/me',
-    success:function(res){
+  Kakao.API.request({url:'/v2/user/me'})
+    .then(function(res){
       const prof=(res.kakao_account?.profile)||{};
       const u=DB.g('currentUser')||{};
       u.name=prof.nickname||'';u.kakaoImg=prof.profile_image_url||'';
@@ -1727,12 +1725,11 @@ function _kakaoGetProfile(token){
       applyAuthState();hideLoginScreen();
       try{renderSettings();}catch(e){}
       toast('✅ 안녕하세요, '+u.name+'님!');
-    },
-    fail:function(err){
+    })
+    .catch(function(err){
       toast('❌ 프로필 조회 실패: '+(err?.msg||JSON.stringify(err)||''));
       showLoginScreen();
-    }
-  });
+    });
 }
 const _KAKAO_APK_RDR='https://109yoon.github.io/';
 const _KAKAO_WEB_RDR='https://109yoon.github.io/seoraksan/';
