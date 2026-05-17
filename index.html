@@ -3904,13 +3904,13 @@ function submitAddFac(){
     const idx=facs.findIndex(x=>x.id===_editFacId);
     if(idx!==-1){facs[idx]={...facs[idx],type:document.getElementById('facTypeSel').value,name,loc:document.getElementById('facLocIn').value,status,lat,lng,install:document.getElementById('facInstall').value,note:document.getElementById('facNote').value,author:document.getElementById('facAuthor').value,...(photo?{photo}:{})};}
     DB.s('facilities',facs);
-    try{renderInspectMap();}catch(e){}try{renderFacList();}catch(e){}
+    try{renderInspectMap();}catch(e){}try{renderFacList();}catch(e){}try{renderRescueMap();}catch(e){}
     _editFacId=null;_isSubmitting=false;closeM('modalAddFac');toast('✅ 수정 완료');updateSummary();
   }else{
     facs.push({id:Date.now(),type:document.getElementById('facTypeSel').value,name,loc:document.getElementById('facLocIn').value,status,lat,lng,install:document.getElementById('facInstall').value,note:document.getElementById('facNote').value,author:document.getElementById('facAuthor').value,photo});
     DB.s('facilities',facs);
     if(status==='bad')pushNoti(`위험 시설물: ${name}`,'🚨','fac_bad',{app:'inspect',tab:2});
-    _isSubmitting=false;try{renderInspectMap();}catch(e){}closeM('modalAddFac');toast('✅ 시설물 등록');updateSummary();
+    _isSubmitting=false;try{renderInspectMap();}catch(e){}try{renderRescueMap();}catch(e){}closeM('modalAddFac');toast('✅ 시설물 등록');updateSummary();
   }
 }
 function goFacOnMap(id){
