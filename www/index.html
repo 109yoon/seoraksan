@@ -657,7 +657,7 @@ body.guest-mode .guest-hide{display:none!important;}
     <div id="rescueCoords" style="position:absolute;bottom:130px;left:10px;background:rgba(0,0,0,.6);color:#8ab4cc;font-size:10px;padding:3px 8px;border-radius:5px;z-index:9;pointer-events:none;font-family:monospace;backdrop-filter:blur(4px);letter-spacing:.3px;">--</div>
     <button class="fab guest-hide" style="background:#7a1818;color:#fff;" onclick="openNewRescue()">🚨</button>
     <button class="fab2 guest-hide" onclick="openNewHazard()">⚠️ 재난관리 보고</button>
-    <div class="nomap-banner" id="nomapR">📍 API 키 설정 후 지도 사용 가능 — 목록탭 이용</div>
+    <div class="nomap-banner" id="nomapR">📍 지도 로딩 중... 잠시 후 다시 시도하세요</div>
     <div class="dbcard" id="resPopup">
       <button class="dbclose" onclick="closeDB()">×</button><div class="dbhandle"></div>
       <div class="dbtitle" id="resPopTitle">핀을 탭하여 조회</div>
@@ -719,7 +719,7 @@ body.guest-mode .guest-hide{display:none!important;}
     <button id="inspFilterBtn" onclick="openInspFilter()" style="position:absolute;bottom:130px;left:13px;background:rgba(10,22,40,.9);color:#4fa8d0;border:1.5px solid rgba(79,168,208,.35);border-radius:10px;padding:8px 13px;font-size:11px;font-weight:700;cursor:pointer;z-index:10;box-shadow:0 3px 10px rgba(0,0,0,.5);display:flex;align-items:center;gap:5px;">
       <span>⚗️ 필터</span><span id="inspFilterBadge" style="display:none;background:#c0392b;color:#fff;border-radius:8px;padding:0 5px;font-size:9px;font-weight:700;"></span>
     </button>
-    <div class="nomap-banner" id="nomapI">📍 API 키 설정 후 지도 사용 가능 — 목록탭 이용</div>
+    <div class="nomap-banner" id="nomapI">📍 지도 로딩 중... 잠시 후 다시 시도하세요</div>
     <div class="dbcard" id="facPopup">
       <button class="dbclose" onclick="closeDB()">×</button><div class="dbhandle"></div>
       <div class="dbtitle" id="facPopTitle">시설물 핀을 탭하여 조회</div>
@@ -5100,7 +5100,7 @@ window.onload=function(){
       function checkAuth(){
         updateUserUI();
         const authType=DB.g('authType');
-        if(!authType){showLoginScreen();}
+        if(!authType){DB.s('authType','guest');applyAuthState();}
       }
       setTimeout(function(){
         var ls=document.getElementById('loadingScreen');

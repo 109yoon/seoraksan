@@ -3,6 +3,7 @@
   "appName": "설악산 현장관리",
   "webDir": "www",
   "server": {
+    "hostname": "109yoon.github.io",
     "allowNavigation": ["109yoon.github.io", "*.kakao.com", "*.kakaocdn.net", "dapi.kakao.com", "kauth.kakao.com", "kapi.kakao.com", "accounts.kakao.com"]
   },
   "android": {
