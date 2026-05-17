@@ -151,8 +151,8 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 @keyframes blink{0%,100%{box-shadow:0 0 4px 2px rgba(192,57,43,.5);}50%{transform:scale(1.2);box-shadow:0 0 16px 6px rgba(192,57,43,.85);}}
 .blink{animation:blink .95s infinite;}
 .sign-dot{display:flex;flex-direction:column;align-items:center;pointer-events:none;}
-.sign-dot-circle{width:5px;height:5px;border-radius:50%;background:rgba(100,200,255,0.5);border:1px solid rgba(79,168,208,0.65);}
-.sign-dot-lbl{font-size:7px;color:rgba(120,210,255,0.7);white-space:nowrap;margin-top:1px;line-height:1;font-weight:600;text-shadow:0 0 2px rgba(0,0,0,1),0 0 4px rgba(0,0,0,1);}
+.sign-dot-circle{width:6px;height:6px;border-radius:50%;background:rgba(0,0,0,0.88);border:1.5px solid rgba(79,168,208,0.75);}
+.sign-dot-lbl{font-size:7px;color:rgba(200,230,255,0.9);white-space:nowrap;margin-top:1px;line-height:1;font-weight:600;text-shadow:0 0 3px rgba(0,0,0,1),0 0 5px rgba(0,0,0,1);}
 .dbcard{position:absolute;bottom:-420px;left:9px;right:9px;background:#0b1c30;border-radius:14px;padding:0;border:1px solid rgba(79,168,208,.14);box-shadow:0 -4px 20px rgba(0,0,0,.7);transition:bottom .25s cubic-bezier(.4,0,.2,1);z-index:15;max-height:60vh;overflow:hidden;display:flex;flex-direction:column;}
 .dbcard.on{bottom:62px;}
 .dbcard-body{overflow-y:auto;padding:0 13px 13px;flex:1;}
@@ -3217,7 +3217,7 @@ function render1BoForm(prefill=null){
         </div>
         <div class="fg"><span class="fl">장소구분</span>
           <div style="display:flex;gap:5px;flex-wrap:wrap;" id="loctypeBtns">
-            ${['법정탐방로','비법정탐방로','암벽','빙벽'].map(o=>`<button class="tog-btn${(p.loctype||'법정탐방로')===o?' on':''}" data-val="${o}" onclick="selLoctype('${o}')">${o}</button>`).join('')}
+            ${['법정탐방로','비법정탐방로','암벽','빙벽','삭도(케이블카)'].map(o=>`<button class="tog-btn${(p.loctype||'법정탐방로')===o?' on':''}" data-val="${o}" onclick="selLoctype('${o}')">${o}</button>`).join('')}
           </div>
           <input type="hidden" id="r_loctype" value="${p.loctype||'법정탐방로'}">
         </div>
@@ -4143,24 +4143,46 @@ function admTab(tab,el){
   ({ctrl:renderAdmCtrl,members:renderAdmMembers,cat:renderAdmCat,sheets:renderAdmSheets,sys:renderAdmSys,staff:renderAdmMembers})[tab]?.();
 }
 function renderAdmCtrl(){
-  const facs=DB.g('facilities')||[];const res=DB.g('rescues')||[];const haz=DB.g('hazards')||[];
+  const facs=DB.g('facilities')||[];const res=DB.g('rescues')||[];const haz=DB.g('hazards')||[];const wikis=DB.g('wikis')||[];
+  const ongoing=res.filter(r=>r.status==='ongoing').length;
+  const badFac=facs.filter(f=>f.status!=='ok').length;
   document.getElementById('admCtrlWrap').innerHTML=`
-    <div class="scard" style="margin-bottom:8px;">
-      <div class="stitle">📊 전체 현황</div>
-      <div class="stat-grid">
-        <div class="stat-box"><div class="stat-num">${facs.length}</div><div class="stat-lbl">시설물</div></div>
-        <div class="stat-box"><div class="stat-num bad">${facs.filter(f=>f.status==='bad').length}</div><div class="stat-lbl">위험</div></div>
-        <div class="stat-box"><div class="stat-num">${res.length}</div><div class="stat-lbl">구조이력</div></div>
-        <div class="stat-box" style="border-color:#c0392b;"><div class="stat-num bad">${res.filter(r=>r.status==='ongoing').length}</div><div class="stat-lbl">진행중</div></div>
+    <div style="display:flex;flex-direction:column;gap:10px;padding:4px 0;">
+      <div onclick="admCtrlSector('rescue')" style="background:#0d1e30;border:1px solid rgba(192,57,43,.35);border-radius:12px;padding:14px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;active:opacity:.8;">
+        <div><div style="font-size:13px;font-weight:700;color:#e8c0c0;">🚨 재난구조</div><div style="font-size:11px;color:#8a9cb8;margin-top:4px;">진행중 <b style="color:${ongoing?'#e74c3c':'#4fa8d0'};">${ongoing}건</b> · 전체 ${res.length}건 · 위험상황 ${haz.length}건</div></div>
+        <div style="color:rgba(255,255,255,.3);font-size:16px;">›</div>
       </div>
-      <div style="margin-top:8px;font-size:11px;color:#7a9cb8;">위험상황 보고 ${haz.length}건 (제거완료 ${haz.filter(h=>h.hazStatus==='제거 완료').length}건)</div>
-    </div>
-    <div class="sec-label">⚠️ 위험·요주의 시설물</div>
-    ${facs.filter(f=>f.status!=='ok').map(f=>`<div class="adm-row"><div class="adm-info"><div class="adm-name">${f.type.split(' ')[0]} ${f.name}</div><div class="adm-meta">${f.loc||'-'} · <span style="color:${SC(f.status)};">${SL(f.status)}</span></div></div><div class="adm-btns"><button class="abtn" onclick="admChangeFacSt(${f.id})">변경</button><button class="abtn del" onclick="admDelFac(${f.id})">삭제</button></div></div>`).join('')||'<div class="muted" style="font-size:12px;padding:5px 0;">위험/요주의 없음</div>'}
-    <div class="sec-label">🚨 진행중 구조</div>
-    ${res.filter(r=>r.status==='ongoing').map(r=>{const ti=RES_TYPES[r.type]||RES_TYPES['기타'];return`<div class="adm-row"><div class="adm-info"><div class="adm-name">${ti.ico} ${r.title}</div><div class="adm-meta">${r.type} · ${r.date} · ${r.vName||'미상'}</div></div><div class="adm-btns"><button class="abtn" onclick="admEndRes(${r.id})">종료</button><button class="abtn del" onclick="admDelRes(${r.id})">삭제</button></div></div>`;}).join('')||'<div class="muted" style="font-size:12px;padding:5px 0;">진행중 없음</div>'}
-    <div class="sec-label">📋 전체 시설물</div>
-    ${facs.map(f=>`<div class="adm-row"><div class="adm-info"><div class="adm-name">${f.type.split(' ')[0]} ${f.name}</div><div class="adm-meta"><span style="color:${SC(f.status)};">${SL(f.status)}</span> · ${f.author||'-'}</div></div><button class="abtn del" onclick="admDelFac(${f.id})">삭제</button></div>`).join('')}`;
+      <div onclick="admCtrlSector('inspect')" style="background:#0d1e30;border:1px solid rgba(79,168,208,.25);border-radius:12px;padding:14px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+        <div><div style="font-size:13px;font-weight:700;color:#c0d8e8;">🏗️ 시설물관리</div><div style="font-size:11px;color:#8a9cb8;margin-top:4px;">위험·요주의 <b style="color:${badFac?'#e67e22':'#4fa8d0'};">${badFac}개</b> · 전체 ${facs.length}개</div></div>
+        <div style="color:rgba(255,255,255,.3);font-size:16px;">›</div>
+      </div>
+      <div onclick="admCtrlSector('wiki')" style="background:#0d1e30;border:1px solid rgba(79,168,208,.25);border-radius:12px;padding:14px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+        <div><div style="font-size:13px;font-weight:700;color:#c0d8e8;">📖 설악위키</div><div style="font-size:11px;color:#8a9cb8;margin-top:4px;">문서 <b style="color:#4fa8d0;">${wikis.length}개</b></div></div>
+        <div style="color:rgba(255,255,255,.3);font-size:16px;">›</div>
+      </div>
+    </div>`;
+}
+function admCtrlSector(sector){
+  const facs=DB.g('facilities')||[];const res=DB.g('rescues')||[];const haz=DB.g('hazards')||[];const wikis=DB.g('wikis')||[];
+  const back=`<button onclick="renderAdmCtrl()" style="background:none;border:none;color:#4fa8d0;font-size:12px;cursor:pointer;padding:0 0 10px;display:block;">← 뒤로</button>`;
+  let html=back;
+  if(sector==='rescue'){
+    html+=`<div class="sec-label">🚨 진행중 구조</div>`;
+    html+=res.filter(r=>r.status==='ongoing').map(r=>{const ti=RES_TYPES[r.type]||RES_TYPES['기타'];return`<div class="adm-row"><div class="adm-info"><div class="adm-name">${ti.ico} ${r.title}</div><div class="adm-meta">${r.type} · ${r.date} · ${r.vName||'미상'}</div></div><div class="adm-btns"><button class="abtn" onclick="admEndRes(${r.id})">종료</button><button class="abtn del" onclick="admDelRes(${r.id})">삭제</button></div></div>`;}).join('')||'<div class="muted" style="font-size:12px;padding:5px 0;">진행중 없음</div>';
+    html+=`<div class="sec-label">⚠️ 위험상황</div>`;
+    html+=haz.map(h=>`<div class="adm-row"><div class="adm-info"><div class="adm-name">⚠️ ${h.title||h.type}</div><div class="adm-meta">${h.hazStatus||'미조치'} · ${h.date||''}</div></div><button class="abtn del" onclick="if(confirm('삭제?')){DB.s('hazards',(DB.g('hazards')||[]).filter(x=>x.id!==${h.id}));admCtrlSector('rescue');renderRescueMap();}">삭제</button></div>`).join('')||'<div class="muted" style="font-size:12px;padding:5px 0;">없음</div>';
+    html+=`<div class="sec-label">📋 전체 구조이력</div>`;
+    html+=res.slice().reverse().map(r=>{const ti=RES_TYPES[r.type]||RES_TYPES['기타'];return`<div class="adm-row"><div class="adm-info"><div class="adm-name">${ti.ico} ${r.title}</div><div class="adm-meta">${r.status==='ongoing'?'<span style="color:#e74c3c;">진행중</span>':'종료'} · ${r.date}</div></div><button class="abtn del" onclick="admDelRes(${r.id})">삭제</button></div>`;}).join('');
+  } else if(sector==='inspect'){
+    html+=`<div class="sec-label">⚠️ 위험·요주의 시설물</div>`;
+    html+=facs.filter(f=>f.status!=='ok').map(f=>`<div class="adm-row"><div class="adm-info"><div class="adm-name">${f.type.split(' ')[0]} ${f.name}</div><div class="adm-meta">${f.loc||'-'} · <span style="color:${SC(f.status)};">${SL(f.status)}</span></div></div><div class="adm-btns"><button class="abtn" onclick="admChangeFacSt(${f.id})">변경</button><button class="abtn del" onclick="admDelFac(${f.id})">삭제</button></div></div>`).join('')||'<div class="muted" style="font-size:12px;padding:5px 0;">없음</div>';
+    html+=`<div class="sec-label">📋 전체 시설물</div>`;
+    html+=facs.map(f=>`<div class="adm-row"><div class="adm-info"><div class="adm-name">${f.type.split(' ')[0]} ${f.name}</div><div class="adm-meta"><span style="color:${SC(f.status)};">${SL(f.status)}</span> · ${f.author||'-'}</div></div><button class="abtn del" onclick="admDelFac(${f.id})">삭제</button></div>`).join('');
+  } else if(sector==='wiki'){
+    html+=`<div class="sec-label">📖 위키 문서 목록</div>`;
+    html+=wikis.map(w=>`<div class="adm-row"><div class="adm-info"><div class="adm-name">📄 ${w.title}</div><div class="adm-meta">${(w.cats||[]).join(', ')||'미분류'} · ${w.author||'-'}</div></div><button class="abtn del" onclick="if(confirm('삭제?')){DB.s('wikis',(DB.g('wikis')||[]).filter(x=>x.id!==${w.id}));admCtrlSector('wiki');}">삭제</button></div>`).join('')||'<div class="muted" style="font-size:12px;padding:5px 0;">문서 없음</div>';
+  }
+  document.getElementById('admCtrlWrap').innerHTML=html;
 }
 function admChangeFacSt(id){const facs=DB.g('facilities')||[];const idx=facs.findIndex(x=>x.id===id);if(idx===-1)return;const ns=prompt(`상태 (ok/warn/bad)\n현재: ${facs[idx].status}`);if(!['ok','warn','bad'].includes(ns)){toast('⚠️ ok, warn, bad 중 입력');return;}facs[idx].status=ns;DB.s('facilities',facs);renderAdmCtrl();try{renderInspectMap();}catch(e){}toast('✅ 변경');updateSummary();}
 function admDelFac(id){if(!confirm('삭제?'))return;DB.s('facilities',(DB.g('facilities')||[]).filter(f=>f.id!==id));DB.s('history',(DB.g('history')||[]).filter(h=>h.facId!==id));renderAdmCtrl();try{renderInspectMap();}catch(e){}toast('🗑️ 삭제');updateSummary();}
