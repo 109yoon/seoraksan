@@ -2046,6 +2046,7 @@ function initFormMiniMap(lat,lng){
         const gpsEl=document.getElementById('r_gps');if(gpsEl)gpsEl.value=v;
         const cd=document.getElementById('r_minimap_coords');if(cd)cd.textContent=v;
         window._lastCrosshairCoord={lat:_mapFormMiniLocked.getLat(),lng:_mapFormMiniLocked.getLng()};
+        _tryAutoFillSign();
         setTimeout(()=>{ _dragging=false; },50);
       });
       kakao.maps.event.addListener(_mapFormMini,'center_changed',()=>{
@@ -2078,6 +2079,7 @@ function gpsToFormMap(){
     }
     const v=lat.toFixed(5)+', '+lng.toFixed(5);
     const gpsEl=document.getElementById('r_gps');if(gpsEl)gpsEl.value=v;
+    _tryAutoFillSign();
     toast('📍 현재 위치');
   },()=>toast('⚠️ GPS 실패'));
 }
@@ -2090,8 +2092,12 @@ function syncFormMapFromInput(){
       _mapFormMini.setCenter(_mapFormMiniLocked);
       const cd=document.getElementById('r_minimap_coords');
       if(cd) cd.textContent=lat.toFixed(5)+', '+lng.toFixed(5);
+      _tryAutoFillSign();
     }
   }
+}
+function _tryAutoFillSign(){
+  if(document.getElementById('r_loctype')?.value==='법정탐방로') _autoFillNearestSign();
 }
 
 // 장소구분 토글
@@ -2099,16 +2105,15 @@ function selLoctype(val){
   document.getElementById('r_loctype').value=val;
   document.querySelectorAll('#loctypeBtns .tog-btn').forEach(b=>b.classList.toggle('on',b.dataset.val===val));
   chkIllegal({value:val});autoGenTitle();
-  if(val==='법정탐방로') _autoFillNearestSign();
+  if(val==='법정탐방로') _autoFillNearestSign(true);
 }
 // 법정탐방로 선택 시 가장 가까운 다목적위치표지판 좌표·이름 자동 입력
-function _autoFillNearestSign(){
+function _autoFillNearestSign(showToast){
   const gpsRaw=(document.getElementById('r_gps')?.value||'').split(',');
   const lat=parseFloat(gpsRaw[0]),lng=parseFloat(gpsRaw[1]);
-  if(!lat||!lng){toast('먼저 GPS 좌표를 입력해주세요');return;}
+  if(!lat||!lng){if(showToast)toast('먼저 GPS 좌표를 입력해주세요');return;}
   const facs=(DB.g('facilities')||[]).filter(f=>f.lat&&f.lng&&(f.type||'').includes('다목적위치표지판'));
-  if(!facs.length){toast('다목적위치표지판 데이터가 없습니다');return;}
-  // Haversine 거리 계산
+  if(!facs.length){if(showToast)toast('다목적위치표지판 데이터가 없습니다');return;}
   function dist(f){
     const R=6371000,r=Math.PI/180;
     const dLat=(f.lat-lat)*r,dLng=(f.lng-lng)*r;
@@ -2118,11 +2123,8 @@ function _autoFillNearestSign(){
   const nearest=facs.reduce((best,f)=>{const d=dist(f);return d<best.d?{f,d}:best},{f:null,d:Infinity});
   const m=Math.round(nearest.d);
   const locEl=document.getElementById('r_loc');
-  if(locEl){
-    locEl.value=nearest.f.name+' 인근 (약 '+m+'m)';
-    autoGenTitle();
-  }
-  toast('📍 '+nearest.f.name+' — '+m+'m');
+  if(locEl){locEl.value=nearest.f.name+' 인근 (약 '+m+'m)';autoGenTitle();}
+  if(showToast)toast('📍 '+nearest.f.name+' — '+m+'m');
 }
 // 신고자 토글
 function selHasRep(val){
