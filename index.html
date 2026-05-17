@@ -1677,9 +1677,18 @@ function _kakaoGetProfile(token){
 const _KAKAO_APK_RDR='https://109yoon.github.io/';
 const _KAKAO_WEB_RDR='https://109yoon.github.io/seoraksan/';
 function openKakaoLogin(){
-  const rdr=window.Capacitor?_KAKAO_APK_RDR:_KAKAO_WEB_RDR;
-  // SDK authorize는 JS키를 client_id로 써서 REST키 토큰교환과 불일치 → 항상 REST키로 직접 리다이렉트
-  location.href='https://kauth.kakao.com/oauth/authorize?client_id='+KAKAO_REST_KEY+'&redirect_uri='+encodeURIComponent(rdr)+'&response_type=code&scope=profile_nickname,profile_image';
+  if(window.Capacitor){
+    // APK: REST키로 직접 리다이렉트 → CapacitorHttp로 토큰 교환
+    location.href='https://kauth.kakao.com/oauth/authorize?client_id='+KAKAO_REST_KEY+'&redirect_uri='+encodeURIComponent(_KAKAO_APK_RDR)+'&response_type=code&scope=profile_nickname,profile_image';
+  } else {
+    // 웹: SDK 팝업 (SDK가 내부적으로 code방식 + 카카오서버 교환 → KOE202/CORS 없음)
+    if(!window.Kakao||!Kakao.isInitialized()){toast('카카오 SDK 초기화 중입니다. 잠시 후 다시 눌러주세요.');return;}
+    Kakao.Auth.login({
+      scope:'profile_nickname,profile_image',
+      success:function(auth){_kakaoGetProfile(auth.access_token);},
+      fail:function(err){toast('❌ 카카오 로그인 실패: '+(err?.error_description||JSON.stringify(err)));}
+    });
+  }
 }
 async function handleKakaoRedirect(){
   // APK authorization code 복귀: ?code=XXX
