@@ -1,0 +1,9 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<script>
+// 카카오 OAuth 리다이렉트 처리: /seoraksan/#access_token=... → 루트로 전달
+var h=location.hash||'';
+var s=location.search||'';
+location.replace('/'+s+h);
+</script>
+</head><body></body></html>
