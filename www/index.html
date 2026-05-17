@@ -3414,6 +3414,8 @@ function render1BoForm(prefill=null){
   initInjuries(p);
   initFireAgencies(p);
   initFormMiniMap(p.lat,p.lng);
+  // 폼 열릴 때 GPS·법정탐방로 기본값이면 즉시 자동 표기
+  setTimeout(_tryAutoFillSign, 100);
 }
 
 function openTimelineTab(){
