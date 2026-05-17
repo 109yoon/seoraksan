@@ -419,6 +419,19 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .guide-item:last-child{border-bottom:none;}
 .guide-t{font-size:12px;font-weight:700;color:#4fa8d0;margin-bottom:2px;}
 .guide-d{font-size:11px;color:#7a9cb8;line-height:1.6;}
+.help-step{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:.5px solid rgba(79,168,208,.08);}
+.help-step:last-child{border-bottom:none;}
+.help-step-ico{font-size:22px;min-width:30px;text-align:center;padding-top:1px;}
+.help-step-body{flex:1;}
+.help-step-t{font-size:12px;color:#c8e0f0;font-weight:700;margin-bottom:3px;}
+.help-step-d{font-size:11px;color:#6a90a8;line-height:1.6;}
+.help-pg-ttl{font-size:13px;color:#4fa8d0;font-weight:700;margin-bottom:11px;padding-bottom:9px;border-bottom:1px solid rgba(79,168,208,.15);}
+.help-nav{display:flex;align-items:center;justify-content:space-between;padding-top:12px;margin-top:8px;border-top:1px solid rgba(79,168,208,.08);}
+.help-nav-btn{background:rgba(79,168,208,.12);border:1px solid rgba(79,168,208,.22);color:#4fa8d0;border-radius:8px;padding:5px 16px;font-size:11px;cursor:pointer;font-weight:600;}
+.help-nav-btn:disabled{opacity:.2;cursor:default;}
+.help-dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.15);display:inline-block;margin:0 3px;transition:background .2s;}
+.help-dot.on{background:#4fa8d0;}
+.help-hdr-btn{background:rgba(79,168,208,.12);border:1px solid rgba(79,168,208,.22);color:#4fa8d0;width:28px;height:28px;border-radius:50%;font-size:12px;font-weight:700;cursor:pointer;flex-shrink:0;}
 /* 위험상황 카드 */
 .haz-card{background:#0b1c30;border-radius:10px;padding:12px;border:.5px solid rgba(230,126,34,.2);margin-bottom:5px;cursor:pointer;}
 .haz-card:active{background:#112030;}
@@ -566,6 +579,7 @@ body.guest-mode .guest-hide{display:none!important;}
       <div id="headerUserArea" style="display:none;align-items:center;gap:5px;">
         <span id="headerUserName" style="font-size:11px;color:#4fa8d0;font-weight:600;max-width:70px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
       </div>
+      <button class="help-hdr-btn" id="helpHdrBtn" onclick="openHelp()" title="사용 안내">?</button>
       <div class="bell-wrap"><button class="bell-btn" onclick="openNoti()">🔔</button><div class="bell-cnt" id="bellCnt"></div></div>
     </div>
   </div>
@@ -1222,6 +1236,19 @@ body.guest-mode .guest-hide{display:none!important;}
   <div class="mbox">
     <div class="mhdr"><span class="mtitle" id="guideTitle">안내</span><button class="mclose" onclick="closeM('modalGuide')">×</button></div>
     <div id="guideContent"></div>
+  </div>
+</div>
+
+<!-- ══ 모달: 도움말 ══ -->
+<div id="modalHelp" class="modal">
+  <div class="mbox" style="max-width:380px;">
+    <div class="mhdr"><span class="mtitle" id="helpTitle">📖 사용 안내</span><button class="mclose" onclick="closeM('modalHelp')">×</button></div>
+    <div id="helpPages"></div>
+    <div class="help-nav">
+      <button class="help-nav-btn" id="helpPrev" onclick="helpPg(-1)">← 이전</button>
+      <div id="helpDots"></div>
+      <button class="help-nav-btn" id="helpNext" onclick="helpPg(1)">다음 →</button>
+    </div>
   </div>
 </div>
 
@@ -4420,6 +4447,71 @@ async function syncToSheets(type,data){const url=DB.g('sheetsUrl');if(!url)retur
 // ══════════════════════════════════════════
 // 가이드
 // ══════════════════════════════════════════
+// ══════════════════════════════════════════
+// 도움말
+// ══════════════════════════════════════════
+const HELP_CONTENT={
+  rescue:[
+    {title:'🆘 구조 접수하기',steps:[
+      {ico:'📍',t:'지도에서 위치 길게 누르기',d:'재난구조 지도 탭에서 사고 위치를 길게 누르면 신규 구조 접수 화면이 열립니다.'},
+      {ico:'📡',t:'GPS 자동 입력',d:'GPS 버튼을 누르면 현재 위치 좌표가 자동으로 입력됩니다. 실내·음영지역에서는 시간이 걸릴 수 있습니다.'},
+      {ico:'🪧',t:'위치표지판 자동 연결',d:'위치유형을 "법정탐방로"로 선택하면 가장 가까운 다목적위치표지판과 거리가 사고장소에 자동 입력됩니다.'},
+      {ico:'💾',t:'보고서 단계별 저장',d:'1보 저장 후 상황이 변하면 목록에서 해당 건을 선택해 2보·3보를 계속 추가할 수 있습니다.'},
+    ]},
+    {title:'🗺️ 지도 & 핀 보는 법',steps:[
+      {ico:'🔴',t:'빨간 깜빡임 = 진행 중 구조',d:'현재 구조 중인 건은 빨간 핀이 깜빡입니다. 핀을 누르면 상세 정보와 다음 보 추가 버튼이 나타납니다.'},
+      {ico:'⬛',t:'투명 핀 = 종료 구조',d:'상황이 종료된 건은 핀이 반투명하게 표시됩니다.'},
+      {ico:'🔵',t:'파란 작은 점 = 위치표지판',d:'지도의 작은 파란 점은 다목적위치표지판 위치입니다. 구조 위치 파악 시 참고하세요.'},
+      {ico:'⚙️',t:'필터 바',d:'지도 하단 전체·진행중·종료·재난관리 버튼으로 표시 항목을 걸러볼 수 있습니다.'},
+    ]},
+  ],
+  inspect:[
+    {title:'🏗️ 시설물 등록하기',steps:[
+      {ico:'➕',t:'새 시설 등록',d:'지도 우측 하단 + 버튼을 눌러 새 시설물을 등록합니다. 명칭·유형·GPS 위치·초기 상태를 입력하세요.'},
+      {ico:'📡',t:'GPS 또는 지도 핀으로 위치 지정',d:'GPS 버튼으로 현재 위치를 가져오거나, 지도를 눌러 직접 위치를 지정할 수 있습니다.'},
+      {ico:'📸',t:'사진 자동 압축 저장',d:'카메라로 촬영하거나 앨범에서 선택하면 자동으로 용량이 줄어들어 저장됩니다.'},
+      {ico:'🚦',t:'상태 구분 (양호·주의·위험)',d:'위험 상태로 등록하면 대원들에게 자동으로 알림이 전송됩니다.'},
+    ]},
+    {title:'📋 점검 기록 & 이력',steps:[
+      {ico:'🔍',t:'시설물 선택',d:'지도의 핀 또는 목록에서 시설물을 누르면 상세 정보 창이 열립니다.'},
+      {ico:'✅',t:'점검 기록 남기기',d:'상세 창 → 점검 기록 버튼을 누르면 현재 상태·메모·사진·작성자를 입력할 수 있습니다.'},
+      {ico:'📅',t:'이력 조회',d:'"점검 이력" 버튼을 누르면 해당 시설물의 전체 점검 기록이 날짜 순으로 표시됩니다.'},
+      {ico:'🔔',t:'상태 변경 시 자동 알림',d:'점검 상태를 위험·주의로 변경하면 앱 내 알림이 자동으로 전송됩니다.'},
+    ]},
+  ],
+  wiki:[
+    {title:'🔍 위키 검색하기',steps:[
+      {ico:'🔎',t:'키워드 검색',d:'검색창에 탐방로 이름, 장비명, 응급처치 키워드를 입력하면 관련 문서가 실시간으로 표시됩니다.'},
+      {ico:'🔥',t:'인기 검색어',d:'최근 24시간 동안 많이 검색된 키워드가 인기 검색어로 표시됩니다. 탭하면 바로 검색됩니다.'},
+      {ico:'🏷️',t:'카테고리 필터',d:'지형·안전·장비·법령·응급 등 카테고리 태그를 눌러 원하는 분류의 문서만 볼 수 있습니다.'},
+      {ico:'📖',t:'문서 열기',d:'문서를 탭하면 전체 내용을 볼 수 있습니다. 이미지가 포함된 문서는 사진도 함께 표시됩니다.'},
+    ]},
+    {title:'✏️ 문서 작성 & 관리',steps:[
+      {ico:'➕',t:'새 문서 작성',d:'오른쪽 상단 ✏️ 버튼을 눌러 새 위키 문서를 작성합니다. 제목·본문·카테고리를 입력하세요.'},
+      {ico:'🖼️',t:'이미지 첨부',d:'문서 작성 시 사진을 첨부할 수 있습니다. 지도 캡처, 장비 사진 등을 넣으면 더욱 유용합니다.'},
+      {ico:'🔄',t:'자동 버전 저장',d:'문서를 수정할 때마다 이전 버전이 자동 저장됩니다. 상세 보기에서 과거 버전으로 복원할 수 있습니다.'},
+      {ico:'📂',t:'카테고리 다중 지정',d:'여러 카테고리를 동시에 지정할 수 있습니다. 카테고리를 충분히 설정하면 검색 정확도가 높아집니다.'},
+    ]},
+  ],
+};
+let _helpPages=[],_helpCur=0;
+function openHelp(){
+  const key=curApp==='rescue'?'rescue':curApp==='inspect'?'inspect':curApp==='wiki'?'wiki':'rescue';
+  _helpPages=HELP_CONTENT[key];_helpCur=0;
+  _renderHelpPage();
+  document.getElementById('modalHelp').classList.add('on');
+}
+function _renderHelpPage(){
+  const pg=_helpPages[_helpCur];if(!pg)return;
+  document.getElementById('helpPages').innerHTML=
+    `<div class="help-pg-ttl">${pg.title}</div>`+
+    pg.steps.map(s=>`<div class="help-step"><div class="help-step-ico">${s.ico}</div><div class="help-step-body"><div class="help-step-t">${s.t}</div><div class="help-step-d">${s.d}</div></div></div>`).join('');
+  document.getElementById('helpDots').innerHTML=_helpPages.map((_,i)=>`<span class="help-dot${i===_helpCur?' on':''}"></span>`).join('');
+  document.getElementById('helpPrev').disabled=_helpCur===0;
+  document.getElementById('helpNext').disabled=_helpCur===_helpPages.length-1;
+}
+function helpPg(dir){_helpCur=Math.max(0,Math.min(_helpPages.length-1,_helpCur+dir));_renderHelpPage();}
+
 const GUIDES={
   injury:{title:'부상 유형 안내',items:[{t:'골절',d:'뼈 파손. 변형·압통·부종. 부목 고정 후 이송.'},{t:'열상',d:'피부 찢김. 지혈 후 드레싱.'},{t:'뇌진탕',d:'두부 외상. 구토·기억상실 가능. 경과 관찰.'},{t:'저체온증',d:'체온 35°C 이하. 서서히 가온.'},{t:'심정지',d:'즉각 CPR. AED 확보.'}]},
   bodypart:{title:'신체 부위 주의',items:[{t:'두부·경추',d:'이동 금지. 경추 고정 후 이송.'},{t:'흉복부',d:'내출혈 가능. 산소 공급.'},{t:'골반',d:'대출혈. 압박 금지.'},{t:'척추',d:'로그롤. 마비 위험.'}]},
