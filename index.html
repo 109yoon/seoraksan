@@ -2099,6 +2099,30 @@ function selLoctype(val){
   document.getElementById('r_loctype').value=val;
   document.querySelectorAll('#loctypeBtns .tog-btn').forEach(b=>b.classList.toggle('on',b.dataset.val===val));
   chkIllegal({value:val});autoGenTitle();
+  if(val==='법정탐방로') _autoFillNearestSign();
+}
+// 법정탐방로 선택 시 가장 가까운 다목적위치표지판 좌표·이름 자동 입력
+function _autoFillNearestSign(){
+  const gpsRaw=(document.getElementById('r_gps')?.value||'').split(',');
+  const lat=parseFloat(gpsRaw[0]),lng=parseFloat(gpsRaw[1]);
+  if(!lat||!lng){toast('먼저 GPS 좌표를 입력해주세요');return;}
+  const facs=(DB.g('facilities')||[]).filter(f=>f.lat&&f.lng&&(f.type||'').includes('다목적위치표지판'));
+  if(!facs.length){toast('다목적위치표지판 데이터가 없습니다');return;}
+  // Haversine 거리 계산
+  function dist(f){
+    const R=6371000,r=Math.PI/180;
+    const dLat=(f.lat-lat)*r,dLng=(f.lng-lng)*r;
+    const a=Math.sin(dLat/2)**2+Math.cos(lat*r)*Math.cos(f.lat*r)*Math.sin(dLng/2)**2;
+    return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+  }
+  const nearest=facs.reduce((best,f)=>{const d=dist(f);return d<best.d?{f,d}:best},{f:null,d:Infinity});
+  const m=Math.round(nearest.d);
+  const locEl=document.getElementById('r_loc');
+  if(locEl){
+    locEl.value=nearest.f.name+' 인근 (약 '+m+'m)';
+    autoGenTitle();
+  }
+  toast('📍 '+nearest.f.name+' — '+m+'m');
 }
 // 신고자 토글
 function selHasRep(val){
