@@ -119,7 +119,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .home-alert{background:linear-gradient(90deg,rgba(192,57,43,.18),rgba(192,57,43,.08));border:1px solid rgba(192,57,43,.4);border-radius:10px;padding:9px 13px;display:flex;align-items:center;gap:10px;flex-shrink:0;cursor:pointer;}
 .home-alert-ico{font-size:16px;}
 .home-alert-text{flex:1;font-size:11px;font-weight:700;color:#ff8a80;line-height:1.4;}
-.home-chips{display:flex;gap:5px;overflow-x:auto;flex-shrink:0;}
+.home-chips{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;flex-shrink:0;}
 .home-chips::-webkit-scrollbar{display:none;}
 .weather-strip{display:flex;align-items:center;gap:8px;padding:7px 10px;background:#0a1a2a;border-radius:9px;flex-shrink:0;margin-top:6px;border:1px solid rgba(79,168,208,.1);}
 .weather-ico{font-size:18px;line-height:1;}
@@ -144,7 +144,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .weather-tmp{font-size:15px;font-weight:800;color:#e0edf8;}
 .weather-info{font-size:10px;color:#3a6a8a;flex:1;}
 .weather-wind{font-size:10px;color:#3a6a8a;}
-.hchip{display:flex;align-items:center;gap:7px;padding:8px 12px;border-radius:9px;flex-shrink:0;cursor:pointer;}
+.hchip{display:flex;align-items:center;justify-content:center;gap:7px;padding:8px 6px;border-radius:9px;cursor:pointer;}
 .hchip-num{font-size:17px;font-weight:800;line-height:1;}
 .hchip-lbl{font-size:9px;font-weight:600;opacity:.8;margin-top:1px;}
 .hchip-r{background:rgba(192,57,43,.1);border:1px solid rgba(192,57,43,.25);}
@@ -630,7 +630,7 @@ body.guest-mode .guest-hide{display:none!important;}
 
 <!-- ══ 홈 ══ -->
 <div id="v-home" class="view on" style="overflow:hidden;">
-<div class="home-inner" style="display:flex;flex-direction:column;height:100%;padding:10px 12px 8px;gap:8px;">
+<div class="home-inner" style="display:flex;flex-direction:column;flex:1;min-height:0;padding:10px 12px calc(8px + env(safe-area-inset-bottom));gap:8px;">
   <!-- 상단: 로고 가운데 + 날짜 + 벨 -->
   <div style="position:relative;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;padding:2px 0;">
     <!-- 날짜 왼쪽 -->
@@ -834,7 +834,8 @@ body.guest-mode .guest-hide{display:none!important;}
 <div id="v-admin" class="view" style="flex-direction:column;">
   <div style="background:rgba(192,57,43,.08);border-bottom:1px solid rgba(192,57,43,.15);padding:8px 13px;flex-shrink:0;display:flex;align-items:center;gap:8px;">
     <span style="font-size:13px;">🔐</span>
-    <div><div style="font-size:12px;font-weight:700;color:#e0edf8;">관리자 전용</div><div style="font-size:10px;color:#3a6a8a;">관제·데이터 관리 (권한자만 접근)</div></div>
+    <div style="flex:1;"><div style="font-size:12px;font-weight:700;color:#e0edf8;">관리자 전용</div><div style="font-size:10px;color:#3a6a8a;">관제·데이터 관리</div></div>
+    <button onclick="adminLogout()" style="font-size:11px;color:#c0392b;background:rgba(192,57,43,.15);border:1px solid rgba(192,57,43,.3);border-radius:7px;padding:5px 10px;cursor:pointer;">로그아웃</button>
   </div>
   <div class="adm-tabs">
     <div class="adm-tab on" onclick="admTab('ctrl',this)" style="color:#c0392b;border-bottom-color:#c0392b;">📊 관제</div>
@@ -868,6 +869,19 @@ body.guest-mode .guest-hide{display:none!important;}
   <div class="navi" id="nv3" onclick="switchTab(3,this)"><div class="navi-ico">📊</div><span class="navi-lbl">통계</span></div>
 </div>
 <div class="toast" id="toast"></div>
+<!-- ══ 관리자 로그인 오버레이 ══ -->
+<div id="adminLoginOverlay" style="display:none;position:fixed;inset:0;background:#060d1a;z-index:10002;flex-direction:column;align-items:center;justify-content:center;padding:28px;">
+  <div style="font-size:44px;margin-bottom:16px;">🔐</div>
+  <div style="font-size:17px;font-weight:800;color:#e0edf8;margin-bottom:6px;">관리자 로그인</div>
+  <div style="font-size:12px;color:#3a6a8a;margin-bottom:24px;">관리자 계정으로 로그인하세요</div>
+  <div style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:10px;">
+    <input id="adminLoginId" type="text" class="fi" placeholder="아이디" autocomplete="off" style="font-size:14px;padding:12px 14px;" onkeydown="if(event.key==='Enter')document.getElementById('adminLoginPw').focus()">
+    <input id="adminLoginPw" type="password" class="fi" placeholder="비밀번호" autocomplete="off" style="font-size:14px;padding:12px 14px;" onkeydown="if(event.key==='Enter')doAdminLogin()">
+    <button onclick="doAdminLogin()" style="background:#c0392b;color:#fff;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px;">로그인</button>
+    <button onclick="goHome()" style="background:transparent;color:#3a6a8a;border:none;font-size:12px;cursor:pointer;padding:6px;">← 돌아가기</button>
+  </div>
+</div>
+
 <!-- ══ 모달: 작성자 설정 ══ -->
 <div id="modalUser" class="modal">
   <div class="mbox">
@@ -1593,6 +1607,12 @@ function openApp(mode){
     document.getElementById('topTitle').textContent='설악위키';
     bn.style.display='none';showV('v-wiki');renderHotSearch();renderWikiList('');
   } else if(mode==='admin'){
+    if(!window._adminAuthed){
+      const ov=document.getElementById('adminLoginOverlay');
+      ov.style.display='flex';
+      setTimeout(()=>document.getElementById('adminLoginId').focus(),200);
+      return;
+    }
     document.getElementById('topTitle').textContent='관리자 전용';
     bn.style.display='none';showV('v-admin');admTab('ctrl',document.querySelector('.adm-tab'));
   } else if(mode==='settings'){
@@ -2171,6 +2191,26 @@ function selectMPill(el,name,dept,rank){
     });
   }
 }
+window._adminAuthed=false;
+function doAdminLogin(){
+  const id=(document.getElementById('adminLoginId').value||'').trim();
+  const pw=(document.getElementById('adminLoginPw').value||'').trim();
+  if(id==='yraphael'&&pw==='dnjs1209!'){
+    window._adminAuthed=true;
+    document.getElementById('adminLoginOverlay').style.display='none';
+    document.getElementById('adminLoginPw').value='';
+    openApp('admin');
+  }else{
+    toast('❌ 아이디 또는 비밀번호가 틀렸습니다');
+    document.getElementById('adminLoginPw').value='';
+    document.getElementById('adminLoginPw').focus();
+  }
+}
+function adminLogout(){
+  window._adminAuthed=false;
+  goHome();
+  toast('관리자 로그아웃');
+}
 function isAdminUser(u){
   u=u||DB.g('currentUser')||{};
   if(DB.g('authType')==='dev')return true;
@@ -2311,6 +2351,17 @@ function renderRescueMap(){
     const el=document.createElement('div');el.className=`mpin p-haz${done?' p-done':''}`;el.innerHTML='⚠️';
     el.onclick=e=>{e.stopPropagation();openResPopup(h.id,'hazard');};
     const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(h.lat,h.lng),content:el,clickable:true});
+    ov.setMap(mapR);rOvs.push(ov);
+  });
+  // 위치표지판 — 구조 위치 파악용 참조 마커
+  (DB.g('facilities')||[]).filter(f=>f.lat&&f.lng&&f.type&&f.type.includes('위치표지')).forEach(f=>{
+    const el=document.createElement('div');
+    el.className='mpin';
+    el.style.cssText='border-color:#4fa8d0;background:#0b2a3f;opacity:.85;font-size:13px;';
+    el.innerHTML='🪧';
+    el.title=f.name||'위치표지판';
+    el.onclick=e=>{e.stopPropagation();toast('📍 '+f.name+(f.loc?' · '+f.loc:''));};
+    const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(f.lat,f.lng),content:el,clickable:true});
     ov.setMap(mapR);rOvs.push(ov);
   });
   updateSummary();
