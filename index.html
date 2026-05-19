@@ -1674,18 +1674,18 @@ function tChkAt(el){
   const box=el.querySelector('.chk-box');
   if(box) box.classList.toggle('on',el.classList.contains('on'));
 }
-function toggleAddTeam(){
-  const wrap=document.getElementById('addTeamWrap');
-  const btn=document.getElementById('addTeamBtn');
-  if(!wrap) return;
-  const show=wrap.style.display==='none';
-  wrap.style.display=show?'block':'none';
-  if(btn) btn.style.color=show?'#7ec8a0':'rgba(126,200,163,.5)';
+function toggleMemOtherDepts(){
+  const sec=document.getElementById('memOtherDepts');
+  const btn=document.getElementById('memOtherBtn');
+  if(!sec)return;
+  const open=sec.style.display!=='none';
+  sec.style.display=open?'none':'block';
+  if(btn)btn.textContent=open?'＋ 다른 과/분소 인원 추가':'▲ 접기';
 }
-function getAddTeamMembers(){
-  return [...document.querySelectorAll('#addTeamGrid .chk-item.on')].map(el=>{
+function updateInitTeamState(){
+  _initTeamMembers=[...document.querySelectorAll('#memChkGrid .chk-item.on')].map(el=>{
     const t=el.querySelector('.chk-txt');
-    return t?t.textContent.trim().split(' ')[0]:'';
+    return t?(t.childNodes[0]?.textContent||'').trim():'';
   }).filter(Boolean);
 }
 
@@ -1728,8 +1728,9 @@ function closeChangelog(){
 // 추가팀 복수 지원
 let _extraTeams=[]; // [{teamName, members:[]}]
 let _extraTeamCollapsed=[];
-let _extraTeamOtherOpen=[]; // 다른 과 패널 열림 여부
-let _extraTeamOtherFilter=[]; // 다른 과 패널 선택된 dept
+let _extraTeamOtherOpen=[];
+let _extraTeamOtherFilter=[];
+let _initTeamMembers=[]; // 초동 출동팀 선택 인원 (추가팀 비활성화용)
 function initExtraTeams(prefill){
   _extraTeams=(prefill&&prefill.extraTeams)?prefill.extraTeams.map(t=>({...t})):[];
   _extraTeamCollapsed=_extraTeams.map(()=>false);
@@ -1789,8 +1790,10 @@ function _expandSection(fullId,summaryId,editBtnId){
   if(btn) btn.style.display='none';
 }
 function confirmMemberSection(){
+  updateInitTeamState(); // 상태 저장 후 추가팀 비활성화 갱신
+  renderExtraTeams();
   const DEPT_SHORT={'특수산악구조대':'특구대','대청분소':'대청','백담분소':'백담'};
-  const staff=sortStaff(getStaff());
+  const staff=sortStaff(getTeamMembers());
   const deptMap={};staff.forEach(s=>{deptMap[s.name]=s.dept;});
   const selected=[...document.querySelectorAll('#memChkGrid .chk-item.on')].map(el=>{
     const t=el.querySelector('.chk-txt');
@@ -1870,11 +1873,16 @@ function renderExtraTeams(){
           ${['전체',...availDepts].map(d=>`<div onclick="setExtraTeamOtherFilter(${ti},'${d}')" style="padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer;${d===filt?'background:#1a4a6e;color:#4fa8d0;':'background:#0b1c30;color:#4a7090;border:1px solid #1a3a5a;'}">${d}</div>`).join('')}
         </div>`:''}
         ${filtered.length?`<div class="chk-grid">
-          ${filtered.map(s=>`
-            <div class="chk-item${t.members.includes(s.name)?' on':''}" onclick="toggleExtraTeamMember(${ti},'${s.name}',this)">
-              <div class="chk-box${t.members.includes(s.name)?' on':''}"></div>
-              <span class="chk-txt">${s.name}<span style="font-size:9px;color:#4a7090;margin-left:3px;">${s.rank}</span></span>
-            </div>`).join('')}
+          ${filtered.map(s=>{
+            const inThis=t.members.includes(s.name);
+            const takenElsewhere=!inThis&&((_initTeamMembers||[]).includes(s.name)||_extraTeams.some((et,ei)=>ei!==ti&&et.members.includes(s.name)));
+            return `<div class="chk-item${inThis?' on':''}${takenElsewhere?' disabled':''}"
+              onclick="${takenElsewhere?'':(`toggleExtraTeamMember(${ti},\\'${s.name}\\',this)`)}"
+              style="${takenElsewhere?'opacity:.35;cursor:not-allowed;':''}">
+              <div class="chk-box${inThis?' on':''}"></div>
+              <span class="chk-txt">${s.name}<span style="font-size:9px;color:#4a7090;margin-left:3px;">${s.rank}${takenElsewhere?' (배정됨)':''}</span></span>
+            </div>`;
+          }).join('')}
         </div>`:'<div style="font-size:11px;color:#4a7090;padding:6px 0;">가입된 인원 없음</div>'}
         <button onclick="confirmExtraTeam(${ti})" style="width:100%;margin-top:10px;padding:8px;background:rgba(79,168,208,.1);border:1px solid rgba(79,168,208,.3);color:#4fa8d0;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">✅ 확인</button>
       `}
@@ -3226,27 +3234,44 @@ function render1BoForm(prefill=null){
         </div>
         <!-- 전체 선택 (펼쳐진 상태) -->
         <div id="memberFullSection" style="overflow:hidden;transition:max-height .3s ease,opacity .25s ease;max-height:1000px;opacity:1;">
-          <div id="memChkGrid" style="display:flex;flex-direction:column;gap:10px;">
+          <div id="memChkGrid" style="display:flex;flex-direction:column;gap:8px;">
             ${(()=>{
               const curDept=(DB.g('currentUser')||{}).dept||'';
               const groups={};
               ms.forEach(s=>{if(!groups[s.dept])groups[s.dept]=[];groups[s.dept].push(s);});
-              // 내 과/분소 먼저, 나머지는 DEPTS 순서대로
-              const allDepts=Object.keys(groups);
-              const ordered=[...new Set([curDept,...DEPTS,...allDepts])].filter(d=>groups[d]);
-              return ordered.map((dept)=>`
-                <div>
-                  <div style="font-size:10px;color:${dept===curDept?'#4fa8d0':'#4a7090'};font-weight:700;margin-bottom:5px;">${dept}${dept===curDept?' ★':''}</div>
-                  <div class="chk-grid">
-                    ${groups[dept].map(s=>{
+              const myGroup=groups[curDept]||[];
+              const otherDepts=[...new Set([...DEPTS,...Object.keys(groups)])].filter(d=>d!==curDept&&groups[d]);
+              // 내 과/분소 (기본 표시)
+              const mySection=myGroup.length
+                ?`<div>
+                    <div style="font-size:10px;color:#4fa8d0;font-weight:700;margin-bottom:5px;">${curDept} ★</div>
+                    <div class="chk-grid">${myGroup.map(s=>{
                       const checked=(p.members!=null?(p.members||[]).includes(s.name):s.name===curUserName);
-                      return `<div class="chk-item${checked?' on':''}" onclick="tChk(this)">
+                      return `<div class="chk-item${checked?' on':''}" onclick="tChk(this);updateInitTeamState()">
                         <div class="chk-box${checked?' on':''}"></div>
                         <span class="chk-txt">${s.name}<span style="font-size:9px;color:#4a7090;margin-left:3px;">${s.rank}</span></span>
                       </div>`;
-                    }).join('')}
+                    }).join('')}</div>
+                  </div>`
+                :'<div style="font-size:11px;color:#4a7090;padding:4px 0;">소속 과/분소 가입 인원 없음</div>';
+              // 다른 과/분소 (접혀있음)
+              const otherSection=otherDepts.length
+                ?`<div id="memOtherDepts" style="display:none;display:${p.members&&p.members.some(m=>myGroup.every(s=>s.name!==m))?'block':'none'};">
+                    ${otherDepts.map(dept=>`
+                      <div style="margin-top:8px;">
+                        <div style="font-size:10px;color:#4a7090;font-weight:700;margin-bottom:5px;">${dept}</div>
+                        <div class="chk-grid">${groups[dept].map(s=>{
+                          const checked=(p.members!=null&&(p.members||[]).includes(s.name));
+                          return `<div class="chk-item${checked?' on':''}" onclick="tChk(this);updateInitTeamState()">
+                            <div class="chk-box${checked?' on':''}"></div>
+                            <span class="chk-txt">${s.name}<span style="font-size:9px;color:#4a7090;margin-left:3px;">${s.rank}</span></span>
+                          </div>`;
+                        }).join('')}</div>
+                      </div>`).join('')}
                   </div>
-                </div>`).join('');
+                  <button id="memOtherBtn" onclick="toggleMemOtherDepts()" style="width:100%;margin-top:6px;padding:7px;background:rgba(255,255,255,.04);border:1px dashed rgba(79,168,208,.25);color:#4fa8d0;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;">＋ 다른 과/분소 인원 추가</button>`
+                :'';
+              return mySection+otherSection;
             })()}
           </div>
           <button onclick="confirmMemberSection()" style="width:100%;margin-top:10px;padding:8px;background:rgba(79,168,208,.1);border:1px solid rgba(79,168,208,.3);color:#4fa8d0;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">✅ 확인</button>
