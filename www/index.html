@@ -2244,8 +2244,9 @@ function openChangeUser(){
   const notApproved=isKakao&&u.approvalStatus!=='approved'&&!isAdmin;
   const titleEl=document.getElementById('modalUserTitle');
   if(titleEl)titleEl.textContent=notApproved?'🆕 가입 신청':'👤 작성자 설정';
+  const showCode=isKakao&&!isAdmin&&!!window._needsCode;
   const codeWrap=document.getElementById('uCodeWrap');
-  if(codeWrap)codeWrap.style.display=isKakao&&!isAdmin?'block':'none';
+  if(codeWrap)codeWrap.style.display=showCode?'block':'none';
   const codeIn=document.getElementById('uCodeIn');
   if(codeIn)codeIn.value='';
   document.getElementById('uNameIn').value=u.realName||u.name||'';
@@ -2291,23 +2292,26 @@ function saveUser(){
   const existing=DB.g('currentUser')||{};
   const authType=DB.g('authType');
   const admin=isAdminUser(existing);
-  const alreadyApproved=existing.approvalStatus==='approved';
   let newStatus;
   if(admin||authType!=='kakao'){
     newStatus='approved';
-  }else{
+  }else if(window._needsCode){
+    // OAuth 경유 로그인: 코드 필수
     const codeIn=document.getElementById('uCodeIn');
     const code=(codeIn?codeIn.value:'').trim().toUpperCase();
-    // 승인 여부 관계없이 코드 항상 필수
     if(!code){toast('⚠️ 승인 코드를 입력해주세요');return;}
     const adminCode=(DB.g('adminApprovalCode')||'SEORAKSAN').toUpperCase();
     if(code!==adminCode){toast('❌ 올바르지 않은 코드입니다');return;}
     newStatus='approved';
+  }else{
+    // 자동로그인: 코드 불필요, 기존 승인 상태 유지
+    newStatus=existing.approvalStatus||'approved';
   }
   const saved={...existing,realName:name,name,dept,rank,approvalStatus:newStatus};
   DB.s('currentUser',saved);
   _notifyNewJoiner(saved);
   window._requireProfile=false;
+  window._needsCode=false;
   closeM('modalUser');
   hidePendingScreen();
   updateUserUI();
@@ -4210,8 +4214,9 @@ function _handleKakaoCode(code){
     if(window.hideLoginScreen)window.hideLoginScreen();
     updateUserUI();
     toast('✅ 카카오 로그인 완료');
-    // 관리자 아니면 무조건 코드+프로필 입력 화면
+    // 관리자 아니면 무조건 코드+프로필 입력 화면 (OAuth 경유 → 코드 필수)
     if(!isAdmin){
+      window._needsCode=true;
       window._requireProfile=true;
       setTimeout(function(){openChangeUser();},300);
     }
@@ -4222,9 +4227,8 @@ function _handleKakaoCode(code){
   });
 }
 function kakaoLogout(){
-  var u=DB.g('currentUser')||{};
-  delete u.kakaoImg;delete u.kakaoId;delete u.approvalStatus;
-  DB.s('currentUser',u);
+  window._needsCode=false;window._requireProfile=false;
+  DB.s('currentUser',{});
   DB.s('authType','');
   hidePendingScreen();
   if(window.showLoginScreen)window.showLoginScreen();
@@ -4256,7 +4260,15 @@ function _checkAndRequireProfile(){
   if(!authType)return;
   var u=DB.g('currentUser')||{};
   var isKakao=authType==='kakao';
-  if(isKakao)return; // 카카오는 _handleKakaoCode에서 직접 처리
+  if(isKakao){
+    // 자동로그인: 프로필 미완성이면 코드 없이 프로필만 요구
+    if(!u.dept||!u.rank||!(u.realName||u.name)){
+      window._requireProfile=true;
+      window._needsCode=false;
+      setTimeout(function(){openChangeUser();},300);
+    }
+    return;
+  }
   if(!u.dept||!u.rank){
     window._requireProfile=true;setTimeout(function(){openChangeUser();},300);
   }
