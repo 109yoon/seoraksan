@@ -4531,19 +4531,28 @@ function renderFullStats(){
   const res=DB.g('rescues')||[];const facs=DB.g('facilities')||[];
   const haz=DB.g('hazards')||[];const wikis=DB.g('wikis')||[];
   const hist=DB.g('history')||[];
-  const now_=new Date();
+  const now_=new Date();const todayStr=today();
   const fy=s=>s&&s.startsWith(now_.getFullYear()+'-');
   const fy_prev=s=>s&&s.startsWith((now_.getFullYear()-1)+'-');
   const fm=s=>s&&s.startsWith(now_.getFullYear()+'-'+(''+(now_.getMonth()+1)).padStart(2,'0'));
-  const fw=s=>{if(!s)return false;const d=new Date(s);const day=now_.getDay();const mon=new Date(now_);mon.setDate(now_.getDate()-day);const sun=new Date(mon);sun.setDate(mon.getDate()+6);return d>=mon&&d<=sun;};
-  const fd=s=>s&&s.startsWith(today());
-  const stats=(arr,fn)=>arr.filter(r=>fn(r.date||r.dt||'')).length;
+  const fw=s=>{if(!s)return false;const d=new Date((s||'').split(' ')[0]);const day=now_.getDay()||7;const m=new Date(now_);m.setDate(now_.getDate()-(day===0?6:day-1));m.setHours(0,0,0,0);const e=new Date(m);e.setDate(m.getDate()+6);e.setHours(23,59,59,999);return d>=m&&d<=e;};
+  const fd=s=>s&&s.startsWith(todayStr);
+  const period=window._statPeriod||'이번달';
+  const pf={'오늘':fd,'이번주':fw,'이번달':fm,'올해':fy,'전체':()=>true}[period]||fm;
+  const getDate=r=>r.date||r.dt||'';
+  const pRes=res.filter(r=>pf(getDate(r)));
+  const pHaz=haz.filter(h=>pf(getDate(h)));
+  const pHist=hist.filter(h=>pf(h.date||''));
   // 전년대비
-  const thisY=stats(res,fy);const prevY=stats(res,fy_prev);
-  const diff=thisY-prevY;const diffStr=diff>0?`▲${diff}`:diff<0?`▼${Math.abs(diff)}`:'→0';
-  const diffColor=diff>0?'#c0392b':diff<0?'#27ae60':'#4a7090';
+  const thisY=res.filter(r=>fy(getDate(r))).length;
+  const prevY=res.filter(r=>fy_prev(getDate(r))).length;
+  const diff=thisY-prevY;
+  const diffStr=diff>0?`▲${diff}`:diff<0?`▼${Math.abs(diff)}`:'±0';
+  const diffCol=diff>0?'#c0392b':diff<0?'#27ae60':'#4a7090';
+  // 유형별
+  const typeMap={};pRes.forEach(r=>{typeMap[r.type]=(typeMap[r.type]||0)+1;});
   // 안전사고 세부
-  const accRes=res.filter(r=>r.type==='안전사고');
+  const accRes=pRes.filter(r=>r.type==='안전사고');
   const injMap={},sevMap={},cauMap={},locMap={},methodMap={};
   accRes.forEach(r=>{
     (r.injuryParts||[]).forEach(p=>{injMap[p]=(injMap[p]||0)+1;});
@@ -4553,86 +4562,69 @@ function renderFullStats(){
     (r.rescueMethod||[]).forEach(m=>{methodMap[m]=(methodMap[m]||0)+1;});
   });
   const topN=(obj,n=5)=>Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,n);
-  const barRow=(k,v,max,color)=>`<div style="margin-bottom:5px;">
-    <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;"><span style="color:#c0d8ec;">${k}</span><span style="color:${color};font-weight:700;">${v}건</span></div>
-    <div style="height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;"><div style="height:100%;width:${Math.round(v/max*100)}%;background:${color};border-radius:2px;"></div></div>
-  </div>`;
-  const injMax=Math.max(...Object.values(injMap),1);
-  const cauMax=Math.max(...Object.values(cauMap),1);
-  const methodMax=Math.max(...Object.values(methodMap),1);
-
+  const safe_max=obj=>Math.max(...Object.values(obj),1);
+  const barRow=(k,v,max,col)=>`<div style="margin-bottom:5px;"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;"><span style="color:#c0d8ec;">${k}</span><span style="color:${col};font-weight:700;">${v}건</span></div><div style="height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;"><div style="height:100%;width:${Math.round(v/max*100)}%;background:${col};border-radius:2px;"></div></div></div>`;
+  const mini=(label,val,col='#e0edf8')=>`<div style="background:#060d1a;border-radius:8px;padding:8px 6px;text-align:center;"><div style="font-size:16px;font-weight:800;color:${col};">${val}</div><div style="font-size:9px;color:#3a6a8a;margin-top:2px;">${label}</div></div>`;
+  const pill_tab=p=>`<div onclick="window._statPeriod='${p}';renderFullStats();" style="flex:1;padding:6px 2px;text-align:center;font-size:11px;font-weight:600;border-radius:7px;cursor:pointer;${p===period?'background:#1a4a6e;color:#e0edf8;':'color:rgba(255,255,255,.35);'}">${p}</div>`;
   const w=document.getElementById('statsWrap');
   w.innerHTML=`
-    <!-- 기간 탭 -->
-    <div style="display:flex;background:#0b1c30;border-radius:10px;padding:4px;gap:3px;margin-bottom:6px;flex-shrink:0;">
-      ${['오늘','이번주','이번달','이번연','전체'].map(p=>`<div onclick="filterStatPeriod('${p}',this)" style="flex:1;padding:6px 2px;text-align:center;font-size:11px;font-weight:600;border-radius:7px;cursor:pointer;${p==='이번달'?'background:#1a4a6e;color:#e0edf8;':'color:rgba(255,255,255,.4);'}">${p}</div>`).join('')}
+    <div style="display:flex;background:#0b1c30;border-radius:10px;padding:4px;gap:3px;margin-bottom:8px;flex-shrink:0;">
+      ${['오늘','이번주','이번달','올해','전체'].map(pill_tab).join('')}
     </div>
-    <div id="statPeriodLabel" style="font-size:10px;color:#3a6a8a;text-align:right;margin-bottom:4px;">기간: 이번달</div>
-
-    <!-- 구조 현황 -->
     <div class="scard">
-      <div class="stitle">🚨 구조 현황</div>
-      <div class="stat-grid" style="margin-bottom:8px;">
-        <div class="stat-box"><div class="stat-num">${res.length}</div><div class="stat-lbl">누적 전체</div></div>
-        <div class="stat-box" style="border-color:#c0392b;"><div class="stat-num bad">${res.filter(r=>r.status==='ongoing').length}</div><div class="stat-lbl">현재 진행중</div></div>
-        <div class="stat-box" style="border-color:#4fa8d0;"><div class="stat-num" style="color:#4fa8d0;">${stats(res,fm)}</div><div class="stat-lbl">이번 달</div></div>
-        <div class="stat-box" style="border-color:${diffColor};"><div class="stat-num" style="color:${diffColor};">${diffStr}</div><div class="stat-lbl">전년대비</div></div>
+      <div class="stitle">🚨 구조 현황 · ${period} ${pRes.length}건</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:8px;">
+        ${mini(period,pRes.length,'#4fa8d0')}
+        ${mini('진행중',res.filter(r=>r.status==='ongoing').length,'#c0392b')}
+        ${mini('전년대비',diffStr,diffCol)}
+        ${mini('누적',res.length)}
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:5px;">
-        ${[['오늘',stats(res,fd)],['이번주',stats(res,fw)],['이번달',stats(res,fm)],['올해',stats(res,fy)]].map(([l,v])=>`<div style="background:#060d1a;border-radius:8px;padding:8px 4px;text-align:center;"><div style="font-size:15px;font-weight:800;color:#e0edf8;">${v}</div><div style="font-size:9px;color:#3a6a8a;">${l}</div></div>`).join('')}
-      </div>
+      ${Object.keys(typeMap).length?`<div class="stitle" style="margin-bottom:5px;">📊 유형별</div>${topN(typeMap,6).map(([k,v])=>barRow(k,v,safe_max(typeMap),'#4fa8d0')).join('')}`:''}
     </div>
-
-    <!-- 안전사고 세부 통계 -->
+    ${accRes.length?`
     <div class="scard">
-      <div class="stitle">🤕 안전사고 세부 (총 ${accRes.length}건)</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;">
-        ${[['이번달',accRes.filter(r=>fm(r.date)).length],['올해',accRes.filter(r=>fy(r.date)).length],['내국인',accRes.filter(r=>r.vNation==='내국인').length],['외국인',accRes.filter(r=>r.vNation==='외국인').length],['음주',accRes.filter(r=>r.alcohol==='확인됨'||r.alcohol==='의심').length],['병원후송',accRes.filter(r=>r.hospital==='후송 완료'||r.hospital==='후송 중').length]].map(([l,v])=>`<div style="background:#060d1a;border-radius:8px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:11px;color:#8ab4cc;">${l}</span><span style="font-size:14px;font-weight:700;color:#e0edf8;">${v}</span></div>`).join('')}
+      <div class="stitle">🤕 안전사고 세부 · ${accRes.length}건</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:10px;">
+        ${mini('내국인',accRes.filter(r=>r.vNation==='내국인').length)}
+        ${mini('외국인',accRes.filter(r=>r.vNation==='외국인').length)}
+        ${mini('음주',accRes.filter(r=>r.alcohol==='확인됨'||r.alcohol==='의심').length,'#e67e22')}
+        ${mini('병원후송',accRes.filter(r=>r.hospital&&r.hospital.includes('후송')).length,'#c0392b')}
       </div>
-      <div style="margin-bottom:8px;"><div class="stitle" style="margin-bottom:5px;">📍 장소 구분</div>${topN(locMap,4).map(([k,v])=>barRow(k,v,Math.max(...Object.values(locMap)),'#4fa8d0')).join('')||'<div class="muted" style="font-size:11px;">데이터 없음</div>'}</div>
-      <div style="margin-bottom:8px;"><div class="stitle" style="margin-bottom:5px;">⚡ 사고 원인 TOP5</div>${topN(cauMap).map(([k,v])=>barRow(k,v,cauMax,'#e67e22')).join('')||'<div class="muted" style="font-size:11px;">데이터 없음</div>'}</div>
-      <div style="margin-bottom:8px;"><div class="stitle" style="margin-bottom:5px;">🦵 부상 부위 TOP5</div>${topN(injMap).map(([k,v])=>barRow(k,v,injMax,'#c0392b')).join('')||'<div class="muted" style="font-size:11px;">데이터 없음</div>'}</div>
-      <div><div class="stitle" style="margin-bottom:5px;">🚑 구조 방법</div>${topN(methodMap,4).map(([k,v])=>barRow(k,v,methodMax,'#27ae60')).join('')||'<div class="muted" style="font-size:11px;">데이터 없음</div>'}</div>
-      <div style="margin-top:8px;"><div class="stitle" style="margin-bottom:5px;">🩺 중증도 분포</div>
-        ${topN(sevMap,5).map(([k,v])=>barRow(k,v,Math.max(...Object.values(sevMap),1),'#7d3c98')).join('')||'<div class="muted" style="font-size:11px;">데이터 없음</div>'}
+      ${Object.keys(locMap).length?`<div style="margin-bottom:8px;"><div class="stitle" style="margin-bottom:5px;">📍 장소 구분</div>${topN(locMap,4).map(([k,v])=>barRow(k,v,safe_max(locMap),'#4fa8d0')).join('')}</div>`:''}
+      ${Object.keys(cauMap).length?`<div style="margin-bottom:8px;"><div class="stitle" style="margin-bottom:5px;">⚡ 사고 원인</div>${topN(cauMap).map(([k,v])=>barRow(k,v,safe_max(cauMap),'#e67e22')).join('')}</div>`:''}
+      ${Object.keys(injMap).length?`<div style="margin-bottom:8px;"><div class="stitle" style="margin-bottom:5px;">🦵 부상 부위</div>${topN(injMap).map(([k,v])=>barRow(k,v,safe_max(injMap),'#c0392b')).join('')}</div>`:''}
+      ${Object.keys(methodMap).length?`<div style="margin-bottom:8px;"><div class="stitle" style="margin-bottom:5px;">🚑 구조 방법</div>${topN(methodMap,4).map(([k,v])=>barRow(k,v,safe_max(methodMap),'#27ae60')).join('')}</div>`:''}
+      ${Object.keys(sevMap).length?`<div><div class="stitle" style="margin-bottom:5px;">🩺 중증도</div>${topN(sevMap).map(([k,v])=>barRow(k,v,safe_max(sevMap),'#7d3c98')).join('')}</div>`:''}
+    </div>`:''}
+    <div class="scard">
+      <div class="stitle">⚠️ 위험상황 · ${period} ${pHaz.length}건</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;">
+        ${mini('🪨 낙석',pHaz.filter(h=>h.hazType?.includes('낙석')).length,'#7d3c98')}
+        ${mini('🌲 위험수목',pHaz.filter(h=>h.hazType?.includes('위험수목')).length,'#ca6f1e')}
+        ${mini('🔥 산불',pHaz.filter(h=>h.hazType?.includes('산불')).length,'#a93226')}
       </div>
+      ${pHaz.length?`<div style="margin-top:6px;font-size:11px;color:#7a9cb8;">미조치 ${pHaz.filter(h=>h.hazStatus==='미조치').length}건 · 조치완료 ${pHaz.filter(h=>h.hazStatus==='제거 완료'||h.hazStatus==='조치 완료').length}건</div>`:''}
     </div>
-
-    <!-- 위험상황 -->
     <div class="scard">
-      <div class="stitle">⚠️ 위험상황 현황</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;">
-        ${[['🪨 낙석',haz.filter(h=>h.hazType?.includes('낙석')).length,'#7d3c98'],['🌲 위험수목',haz.filter(h=>h.hazType?.includes('위험수목')).length,'#ca6f1e'],['🔥 산불',haz.filter(h=>h.hazType?.includes('산불')).length,'#a93226']].map(([l,v,col])=>`<div style="background:#060d1a;border-radius:8px;padding:8px 4px;text-align:center;"><div style="font-size:15px;font-weight:800;color:${col};">${v}</div><div style="font-size:9px;color:#3a6a8a;">${l}</div></div>`).join('')}
+      <div class="stitle">🛠️ 시설물 점검 · ${period} ${pHist.length}건</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:${pHist.length?'8':'0'}px;">
+        ${mini('전체',facs.length)}
+        ${mini('위험',facs.filter(f=>f.status==='bad').length,'#c0392b')}
+        ${mini('요주의',facs.filter(f=>f.status==='warn').length,'#e67e22')}
+        ${mini('기간점검',pHist.length,'#27ae60')}
       </div>
-      <div style="margin-top:6px;font-size:11px;color:#7a9cb8;">제거완료 ${haz.filter(h=>h.hazStatus==='제거 완료').length}건 · 미조치 ${haz.filter(h=>h.hazStatus==='미조치').length}건</div>
+      ${pHist.length?`<div class="stitle" style="margin-bottom:5px;">최근 점검</div>${pHist.slice(-5).reverse().map(h=>`<div style="background:#060d1a;border-radius:7px;padding:7px 10px;margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;"><span style="font-size:11px;color:#c0d8ec;">${h.facName||'-'}</span><span style="font-size:10px;color:${h.status==='bad'?'#c0392b':h.status==='warn'?'#e67e22':'#27ae60'};font-weight:700;">${SL(h.status)}</span></div>`).join('')}`:''}
     </div>
-
-    <!-- 시설물 -->
     <div class="scard">
-      <div class="stitle">🛠️ 시설물 현황</div>
-      <div class="stat-grid" style="margin-bottom:8px;">
-        <div class="stat-box"><div class="stat-num">${facs.length}</div><div class="stat-lbl">전체</div></div>
-        <div class="stat-box"><div class="stat-num">${hist.length}</div><div class="stat-lbl">총 점검</div></div>
-        <div class="stat-box" style="border-color:#c0392b;"><div class="stat-num bad">${facs.filter(f=>f.status==='bad').length}</div><div class="stat-lbl">위험</div></div>
-        <div class="stat-box" style="border-color:#27ae60;"><div class="stat-num ok">${facs.filter(f=>f.status==='ok').length}</div><div class="stat-lbl">양호</div></div>
-      </div>
-    </div>
-
-    <!-- 위키 -->
-    <div class="scard">
-      <div class="stitle">📚 위키 현황</div>
-      <div class="stat-grid">
-        <div class="stat-box"><div class="stat-num">${wikis.length}</div><div class="stat-lbl">총 문서</div></div>
-        <div class="stat-box"><div class="stat-num">${[...new Set(wikis.flatMap(w=>w.cats||[]))].length}</div><div class="stat-lbl">카테고리</div></div>
+      <div class="stitle">📚 설악위키</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;">
+        ${mini('총 문서',wikis.length,'#4fa8d0')}
+        ${mini('카테고리',[...new Set(wikis.flatMap(w=>w.cats||[]))].length)}
       </div>
     </div>`;
 }
 function filterStatPeriod(period,el){
-  document.querySelectorAll('#statsWrap > div:first-child > div').forEach(d=>{d.style.background='transparent';d.style.color='rgba(255,255,255,.4)';});
-  el.style.background='#1a4a6e';el.style.color='#e0edf8';
-  document.getElementById('statPeriodLabel').textContent='기간: '+period;
-  // 실제 필터링은 추후 확장 가능 - 지금은 시각 표시만
-  toast('📊 '+period+' 기준 보기');
+  window._statPeriod=period;renderFullStats();
 }
 
 function openResListDetail(id){
