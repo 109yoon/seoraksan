@@ -2404,7 +2404,10 @@ function renderRescueMap(){
     if(!r.lat||!r.lng)return;
     const isOg=r.status==='ongoing';const ti=RES_TYPES[r.type]||RES_TYPES['기타'];
     const el=document.createElement('div');el.className=`mpin ${ti.pc}${isOg?' blink':' p-done'}`;el.innerHTML=ti.ico;
-    el.onclick=e=>{e.stopPropagation();openResPopup(r.id,'rescue');};
+    let _ts=null;
+    el.addEventListener('touchstart',e=>{_ts={x:e.touches[0].clientX,y:e.touches[0].clientY};},{passive:true});
+    el.addEventListener('touchend',e=>{if(!_ts)return;const dx=e.changedTouches[0].clientX-_ts.x,dy=e.changedTouches[0].clientY-_ts.y;_ts=null;if(Math.abs(dx)<8&&Math.abs(dy)<8){e.stopPropagation();e.preventDefault();openResPopup(r.id,'rescue');}});
+    el.addEventListener('click',e=>{e.stopPropagation();openResPopup(r.id,'rescue');});
     const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(r.lat,r.lng),content:el,clickable:true});
     ov.setMap(mapR);rOvs.push(ov);
   });
@@ -2413,7 +2416,10 @@ function renderRescueMap(){
     if(!h.lat||!h.lng)return;
     const done=h.hazStatus&&h.hazStatus!=='미조치'&&h.hazStatus!=='조치중';
     const el=document.createElement('div');el.className=`mpin p-haz${done?' p-done':''}`;el.innerHTML='⚠️';
-    el.onclick=e=>{e.stopPropagation();openResPopup(h.id,'hazard');};
+    let _ts=null;
+    el.addEventListener('touchstart',e=>{_ts={x:e.touches[0].clientX,y:e.touches[0].clientY};},{passive:true});
+    el.addEventListener('touchend',e=>{if(!_ts)return;const dx=e.changedTouches[0].clientX-_ts.x,dy=e.changedTouches[0].clientY-_ts.y;_ts=null;if(Math.abs(dx)<8&&Math.abs(dy)<8){e.stopPropagation();e.preventDefault();openResPopup(h.id,'hazard');}});
+    el.addEventListener('click',e=>{e.stopPropagation();openResPopup(h.id,'hazard');});
     const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(h.lat,h.lng),content:el,clickable:true});
     ov.setMap(mapR);rOvs.push(ov);
   });
@@ -3599,7 +3605,15 @@ function renderInspectMap(){
   filtered.forEach(f=>{
     if(!f.lat||!f.lng)return;
     const el=document.createElement('div');el.className=`mpin p-${f.status}${f.status==='bad'?' blink':''}`;el.innerHTML=f.type.split(' ')[0];
-    el.onclick=e=>{e.stopPropagation();openFacFromMap(f.id);};
+    let _ts=null;
+    el.addEventListener('touchstart',e=>{_ts={x:e.touches[0].clientX,y:e.touches[0].clientY};},{passive:true});
+    el.addEventListener('touchend',e=>{
+      if(!_ts)return;
+      const dx=e.changedTouches[0].clientX-_ts.x,dy=e.changedTouches[0].clientY-_ts.y;
+      _ts=null;
+      if(Math.abs(dx)<8&&Math.abs(dy)<8){e.stopPropagation();e.preventDefault();openFacFromMap(f.id);}
+    });
+    el.addEventListener('click',e=>{e.stopPropagation();openFacFromMap(f.id);});
     const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(f.lat,f.lng),content:el,clickable:true});
     ov.setMap(mapI);iOvs.push(ov);
   });
