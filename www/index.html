@@ -2302,31 +2302,25 @@ function saveUser(){
   const authType=DB.g('authType');
   const admin=isAdminUser(existing);
   const alreadyApproved=existing.approvalStatus==='approved';
-  const needsCode=authType==='kakao'&&!alreadyApproved&&!admin;
   let newStatus;
-  if(admin||alreadyApproved||authType!=='kakao'){
+  if(admin||authType!=='kakao'){
     newStatus='approved';
   }else{
-    const codeWrap=document.getElementById('uCodeWrap');
-    const codeVisible=codeWrap&&codeWrap.style.display!=='none';
-    if(codeVisible){
-      const codeIn=document.getElementById('uCodeIn');
-      const code=(codeIn?codeIn.value:'').trim().toUpperCase();
-      if(alreadyApproved){
-        // 이미 승인됨 — 코드 비워도 OK, 입력했으면 검증만
-        if(code){
-          const adminCode=(DB.g('adminApprovalCode')||'SEORAKSAN').toUpperCase();
-          if(code!==adminCode){toast('❌ 올바르지 않은 코드입니다');return;}
-        }
-        newStatus='approved';
-      }else{
-        if(!code){toast('⚠️ 승인 코드를 입력해주세요');return;}
+    const codeIn=document.getElementById('uCodeIn');
+    const code=(codeIn?codeIn.value:'').trim().toUpperCase();
+    if(alreadyApproved){
+      // 이미 승인된 사람: 코드 비워도 저장 가능
+      if(code){
         const adminCode=(DB.g('adminApprovalCode')||'SEORAKSAN').toUpperCase();
         if(code!==adminCode){toast('❌ 올바르지 않은 코드입니다');return;}
-        newStatus='approved';
       }
+      newStatus='approved';
     }else{
-      newStatus='pending';
+      // 미승인: 코드 필수
+      if(!code){toast('⚠️ 승인 코드를 입력해주세요');return;}
+      const adminCode=(DB.g('adminApprovalCode')||'SEORAKSAN').toUpperCase();
+      if(code!==adminCode){toast('❌ 올바르지 않은 코드입니다');return;}
+      newStatus='approved';
     }
   }
   const saved={...existing,realName:name,name,dept,rank,approvalStatus:newStatus};
@@ -4219,44 +4213,27 @@ function _handleKakaoCode(code){
     var u=DB.g('currentUser')||{};
     var prof=(res.kakao_account&&res.kakao_account.profile)||{};
     var kakaoId=String(res.id);
-    // deletedKakaoIds에서 제거 (탈퇴 후 재가입 시 강제 로그아웃 방지)
+    // deletedKakaoIds에서 제거
     var deletedIds=DB.g('deletedKakaoIds')||[];
     if(deletedIds.includes(kakaoId)){
       DB.s('deletedKakaoIds',deletedIds.filter(function(id){return id!==kakaoId;}));
     }
-    // pendingUsers를 유일한 승인 기준으로 사용
-    var pendingList=DB.g('pendingUsers')||[];
-    var pendingEntry=pendingList.find(function(p){return String(p.id)===kakaoId;});
-    var approvalStatus=pendingEntry&&pendingEntry.approvalStatus==='approved'?'approved':'pending';
     var isAdmin=isAdminUser({kakaoId:kakaoId});
-    if(isAdmin)approvalStatus='approved';
     DB.s('currentUser',Object.assign({},u,{
       kakaoId:kakaoId,
       kakaoImg:prof.profile_image_url||prof.thumbnail_image_url||'',
-      name:u.name||prof.nickname||'',
-      approvalStatus:approvalStatus
+      name:u.name||prof.nickname||''
     }));
     DB.s('authType','kakao');
     if(window._hideLoading)window._hideLoading();
     if(window.hideLoginScreen)window.hideLoginScreen();
     updateUserUI();
-    _checkAndRequireProfile();
     toast('✅ 카카오 로그인 완료');
-    // Firestore 동기화 후 재확인 (캐시가 stale했을 경우 보정)
-    setTimeout(function(){
-      _checkDeletedUser();
-      var u2=DB.g('currentUser')||{};
-      if(DB.g('authType')==='kakao'&&!isAdminUser(u2)){
-        var pl=DB.g('pendingUsers')||[];
-        var pe=pl.find(function(p){return String(p.id)===String(u2.kakaoId);});
-        var confirmed=pe&&pe.approvalStatus==='approved';
-        if(!confirmed&&u2.approvalStatus==='approved'){
-          // Firestore 동기화 후 승인 취소 확인
-          DB.s('currentUser',Object.assign({},u2,{approvalStatus:'pending'}));
-          window._requireProfile=true;openChangeUser();
-        }
-      }
-    },4000);
+    // 관리자 아니면 무조건 코드+프로필 입력 화면
+    if(!isAdmin){
+      window._requireProfile=true;
+      setTimeout(function(){openChangeUser();},300);
+    }
   })
   .catch(function(e){
     if(window._hideLoading)window._hideLoading();
