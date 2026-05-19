@@ -2285,9 +2285,8 @@ function saveUser(){
   _notifyNewJoiner(saved);
   window._requireProfile=false;
   closeM('modalUser');updateUserUI();
-  toast(newStatus==='pending'?'✅ 등록 완료! 관리자 승인 코드를 받아 입력하세요':'✅ 저장: '+name);
+  toast('✅ 저장: '+name);
   try{renderSettings();}catch(e){}
-  if(newStatus==='pending')setTimeout(showPendingScreen,300);
 }
 function _notifyNewJoiner(u){
   const all=DB.g('pendingUsers')||[];
@@ -2309,7 +2308,14 @@ function showPendingScreen(){
   const el=document.getElementById('pendingScreen');
   if(!el)return;
   const info=document.getElementById('pendingUserInfo');
-  if(info)info.innerHTML=`실명: <b style="color:#e0edf8;">${u.realName||'미입력'}</b><br>닉네임: <b style="color:#e0edf8;">${u.name||'미입력'}</b><br>소속: <b style="color:#e0edf8;">${u.dept||'미입력'}</b><br>직위: <b style="color:#e0edf8;">${u.rank||'미입력'}</b>`;
+  const hasProfile=u.dept&&u.rank&&(u.realName||u.name);
+  if(info){
+    if(hasProfile){
+      info.innerHTML=`이름: <b style="color:#e0edf8;">${u.realName||u.name}</b><br>소속: <b style="color:#e0edf8;">${u.dept}</b><br>직위: <b style="color:#e0edf8;">${u.rank}</b>`;
+    }else{
+      info.innerHTML=`<div style="color:#e67e22;font-size:11px;line-height:1.8;">⚠️ 프로필 미등록 상태입니다<br>승인 코드 입력 후 프로필을 등록해주세요</div>`;
+    }
+  }
   el.style.display='flex';
 }
 function hidePendingScreen(){
@@ -2332,6 +2338,11 @@ function enterApprovalCode(){
     hidePendingScreen();
     toast('✅ 승인 완료! 이용하실 수 있습니다.');
     updateUserUI();
+    // 프로필 미완성이면 바로 프로필 입력으로
+    var _u2=DB.g('currentUser')||{};
+    if(!_u2.dept||!_u2.rank||!(_u2.realName||_u2.name)){
+      window._requireProfile=true;setTimeout(function(){openChangeUser();},400);
+    }
   }else{
     toast('❌ 올바르지 않은 코드입니다');
   }
@@ -4179,19 +4190,19 @@ function _checkAndRequireProfile(){
   var u=DB.g('currentUser')||{};
   var authType=DB.g('authType');
   var isKakao=authType==='kakao';
-  // 프로필 미완성 → 프로필 입력
+  // 카카오 미승인 → 대기화면(코드입력) 먼저 — 프로필 미완성이어도 코드 입력 가능
+  if(isKakao&&u.approvalStatus!=='approved'&&!isAdminUser(u)){
+    setTimeout(showPendingScreen,300);return;
+  }
+  // 승인됨 + 프로필 미완성 → 프로필 입력
   if(isKakao&&(!u.dept||!u.rank||!u.name)){
     window._requireProfile=true;setTimeout(function(){openChangeUser();},300);return;
   }
   if(!isKakao&&(!u.dept||!u.rank)){
     window._requireProfile=true;setTimeout(function(){openChangeUser();},300);return;
   }
-  // 프로필 완성된 카카오 사용자 → pendingUsers에 upsert (재로그인 시에도 목록 유지)
+  // 프로필 완성된 카카오 사용자 → pendingUsers upsert
   if(isKakao&&u.name&&u.dept&&u.rank)_notifyNewJoiner(u);
-  // 카카오 가입자 중 미승인 → 승인 코드 대기 화면
-  if(isKakao&&u.approvalStatus!=='approved'&&!isAdminUser(u)){
-    setTimeout(showPendingScreen,300);return;
-  }
 }
 function guestLogin(){
   if(typeof DB!=='undefined')DB.s('authType','guest');
