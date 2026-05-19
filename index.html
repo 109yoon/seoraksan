@@ -1515,7 +1515,7 @@ function clearNotis(){DB.s('notis',[]);updateBell();closeNoti();toast('🗑️ �
 // ══════════════════════════════════════════
 // 카카오맵
 // ══════════════════════════════════════════
-let mapI,mapR,iOvs=[],rOvs=[],myOv=null,mapIType='hybrid',mapRType='hybrid';
+let mapI,mapR,iOvs=[],rOvs=[],iEls=[],rEls=[],myOv=null,mapIType='hybrid',mapRType='hybrid';
 function _pinSz(level){
   if(level<=4) return {sz:34,fs:15,bw:2.5,numFs:6,numPad:'1px 3px'};
   if(level<=6) return {sz:30,fs:13,bw:2,  numFs:6,numPad:'1px 3px'};
@@ -1525,10 +1525,10 @@ function _pinSz(level){
   if(level<=11)return {sz:12,fs:6, bw:1,  numFs:4,numPad:'0px 2px'};
   return              {sz:9, fs:5, bw:1,  numFs:3,numPad:'0px 1px'};
 }
-function _scaleOvs(ovs,level){
+function _scaleOvs(els,level){
   const s=_pinSz(level);
-  ovs.forEach(ov=>{
-    const el=ov.getContent();if(!el)return;
+  els.forEach(el=>{
+    if(!el)return;
     if(el.classList.contains('mpin')||el.classList.contains('mpin-sm')){
       el.style.width=s.sz+'px';el.style.height=s.sz+'px';
       el.style.fontSize=s.fs+'px';el.style.borderWidth=s.bw+'px';
@@ -1576,8 +1576,8 @@ function initMaps(){
     kakao.maps.event.addListener(mapI,'center_changed',saveInspectCenter);
     saveInspectCenter();
     // 줌 레벨에 따른 핀 크기 자동 조절
-    kakao.maps.event.addListener(mapR,'zoom_changed',()=>_scaleOvs(rOvs,mapR.getLevel()));
-    kakao.maps.event.addListener(mapI,'zoom_changed',()=>_scaleOvs(iOvs,mapI.getLevel()));
+    kakao.maps.event.addListener(mapR,'zoom_changed',()=>_scaleOvs(rEls,mapR.getLevel()));
+    kakao.maps.event.addListener(mapI,'zoom_changed',()=>_scaleOvs(iEls,mapI.getLevel()));
     if(window._hideLoading)setTimeout(window._hideLoading,600);
   }
   if(window._KR)doInit();else window._KCB=doInit;
@@ -2425,7 +2425,7 @@ function updateUserUI(){
 let selResId=null,curResId=null,resFilter='전체';
 function renderRescueMap(){
   if(!mapR){document.getElementById('nomapR').style.display='block';return;}
-  rOvs.forEach(o=>{try{o.setMap(null);}catch(e){}});rOvs=[];
+  rOvs.forEach(o=>{try{o.setMap(null);}catch(e){}});rOvs=[];rEls=[];
   // 구조 이력 핀
   (DB.g('rescues')||[]).forEach(r=>{
     if(!r.lat||!r.lng)return;
@@ -2436,7 +2436,7 @@ function renderRescueMap(){
     el.addEventListener('touchend',e=>{if(!_ts)return;const dx=e.changedTouches[0].clientX-_ts.x,dy=e.changedTouches[0].clientY-_ts.y;_ts=null;if(Math.abs(dx)<8&&Math.abs(dy)<8){e.stopPropagation();e.preventDefault();openResPopup(r.id,'rescue');}});
     el.addEventListener('click',e=>{e.stopPropagation();openResPopup(r.id,'rescue');});
     const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(r.lat,r.lng),content:el,clickable:true});
-    ov.setMap(mapR);rOvs.push(ov);
+    ov.setMap(mapR);rOvs.push(ov);rEls.push(el);
   });
   // 위험상황 핀
   (DB.g('hazards')||[]).forEach(h=>{
@@ -2448,7 +2448,7 @@ function renderRescueMap(){
     el.addEventListener('touchend',e=>{if(!_ts)return;const dx=e.changedTouches[0].clientX-_ts.x,dy=e.changedTouches[0].clientY-_ts.y;_ts=null;if(Math.abs(dx)<8&&Math.abs(dy)<8){e.stopPropagation();e.preventDefault();openResPopup(h.id,'hazard');}});
     el.addEventListener('click',e=>{e.stopPropagation();openResPopup(h.id,'hazard');});
     const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(h.lat,h.lng),content:el,clickable:true});
-    ov.setMap(mapR);rOvs.push(ov);
+    ov.setMap(mapR);rOvs.push(ov);rEls.push(el);
   });
   // 위치표지판 — 구조 위치 파악용 참조 마커 (번호 라벨)
   (DB.g('facilities')||[]).filter(f=>f.lat&&f.lng&&f.type&&(f.type.includes('위치표지')||f.type.includes('다목적'))).forEach(f=>{
@@ -2459,9 +2459,9 @@ function renderRescueMap(){
     el.title=f.name;
     el.onclick=e=>{e.stopPropagation();toast('📍 '+f.name);};
     const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(f.lat,f.lng),content:el,clickable:true});
-    ov.setMap(mapR);rOvs.push(ov);
+    ov.setMap(mapR);rOvs.push(ov);rEls.push(el);
   });
-  if(mapR)_scaleOvs(rOvs,mapR.getLevel());
+  if(mapR)_scaleOvs(rEls,mapR.getLevel());
   updateSummary();
 }
 
@@ -3675,7 +3675,7 @@ function submitHazard(){
 let selFacId=null,facStatusF='전체',facTypeF='전체',facLocF='전체',facMapStatusF='전체',facMapTypeF='전체';
 function renderInspectMap(){
   if(!mapI){document.getElementById('nomapI').style.display='block';return;}
-  iOvs.forEach(o=>{try{o.setMap(null);}catch(e){}});iOvs=[];
+  iOvs.forEach(o=>{try{o.setMap(null);}catch(e){}});iOvs=[];iEls=[];
   const facs=DB.g('facilities')||[];
   const sMap={'전체':null,'양호':'ok','요주의':'warn','위험':'bad'};
   const sCol={'전체':'rgba(200,220,240,.6)','양호':'#27ae60','요주의':'#e67e22','위험':'#c0392b'};
@@ -3709,9 +3709,9 @@ function renderInspectMap(){
     });
     el.addEventListener('click',e=>{e.stopPropagation();openFacFromMap(f.id);});
     const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(f.lat,f.lng),content:el,clickable:true});
-    ov.setMap(mapI);iOvs.push(ov);
+    ov.setMap(mapI);iOvs.push(ov);iEls.push(el);
   });
-  if(mapI)_scaleOvs(iOvs,mapI.getLevel());
+  if(mapI)_scaleOvs(iEls,mapI.getLevel());
 }
 function setMapFacF(t,v){if(t==='s')facMapStatusF=v;else facMapTypeF=v;renderInspectMap();}
 function openFacFromMap(id){
