@@ -3886,8 +3886,21 @@ function renderAdmSys(){
       <div class="stitle">👥 새 가입자 알림${unseenCnt>0?` <span style="background:#c0392b;color:#fff;font-size:10px;padding:1px 7px;border-radius:20px;margin-left:6px;font-weight:700;">${unseenCnt}</span>`:''}</div>
       ${_renderPendingList()}
     </div>
+    <div class="scard" style="margin-bottom:8px;">
+      <div class="stitle">👥 전체 가입 인원 <span style="background:#1a4a6e;color:#4fa8d0;font-size:10px;padding:1px 8px;border-radius:20px;margin-left:6px;font-weight:700;">${(DB.g('pendingUsers')||[]).length}명</span></div>
+      ${(function(){var list=DB.g('pendingUsers')||[];if(!list.length)return'<div style="font-size:11px;color:#4a7090;padding:4px 0;">가입 인원 없음</div>';
+        return list.slice().reverse().map(function(u){return'<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05);">'
+          +(u.kakaoImg?'<img src="'+u.kakaoImg+'" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display=\'none\'">'
+            :'<div style="width:28px;height:28px;border-radius:50%;background:#1a3a5a;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;">👤</div>')
+          +'<div style="flex:1;min-width:0;">'
+            +'<div style="font-size:12px;font-weight:700;color:#e0edf8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(u.realName||u.name||'이름없음')+'</div>'
+            +'<div style="font-size:10px;color:#4a7090;margin-top:1px;">'+(u.dept||'')+(u.rank?' · '+u.rank:'')+(u.submittedAt?' · '+new Date(u.submittedAt).toLocaleDateString('ko-KR'):'')+' 가입</div>'
+          +'</div>'
+          +'<button onclick="deleteUser(\''+u.id+'\')" style="flex-shrink:0;background:rgba(192,57,43,.15);color:#ff8a80;border:1px solid rgba(192,57,43,.25);border-radius:6px;padding:4px 9px;font-size:10px;cursor:pointer;">삭제</button>'
+          +'</div>';}).join('');})()}
+    </div>
     <div class="scard" style="margin-bottom:8px;"><div class="stitle">📊 데이터 현황</div>
-      <div style="font-size:12px;color:#b8d4e8;line-height:2.1;">총 가입 인원 <b style="color:#7ec8a0;">${(DB.g('pendingUsers')||[]).length}명</b><br>시설물 <b>${(DB.g('facilities')||[]).length}개</b> · 점검이력 <b>${(DB.g('history')||[]).length}건</b><br>구조이력 <b>${(DB.g('rescues')||[]).length}건</b> · 위험상황 <b>${(DB.g('hazards')||[]).length}건</b><br>위키 <b>${(DB.g('wikis')||[]).length}건</b> · 대원 <b>${(DB.g('members')||[]).length}명</b></div>
+      <div style="font-size:12px;color:#b8d4e8;line-height:2.1;">시설물 <b>${(DB.g('facilities')||[]).length}개</b> · 점검이력 <b>${(DB.g('history')||[]).length}건</b><br>구조이력 <b>${(DB.g('rescues')||[]).length}건</b> · 위험상황 <b>${(DB.g('hazards')||[]).length}건</b><br>위키 <b>${(DB.g('wikis')||[]).length}건</b> · 대원 <b>${(DB.g('members')||[]).length}명</b></div>
     </div>
     <div class="scard"><div class="stitle" style="color:#c0392b;">⚠️ 위험 작업</div>
       <div style="display:flex;flex-direction:column;gap:7px;">
@@ -3895,6 +3908,15 @@ function renderAdmSys(){
         <button onclick="clearNotisOnly()" style="width:100%;background:rgba(255,255,255,.05);color:#b8d4e8;border:none;padding:10px;border-radius:8px;font-size:12px;cursor:pointer;">알림 이력만 삭제</button>
       </div>
     </div>`;
+}
+function deleteUser(id){
+  const list=DB.g('pendingUsers')||[];
+  const u=list.find(function(p){return p.id===id;});
+  if(!u)return;
+  if(!confirm((u.realName||u.name||'이 사용자')+'을(를) 삭제하시겠습니까?\n(작성한 데이터는 유지됩니다)'))return;
+  DB.s('pendingUsers',list.filter(function(p){return p.id!==id;}));
+  renderAdmSys();
+  toast('🗑️ 삭제 완료');
 }
 function resetAll(){if(!confirm('모든 데이터 초기화. 되돌릴 수 없습니다.'))return;['members','catFac','wikiCats','facilities','rescues','hazards','history','wikis','notis','hotSearch','notiSetting','currentUser','sheetsUrl'].forEach(k=>DB.d(k));initDB();toast('✅ 초기화');renderAdmSys();updateSummary();}
 function clearNotisOnly(){DB.s('notis',[]);updateBell();toast('🗑️ 알림 이력 삭제');renderAdmSys();}
@@ -4102,50 +4124,47 @@ var _WEATHER_REGIONS=[
 function fetchWeather(){
   if(_weatherFetched)return;
   _weatherFetched=true;
-  // 속초 기준 현재 날씨 + 설악·속초·인제·양양·고성 12h 예보 동시 조회
   var baseUrl='https://api.open-meteo.com/v1/forecast';
   var regionParams=_WEATHER_REGIONS.map(function(r){
     return baseUrl+'?latitude='+r.lat+'&longitude='+r.lng+'&hourly=precipitation,snowfall,windgusts_10m,wind_speed_10m&wind_speed_unit=ms&timezone=Asia%2FSeoul&forecast_hours=24';
   });
-  var currentUrl=baseUrl+'?latitude=38.21&longitude=128.59&current_weather=true&wind_speed_unit=ms&timezone=Asia%2FSeoul';
+  // current 파라미터 (최신 API)
+  var currentUrl=baseUrl+'?latitude=38.21&longitude=128.59&current=temperature_2m,wind_speed_10m,weather_code&wind_speed_unit=ms&timezone=Asia%2FSeoul';
   Promise.all([fetch(currentUrl).then(function(r){return r.json();})].concat(regionParams.map(function(u){return fetch(u).then(function(r){return r.json();});})))
     .then(function(results){
       var cur=results[0];var regResults=results.slice(1);
-      // ── 현재 날씨 표시 ──
-      var cw=cur.current_weather;if(!cw)return;
-      var code=cw.weathercode;
+      var cw=cur.current||cur.current_weather;if(!cw)return;
+      var code=cw.weather_code!==undefined?cw.weather_code:(cw.weathercode||0);
+      var temp=cw.temperature_2m!==undefined?cw.temperature_2m:cw.temperature;
+      var wspd=cw.wind_speed_10m!==undefined?cw.wind_speed_10m:cw.windspeed;
       var ico=code===0?'☀️':code<=2?'🌤️':code===3?'☁️':code<=48?'🌫️':code<=55?'🌦️':code<=65?'🌧️':code<=77?'🌨️':code<=82?'🌧️':code<=86?'🌨️':'⛈️';
       document.getElementById('wIco').textContent=ico;
-      document.getElementById('wTmp').textContent=Math.round(cw.temperature)+'°';
+      document.getElementById('wTmp').textContent=Math.round(temp)+'°';
       document.getElementById('wDesc').textContent='속초 · '+(['맑음','대체로맑음','구름조금','흐림','안개','이슬비','비','눈','소나기','뇌우'][code===0?0:code<=1?1:code<=2?2:code<=3?3:code<=48?4:code<=55?5:code<=65?6:code<=77?7:code<=82?8:8]||'');
-      document.getElementById('wWind').textContent='💨 '+Math.round(cw.windspeed)+'m/s';
+      document.getElementById('wWind').textContent='💨 '+Math.round(wspd)+'m/s';
       var ws=document.getElementById('weatherStrip');if(ws)ws.style.display='flex';
-      // ── 지역별 특보 판정 ──
-      var alertMap={};// {지역: {level, reasons[]}}
+      var alertMap={};
       regResults.forEach(function(d,i){
         var rName=_WEATHER_REGIONS[i].name;
         var h=d.hourly;if(!h)return;
         var precip=h.precipitation||[];var snow=h.snowfall||[];var gust=h.windgusts_10m||[];var wind=h.wind_speed_10m||[];
         var sum12Precip=precip.slice(0,12).reduce(function(a,b){return a+b;},0);
         var sum12Snow=snow.slice(0,12).reduce(function(a,b){return a+b;},0);
-        var maxHourPrecip=Math.max.apply(null,precip.slice(0,12));
-        var maxGust=Math.max.apply(null,gust.slice(0,12));
-        var maxWind=Math.max.apply(null,wind.slice(0,12));
+        var maxHourPrecip=Math.max.apply(null,precip.slice(0,12).concat([0]));
+        var maxGust=Math.max.apply(null,gust.slice(0,12).concat([0]));
+        var maxWind=Math.max.apply(null,wind.slice(0,12).concat([0]));
         var reasons=[];var level='';
-        // 호우 (기상청 기준)
         if(maxHourPrecip>=50||sum12Precip>=110){level='경보';reasons.push('호우경보(12h'+sum12Precip.toFixed(0)+'mm)');}
         else if(maxHourPrecip>=30||sum12Precip>=70){if(level!=='경보')level='주의보';reasons.push('호우주의보');}
-        // 강풍 (기상청 기준)
         if(maxGust>=26||maxWind>=21){level='경보';reasons.push('강풍경보(돌풍'+maxGust.toFixed(0)+'m/s)');}
         else if(maxGust>=20||maxWind>=14){if(level!=='경보')level='주의보';reasons.push('강풍주의보');}
-        // 대설
         if(sum12Snow>=20){level='경보';reasons.push('대설경보('+sum12Snow.toFixed(0)+'cm)');}
         else if(sum12Snow>=5){if(level!=='경보')level='주의보';reasons.push('대설주의보');}
         if(reasons.length>0)alertMap[rName]={level,reasons};
       });
       _renderWeatherAlerts(alertMap);
     })
-    .catch(function(){});
+    .catch(function(e){console.warn('날씨 로드 실패:',e);_weatherFetched=false;});
 }
 function _renderWeatherAlerts(alertMap){
   var wrap=document.getElementById('weatherAlertWrap');if(!wrap)return;
@@ -4184,10 +4203,10 @@ function _fetchWeatherDetail(){
   if(_wDetailFetching)return;
   _wDetailFetching=true;
   var base='https://api.open-meteo.com/v1/forecast';
-  var dailyUrl=base+'?latitude=38.13&longitude=128.41&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weathercode,windgusts_10m_max&wind_speed_unit=ms&timezone=Asia%2FSeoul&forecast_days=7';
+  var dailyUrl=base+'?latitude=38.13&longitude=128.41&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code,windgusts_10m_max&wind_speed_unit=ms&timezone=Asia%2FSeoul&forecast_days=7';
   Promise.all([
     Promise.all(_WEATHER_REGIONS.map(function(r){
-      return fetch(base+'?latitude='+r.lat+'&longitude='+r.lng+'&current_weather=true&hourly=precipitation,snowfall,windgusts_10m,wind_speed_10m&wind_speed_unit=ms&timezone=Asia%2FSeoul&forecast_hours=24')
+      return fetch(base+'?latitude='+r.lat+'&longitude='+r.lng+'&current=temperature_2m,wind_speed_10m,weather_code&hourly=precipitation,snowfall,windgusts_10m,wind_speed_10m&wind_speed_unit=ms&timezone=Asia%2FSeoul&forecast_hours=24')
         .then(function(res){return res.json();})
         .then(function(d){return{region:r.name,data:d};});
     })),
@@ -4215,8 +4234,8 @@ function _renderWeatherDetail(cache){
   var anyAlert=false,alertsAll=[];
   results.forEach(function(item,idx){
     var r=item.region;var d=item.data;
-    var cw=d.current_weather||{};var h=d.hourly||{};
-    var code=cw.weathercode||0;
+    var cw=d.current||d.current_weather||{};var h=d.hourly||{};
+    var code=cw.weather_code!==undefined?cw.weather_code:(cw.weathercode||0);
     var gust=h.windgusts_10m||[];var precip=h.precipitation||[];var snow=h.snowfall||[];
     var maxGust=Math.max.apply(null,gust.slice(0,12).concat([0]));
     var sum12p=precip.slice(0,12).reduce(function(a,b){return a+b;},0);
@@ -4236,12 +4255,12 @@ function _renderWeatherDetail(cache){
       +'<div class="wdetail-row">'
         +'<div class="wdetail-ico">'+wico(code)+'</div>'
         +'<div class="wdetail-main">'
-          +'<div class="wdetail-tmp">'+(cw.temperature!==undefined?Math.round(cw.temperature):'-')+'°</div>'
+          +'<div class="wdetail-tmp">'+(cw.temperature_2m!==undefined?Math.round(cw.temperature_2m):cw.temperature!==undefined?Math.round(cw.temperature):'-')+'°</div>'
           +'<div class="wdetail-desc">'+wdesc(code)+'</div>'
         +'</div>'
       +'</div>'
       +'<div class="wdetail-meta">'
-        +'<span>💨'+(cw.windspeed!==undefined?Math.round(cw.windspeed):'-')+'</span>'
+        +'<span>💨'+(cw.wind_speed_10m!==undefined?Math.round(cw.wind_speed_10m):cw.windspeed!==undefined?Math.round(cw.windspeed):'-')+'</span>'
         +(maxGust>0?'<span>돌풍'+maxGust.toFixed(0)+'</span>':'')
         +(sum12p>0?'<span>🌧️'+sum12p.toFixed(0)+'mm</span>':'')
         +(sum12s>0?'<span>❄️'+sum12s.toFixed(0)+'cm</span>':'')
@@ -4265,7 +4284,7 @@ function _renderWeatherDetail(cache){
     (dd.time||[]).forEach(function(t,i){
       var dt=new Date(t);
       var dayLabel=i===0?'오늘':i===1?'내일':days[dt.getDay()]+'요';
-      var code=(dd.weathercode||[])[i]||0;
+      var code=((dd.weather_code||dd.weathercode)||[])[i]||0;
       var tmax=(dd.temperature_2m_max||[])[i];
       var tmin=(dd.temperature_2m_min||[])[i];
       var rain=(dd.precipitation_sum||[])[i]||0;
