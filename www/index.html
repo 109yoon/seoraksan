@@ -582,18 +582,6 @@ body.guest-mode .guest-hide{display:none!important;}
   </div>
 </div>
 
-<!-- 승인 대기 화면 -->
-<div id="pendingScreen" style="display:none;position:fixed;inset:0;background:#060d1a;z-index:10001;flex-direction:column;align-items:center;justify-content:center;padding:28px;text-align:center;">
-  <div style="font-size:52px;margin-bottom:18px;">⏳</div>
-  <div style="font-size:17px;font-weight:800;color:#4fa8d0;margin-bottom:10px;letter-spacing:.3px;">승인 대기 중</div>
-  <div style="font-size:12px;color:#7a9cb8;line-height:1.8;margin-bottom:22px;">관리자 승인 후 이용 가능합니다<br>관리자에게 승인 코드를 요청하세요</div>
-  <div id="pendingUserInfo" style="background:#0a1a2a;border:1px solid rgba(79,168,208,.2);border-radius:12px;padding:14px 18px;margin-bottom:22px;width:100%;max-width:320px;text-align:left;font-size:12px;color:#b8d4e8;line-height:2.1;"></div>
-  <div style="width:100%;max-width:320px;margin-bottom:10px;">
-    <input id="approvalCodeInput" type="text" class="fi" placeholder="승인 코드 입력" style="width:100%;font-size:15px;letter-spacing:2px;text-align:center;margin-bottom:8px;" onkeydown="if(event.key==='Enter')enterApprovalCode()">
-    <button onclick="enterApprovalCode()" style="width:100%;background:#1a4a6e;color:#fff;border:none;padding:13px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;touch-action:manipulation;">🔑 승인 확인</button>
-  </div>
-  <button onclick="kakaoLogout()" style="width:100%;max-width:320px;background:rgba(255,80,80,.1);color:#ff8a80;border:1px solid rgba(255,80,80,.2);padding:11px;border-radius:10px;font-size:13px;cursor:pointer;touch-action:manipulation;">← 로그아웃</button>
-</div>
 
 <!-- 날씨 상세 모달 -->
 <div id="modalWeather" class="modal">
@@ -712,7 +700,7 @@ body.guest-mode .guest-hide{display:none!important;}
   <!-- 하단 2칸 소형 메뉴 -->
   <div class="home-menu-bottom" style="flex-shrink:0;">
     <button class="mbtn-sm" onclick="openApp('settings')"><span class="mbtn-sm-ico">⚙️</span><div class="mbtn-sm-text"><div class="mbtn-sm-title">내 설정</div><div class="mbtn-sm-desc">알림·계정·API키</div></div></button>
-    <button class="mbtn-sm guest-hide" style="background:#150e2a;border:1px solid rgba(139,92,246,.2);" onclick="openApp('admin')"><span class="mbtn-sm-ico">🔐</span><div class="mbtn-sm-text"><div class="mbtn-sm-title" style="color:#c4b5fd;">관리자 전용</div><div class="mbtn-sm-desc">관제·데이터 관리</div></div></button>
+    <button class="mbtn-sm" style="background:#150e2a;border:1px solid rgba(139,92,246,.2);" onclick="openApp('admin')"><span class="mbtn-sm-ico">🔐</span><div class="mbtn-sm-text"><div class="mbtn-sm-title" style="color:#c4b5fd;">관리자 전용</div><div class="mbtn-sm-desc">관제·데이터 관리</div></div></button>
   </div>
 </div>
 </div>
@@ -734,8 +722,8 @@ body.guest-mode .guest-hide{display:none!important;}
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
     </button>
     <div id="rescueCoords" style="position:absolute;bottom:130px;left:10px;background:rgba(0,0,0,.6);color:#8ab4cc;font-size:10px;padding:3px 8px;border-radius:5px;z-index:9;pointer-events:none;font-family:monospace;backdrop-filter:blur(4px);letter-spacing:.3px;">--</div>
-    <button class="fab guest-hide" style="background:#7a1818;color:#fff;" onclick="openNewRescue()">🚨</button>
-    <button class="fab2 guest-hide" onclick="openNewHazard()">⚠️ 위험상황 보고</button>
+    <button class="fab" style="background:#7a1818;color:#fff;" onclick="openNewRescue()">🚨</button>
+    <button class="fab2" onclick="openNewHazard()">⚠️ 위험상황 보고</button>
     <div class="nomap-banner" id="nomapR">📍 API 키 설정 후 지도 사용 가능 — 목록탭 이용</div>
     <div class="dbcard" id="resPopup">
       <button class="dbclose" onclick="closeDB()">×</button><div class="dbhandle"></div>
@@ -2240,11 +2228,10 @@ function openChangeUser(){
   const u=DB.g('currentUser')||{};
   const authType=DB.g('authType');
   const isKakao=authType==='kakao';
-  const isAdmin=isAdminUser(u);
-  const notApproved=isKakao&&u.approvalStatus!=='approved'&&!isAdmin;
+  const notApproved=isKakao&&u.approvalStatus!=='approved';
   const titleEl=document.getElementById('modalUserTitle');
   if(titleEl)titleEl.textContent=notApproved?'🆕 가입 신청':'👤 작성자 설정';
-  const showCode=isKakao&&!isAdmin&&!!window._needsCode;
+  const showCode=isKakao&&!!window._needsCode;
   const codeWrap=document.getElementById('uCodeWrap');
   if(codeWrap)codeWrap.style.display=showCode?'block':'none';
   const codeIn=document.getElementById('uCodeIn');
@@ -2276,11 +2263,8 @@ function adminLogout(){
   goHome();
   toast('관리자 로그아웃');
 }
-function isAdminUser(u){
-  u=u||DB.g('currentUser')||{};
-  if(DB.g('authType')==='dev')return true;
-  const ids=DB.g('adminKakaoIds')||[];
-  return u.kakaoId&&ids.includes(String(u.kakaoId));
+function isAdminUser(){
+  return localStorage.getItem('_adminAuthed')==='1';
 }
 function saveUser(){
   const name=document.getElementById('uNameIn').value.trim();
@@ -2291,9 +2275,8 @@ function saveUser(){
   if(!rank){toast('⚠️ 직위를 선택해주세요');return;}
   const existing=DB.g('currentUser')||{};
   const authType=DB.g('authType');
-  const admin=isAdminUser(existing);
   let newStatus;
-  if(admin||authType!=='kakao'){
+  if(authType!=='kakao'){
     newStatus='approved';
   }else if(window._needsCode){
     // OAuth 경유 로그인: 코드 필수
@@ -2313,7 +2296,6 @@ function saveUser(){
   window._requireProfile=false;
   window._needsCode=false;
   closeM('modalUser');
-  hidePendingScreen();
   updateUserUI();
   toast(newStatus==='approved'?'✅ 승인 완료! 이용하실 수 있습니다.':'✅ 저장: '+name);
   try{renderSettings();}catch(e){}
@@ -2333,50 +2315,7 @@ function _notifyNewJoiner(u){
   });
   DB.s('pendingUsers',filtered);
 }
-function showPendingScreen(){
-  const u=DB.g('currentUser')||{};
-  const el=document.getElementById('pendingScreen');
-  if(!el)return;
-  const info=document.getElementById('pendingUserInfo');
-  const hasProfile=u.dept&&u.rank&&(u.realName||u.name);
-  if(info){
-    if(hasProfile){
-      info.innerHTML=`이름: <b style="color:#e0edf8;">${u.realName||u.name}</b><br>소속: <b style="color:#e0edf8;">${u.dept}</b><br>직위: <b style="color:#e0edf8;">${u.rank}</b>`;
-    }else{
-      info.innerHTML=`<div style="color:#e67e22;font-size:11px;line-height:1.8;">⚠️ 프로필 미등록 상태입니다<br>승인 코드 입력 후 프로필을 등록해주세요</div>`;
-    }
-  }
-  el.style.display='flex';
-}
-function hidePendingScreen(){
-  const el=document.getElementById('pendingScreen');
-  if(el)el.style.display='none';
-}
-function enterApprovalCode(){
-  const inp=document.getElementById('approvalCodeInput');
-  const code=(inp?inp.value:'').trim();
-  if(!code){toast('⚠️ 승인 코드를 입력해주세요');return;}
-  const adminCode=DB.g('adminApprovalCode')||'SEORAKSAN';
-  if(code===adminCode){
-    const u=DB.g('currentUser')||{};
-    DB.s('currentUser',{...u,approvalStatus:'approved'});
-    // pendingUsers에도 승인 상태 반영
-    const list=DB.g('pendingUsers')||[];
-    const idx=list.findIndex(function(p){return p.id===String(u.kakaoId||u.name);});
-    if(idx>=0){list[idx].approvalStatus='approved';DB.s('pendingUsers',list);}
-    if(inp)inp.value='';
-    hidePendingScreen();
-    toast('✅ 승인 완료! 이용하실 수 있습니다.');
-    updateUserUI();
-    // 프로필 미완성이면 바로 프로필 입력으로
-    var _u2=DB.g('currentUser')||{};
-    if(!_u2.dept||!_u2.rank||!(_u2.realName||_u2.name)){
-      window._requireProfile=true;setTimeout(function(){openChangeUser();},400);
-    }
-  }else{
-    toast('❌ 올바르지 않은 코드입니다');
-  }
-}
+
 function _renderPendingList(){
   var list=(DB.g('pendingUsers')||[]).slice().reverse().slice(0,20);
   if(!list.length)return'<div style="font-size:11px;color:#4a7090;padding:8px 0;">새 가입자 없음</div>';
@@ -2401,15 +2340,7 @@ function setAdminCode(){
   DB.s('adminApprovalCode',code);
   toast('✅ 승인 코드 저장: '+code);
 }
-function addAdminKakaoId(){
-  const id=(document.getElementById('adminKakaoIdInp')||{}).value.trim();
-  if(!id){toast('⚠️ 카카오 ID 입력');return;}
-  const ids=DB.g('adminKakaoIds')||[];
-  if(!ids.includes(id))ids.push(id);
-  DB.s('adminKakaoIds',ids);
-  renderSettings();
-  toast('✅ 관리자 등록: '+id);
-}
+
 function updateUserUI(){
   const u=DB.g('currentUser')||{};
   const ne=document.getElementById('myName');
@@ -2419,7 +2350,7 @@ function updateUserUI(){
   // 소속·직위 또는 카카오 계정 표시
   const parts=[];if(u.dept)parts.push(u.dept);if(u.rank)parts.push(u.rank);
   const authType=DB.g('authType');
-  if(se)se.textContent=parts.join(' · ')||(authType==='guest'?'게스트':authType==='dev'?'개발자':'탭하여 설정');
+  if(se)se.textContent=parts.join(' · ')||'탭하여 설정';
   // 아바타: 카카오 프로필 사진 or 이니셜
   if(av){
     if(u.kakaoImg){
@@ -4054,7 +3985,6 @@ function _checkDeletedUser(){
   if(!deleted.includes(String(u.kakaoId)))return;
   DB.s('authType','');
   DB.s('currentUser',{});
-  hidePendingScreen();
   if(window.showLoginScreen)window.showLoginScreen();
   updateUserUI();
   toast('⚠️ 계정이 관리자에 의해 삭제되었습니다');
@@ -4082,7 +4012,7 @@ function renderSettings(){
         <div class="stitle">👤 내 계정</div>
         <div style="font-size:12px;color:#b8d4e8;line-height:2.0;">이름: <b>${u.realName||u.name||'미설정'}</b><br>소속: <b>${u.dept||'미설정'}</b><br>직위: <b>${u.rank||'미설정'}</b>${u.kakaoId?`<br><span style="color:#4a7090;font-size:10px;">카카오ID: ${u.kakaoId}</span>`:''}</div>
         <div style="display:flex;align-items:center;gap:6px;margin-top:6px;margin-bottom:8px;">
-          <div style="font-size:11px;color:${u.approvalStatus==='approved'?'#7ec8a0':localStorage.getItem('_adminAuthed')==='1'?'#c4b5fd':'#e67e22'};">● ${u.approvalStatus==='approved'?'승인됨':localStorage.getItem('_adminAuthed')==='1'?'관리자':DB.g('authType')==='dev'?'관리자':'승인 대기'}</div>
+          <div style="font-size:11px;color:${u.approvalStatus==='approved'?'#7ec8a0':'#e67e22'};">● ${u.approvalStatus==='approved'?'승인됨':'승인 대기'}</div>
         </div>
         <button onclick="openChangeUser()" style="width:100%;background:#1a4a6e;color:#fff;border:none;padding:9px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">✏️ 계정 수정</button>
       </div>
@@ -4203,7 +4133,6 @@ function _handleKakaoCode(code){
     if(deletedIds.includes(kakaoId)){
       DB.s('deletedKakaoIds',deletedIds.filter(function(id){return id!==kakaoId;}));
     }
-    var isAdmin=isAdminUser({kakaoId:kakaoId});
     DB.s('currentUser',Object.assign({},u,{
       kakaoId:kakaoId,
       kakaoImg:prof.profile_image_url||prof.thumbnail_image_url||'',
@@ -4214,12 +4143,8 @@ function _handleKakaoCode(code){
     if(window.hideLoginScreen)window.hideLoginScreen();
     updateUserUI();
     toast('✅ 카카오 로그인 완료');
-    // 관리자 아니면 무조건 코드+프로필 입력 화면 (OAuth 경유 → 코드 필수)
-    if(!isAdmin){
-      window._needsCode=true;
-      window._requireProfile=true;
-      setTimeout(function(){openChangeUser();},300);
-    }
+    window._requireProfile=true;
+    setTimeout(function(){openChangeUser();},300);
   })
   .catch(function(e){
     if(window._hideLoading)window._hideLoading();
@@ -4230,7 +4155,6 @@ function kakaoLogout(){
   window._needsCode=false;window._requireProfile=false;
   DB.s('currentUser',{});
   DB.s('authType','');
-  hidePendingScreen();
   if(window.showLoginScreen)window.showLoginScreen();
   updateUserUI();
   try{renderSettings();}catch(e){}
@@ -4250,7 +4174,6 @@ function withdrawAccount(){
   }
   DB.s('currentUser',{});
   DB.s('authType','');
-  hidePendingScreen();
   if(window.showLoginScreen)window.showLoginScreen();
   updateUserUI();
   toast('탈퇴 처리되었습니다');
@@ -4273,18 +4196,7 @@ function _checkAndRequireProfile(){
     window._requireProfile=true;setTimeout(function(){openChangeUser();},300);
   }
 }
-function guestLogin(){
-  if(typeof DB!=='undefined')DB.s('authType','guest');
-  if(window.hideLoginScreen)window.hideLoginScreen();
-  updateUserUI();
-  _checkAndRequireProfile();
-}
-function devLogin(){
-  if(typeof DB!=='undefined')DB.s('authType','dev');
-  if(window.hideLoginScreen)window.hideLoginScreen();
-  updateUserUI();
-  _checkAndRequireProfile();
-}
+
 var _weatherFetched=false;
 // 지역별 좌표: 설악산 영향권 5개 지점
 var _WEATHER_REGIONS=[
