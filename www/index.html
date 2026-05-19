@@ -775,7 +775,7 @@ body.guest-mode .guest-hide{display:none!important;}
   <div class="mapwrap">
     <div id="mapInspect" class="kakaomap"></div>
     <!-- 십자선 조준점 -->
-    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:8;pointer-events:none;">
+    <div id="inspectCross" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:8;pointer-events:none;">
       <div style="position:relative;width:24px;height:24px;">
         <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:rgba(255,255,255,.55);transform:translateY(-50%);"></div>
         <div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(255,255,255,.55);transform:translateX(-50%);"></div>
@@ -1537,7 +1537,9 @@ function _pinSz(level){
   if(level<=9) return {sz:22,fs:10,bw:1.5,numFs:5,numPad:'1px 2px'};
   if(level<=10)return {sz:16,fs:8, bw:1.5,numFs:5,numPad:'1px 2px'};
   if(level<=11)return {sz:12,fs:6, bw:1,  numFs:4,numPad:'0px 2px'};
-  return              {sz:9, fs:5, bw:1,  numFs:3,numPad:'0px 1px'};
+  if(level<=12)return {sz:9, fs:5, bw:1,  numFs:3,numPad:'0px 1px'};
+  if(level<=13)return {sz:7, fs:4, bw:0.5,numFs:3,numPad:'0px 1px'};
+  return              {sz:5, fs:3, bw:0.5,numFs:2,numPad:'0px 1px'};
 }
 function _scaleOvs(els,level){
   const s=_pinSz(level);
@@ -1583,9 +1585,21 @@ function initMaps(){
     saveMapCenter();
     function saveInspectCenter(){
       try{
-        const ci=document.getElementById('inspectCoords');
-        if(ci){const c=mapI.getCenter();ci.textContent=c.getLat().toFixed(5)+', '+c.getLng().toFixed(5);}
+        const bnavEl=document.getElementById('bnav');
+        const bnavH=(bnavEl&&bnavEl.style.display!=='none')?bnavEl.offsetHeight:0;
+        const mapEl=document.getElementById('mapInspect');
+        const h=mapEl.offsetHeight||mapEl.clientHeight;
+        if(h>0){
+          const coord=mapI.getProjection().coordsFromContainerPoint(new kakao.maps.Point(mapEl.offsetWidth/2,(h-bnavH)/2));
+          window._lastInspectCrosshairCoord={lat:coord.getLat(),lng:coord.getLng()};
+          const ci=document.getElementById('inspectCoords');
+          if(ci)ci.textContent=coord.getLat().toFixed(5)+', '+coord.getLng().toFixed(5);
+          return;
+        }
       }catch(e){}
+      const c=mapI.getCenter();window._lastInspectCrosshairCoord={lat:c.getLat(),lng:c.getLng()};
+      const ci=document.getElementById('inspectCoords');
+      if(ci)ci.textContent=c.getLat().toFixed(5)+', '+c.getLng().toFixed(5);
     }
     kakao.maps.event.addListener(mapI,'center_changed',saveInspectCenter);
     saveInspectCenter();
@@ -1682,7 +1696,7 @@ function openApp(mode){
   } else if(mode==='inspect'){
     document.getElementById('topTitle').textContent='시설물 점검';
     document.getElementById('nvl2').textContent='목록';
-    showV('v-inspect-map');bn.style.display='flex';setNv();
+    showV('v-inspect-map');bn.style.display='flex';setNv();updateInspectCross();
     history.pushState({view:mode},'','');
     rMaps();setTimeout(()=>{try{renderInspectMap();if(mapI){if(!window._mapIInited){window._mapIInited=true;if(navigator.geolocation){navigator.geolocation.getCurrentPosition(p=>{try{mapI.setCenter(new kakao.maps.LatLng(p.coords.latitude,p.coords.longitude));}catch(e){}},()=>{try{mapI.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));}catch(e){}},{timeout:6000,maximumAge:30000});}else{mapI.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));}}else{mapI.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));}}}catch(e){document.getElementById('nomapI').style.display='block';renderFacList();}},130);
   } else if(mode==='wiki'){
@@ -1712,7 +1726,7 @@ function switchTab(idx,el){
     else if(idx===2){showV('v-rescue-list');renderResList();}
     else{showV('v-rescue-stats');renderRescueStats();}
   } else if(curApp==='inspect'){
-    if(idx===1){showV('v-inspect-map');rMaps();}
+    if(idx===1){showV('v-inspect-map');rMaps();updateInspectCross();}
     else if(idx===2){showV('v-inspect-list');renderFacList();}
     else{showV('v-inspect-stats');renderInspectStats();}
   }
@@ -2695,6 +2709,12 @@ function openHazDetail(id){
 // ══════════════════════════════════════════
 function updateRescueCross(){
   const el=document.getElementById('rescueCross');if(!el)return;
+  const bnavEl=document.getElementById('bnav');
+  const bnavH=(bnavEl&&bnavEl.style.display!=='none')?bnavEl.offsetHeight:0;
+  el.style.top='calc(50% - '+Math.round(bnavH/2)+'px)';
+}
+function updateInspectCross(){
+  const el=document.getElementById('inspectCross');if(!el)return;
   const bnavEl=document.getElementById('bnav');
   const bnavH=(bnavEl&&bnavEl.style.display!=='none')?bnavEl.offsetHeight:0;
   el.style.top='calc(50% - '+Math.round(bnavH/2)+'px)';
