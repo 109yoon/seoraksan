@@ -1373,16 +1373,11 @@ const RES_TYPES={
 };
 
 function initDB(){
-  if(!DB.g('staff')) DB.s('staff',[
-    {name:'손경완',dept:'특수산악구조대',rank:'대장'},
-    {name:'김택찬',dept:'특수산악구조대',rank:'팀장'},
-    {name:'염원종',dept:'특수산악구조대',rank:'계장'},
-    {name:'김종식',dept:'특수산악구조대',rank:'주임'},
-    {name:'장기수',dept:'특수산악구조대',rank:'주임'},
-    {name:'나진영',dept:'특수산악구조대',rank:'주임'},
-    {name:'양지석',dept:'특수산악구조대',rank:'주임'},
-    {name:'윤태종',dept:'특수산악구조대',rank:'주임'},
-  ]);
+  // 더미 직원 데이터 정리
+  const _existStaff=DB.g('staff');
+  if(!_existStaff||(_existStaff.length&&['손경완','김택찬','염원종','김종식','나진영','양지석','윤태종'].some(n=>_existStaff.some(s=>s.name===n)))){
+    DB.s('staff',[]);
+  }
   if(!DB.g('catFac'))     DB.s('catFac',['🪧 위치표지판','🪧 다목적위치표지판','🛤️ 데크/계단','🌉 교량','🏠 대피소','🛡️ 안전난간','🪵 목재계단','🚿 계곡시설']);
   if(!DB.g('wikiCats'))   DB.s('wikiCats',['지형','안전','장비','법령','응급','탐방로','시설','동식물','기상']);
   if(!DB.g('facilities')) DB.s('facilities',[
@@ -1842,25 +1837,21 @@ function renderExtraTeams(){
   const DEPT_SHORT={'특수산악구조대':'특구대','대청분소':'대청','백담분소':'백담'};
   const wrap=document.getElementById('extraTeamsWrap');
   if(!wrap) return;
-  const staff=sortStaff(getStaff());
-  const deptMap={};staff.forEach(s=>{deptMap[s.name]=s.dept;});
-  const curDept=(DB.g('currentUser')||{}).dept||'';
-  // 내 과 직원
-  const myStaff=staff.filter(s=>s.dept===curDept);
-  // 다른 과 목록
-  const otherDepts=[...new Set(DEPTS.filter(d=>d!==curDept&&staff.some(s=>s.dept===d)))];
+  const allMembers=getTeamMembers();
+  const deptMap={};allMembers.forEach(s=>{deptMap[s.name]=s.dept;});
+  const availDepts=[...new Set(allMembers.map(s=>s.dept).filter(Boolean))];
   wrap.innerHTML=_extraTeams.map((t,ti)=>{
     const collapsed=!!_extraTeamCollapsed[ti];
+    const filt=_extraTeamOtherFilter[ti]||'전체';
     const byDept={};
-    t.members.forEach(n=>{const d=deptMap[n]||'기타';if(!byDept[d])byDept[d]=[];byDept[d].push(n);});
-    const depts=Object.keys(byDept);
-    const summaryHtml=t.members.length===0?'<span style="color:#4a7090;">(미선택)</span>':
-      depts.length===1
-        ?`<b style="color:#7ec8a0;">${DEPT_SHORT[depts[0]]||depts[0]} ${t.members.length}명 (${t.members.join(', ')}) 출동</b>`
-        :depts.map(d=>`<b style="color:#7ec8a0;">${DEPT_SHORT[d]||d} ${byDept[d].length}명 (${byDept[d].join(', ')})</b>`).join('<br>');
-    const otherOpen=!!_extraTeamOtherOpen[ti];
-    const otherFilt=_extraTeamOtherFilter[ti]||otherDepts[0]||'';
-    const otherStaff=staff.filter(s=>s.dept===otherFilt);
+    t.members.forEach(n=>{const d=deptMap[n]||'';if(!byDept[d])byDept[d]=[];byDept[d].push(n);});
+    const summaryParts=Object.keys(byDept).map(d=>
+      `<b style="color:#7ec8a0;">${d?DEPT_SHORT[d]||d:''} ${byDept[d].join(', ')}</b>`
+    );
+    const summaryHtml=t.members.length===0
+      ?'<span style="color:#4a7090;">(미선택)</span>'
+      :summaryParts.join(' · ');
+    const filtered=filt==='전체'?allMembers:allMembers.filter(s=>s.dept===filt);
     return `<div style="margin-bottom:8px;padding:10px;background:#060d1a;border-radius:8px;border:1px solid rgba(126,200,163,.2);">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:${collapsed?0:8}px;">
         ${collapsed
@@ -1872,33 +1863,19 @@ function renderExtraTeams(){
           :`<button onclick="removeExtraTeam(${ti})" style="background:rgba(192,57,43,.1);border:none;color:#c0392b;font-size:11px;padding:3px 8px;border-radius:5px;cursor:pointer;">삭제</button>`}
       </div>
       ${collapsed?'':`
-        ${myStaff.length?`
-        <div style="font-size:10px;color:#4fa8d0;font-weight:700;margin-bottom:5px;">${curDept} ★</div>
-        <div class="chk-grid" style="margin-bottom:10px;">
-          ${myStaff.map(s=>`
+        ${t.members.length?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">
+          ${t.members.map(n=>`<div style="background:rgba(126,200,163,.15);color:#7ec8a0;border:1px solid rgba(126,200,163,.3);border-radius:20px;font-size:10px;font-weight:700;padding:3px 8px;display:flex;align-items:center;gap:4px;">${n}<span onclick="toggleExtraTeamMemberByName(${ti},'${n}')" style="cursor:pointer;color:#c0392b;font-size:12px;line-height:1;">×</span></div>`).join('')}
+        </div>`:''}
+        ${availDepts.length>1?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">
+          ${['전체',...availDepts].map(d=>`<div onclick="setExtraTeamOtherFilter(${ti},'${d}')" style="padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer;${d===filt?'background:#1a4a6e;color:#4fa8d0;':'background:#0b1c30;color:#4a7090;border:1px solid #1a3a5a;'}">${d}</div>`).join('')}
+        </div>`:''}
+        ${filtered.length?`<div class="chk-grid">
+          ${filtered.map(s=>`
             <div class="chk-item${t.members.includes(s.name)?' on':''}" onclick="toggleExtraTeamMember(${ti},'${s.name}',this)">
               <div class="chk-box${t.members.includes(s.name)?' on':''}"></div>
               <span class="chk-txt">${s.name}<span style="font-size:9px;color:#4a7090;margin-left:3px;">${s.rank}</span></span>
             </div>`).join('')}
-        </div>`:''}
-        ${otherDepts.length?`
-        <button onclick="toggleExtraTeamOther(${ti})" style="width:100%;padding:7px;background:rgba(255,255,255,.04);border:1px dashed rgba(79,168,208,.25);color:#4fa8d0;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;margin-bottom:${otherOpen?8:0}px;">
-          ${otherOpen?'▲ 다른 과/분소 접기':'＋ 다른 과/분소 인원 추가'}
-        </button>
-        ${otherOpen?`
-        <div style="background:#0a1a2a;border-radius:7px;padding:9px;border:1px solid rgba(79,168,208,.12);">
-          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px;">
-            ${otherDepts.map(d=>`<div onclick="setExtraTeamOtherFilter(${ti},'${d}')" style="padding:3px 9px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer;${d===otherFilt?'background:#1a4a6e;color:#4fa8d0;':'background:#0b1c30;color:#4a7090;border:1px solid #1a3a5a;'}">${d}</div>`).join('')}
-          </div>
-          <div class="chk-grid">
-            ${otherStaff.map(s=>`
-              <div class="chk-item${t.members.includes(s.name)?' on':''}" onclick="toggleExtraTeamMember(${ti},'${s.name}',this)">
-                <div class="chk-box${t.members.includes(s.name)?' on':''}"></div>
-                <span class="chk-txt">${s.name}<span style="font-size:9px;color:#4a7090;margin-left:3px;">${s.rank}</span></span>
-              </div>`).join('')}
-          </div>
-        </div>`:''}
-        `:''}
+        </div>`:'<div style="font-size:11px;color:#4a7090;padding:6px 0;">가입된 인원 없음</div>'}
         <button onclick="confirmExtraTeam(${ti})" style="width:100%;margin-top:10px;padding:8px;background:rgba(79,168,208,.1);border:1px solid rgba(79,168,208,.3);color:#4fa8d0;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">✅ 확인</button>
       `}
     </div>`;
@@ -1922,6 +1899,11 @@ function toggleExtraTeamMember(teamIdx,name,el){
   } else {
     t.members=t.members.filter(n=>n!==name);
   }
+}
+function toggleExtraTeamMemberByName(ti,name){
+  const t=_extraTeams[ti];if(!t)return;
+  t.members=t.members.filter(n=>n!==name);
+  renderExtraTeams();
 }
 function getExtraTeams(){ return _extraTeams.filter(t=>t.members.length>0); }
 
@@ -2951,7 +2933,7 @@ function submitNBo(){
 // 1보 폼
 // ══════════════════════════════════════════
 function render1BoForm(prefill=null){
-  const ms=sortStaff(getStaff());
+  const ms=getTeamMembers();
   const curUserName=(DB.g('currentUser')||{}).name||'';
   const hdTeam=getHwandonghaTeam();
   const isNbo=prefill!==null&&!!prefill._phaseNum;
@@ -4630,6 +4612,13 @@ function sortStaff(arr){
   });
 }
 function getStaff(){return DB.g('staff')||[];}
+function getTeamMembers(){
+  // 앱에 실제 가입한 사용자만 팀원 풀로 사용
+  const users=DB.g('pendingUsers')||[];
+  return sortStaff(users.filter(u=>u.name||u.realName).map(u=>({
+    name:u.realName||u.name,dept:u.dept||'',rank:u.rank||''
+  })));
+}
 
 function chkHazOnSite(el){
   const val=el.textContent;
