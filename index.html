@@ -5323,6 +5323,7 @@ window.onload=function(){
     }
   }, false);
   // 웹 브라우저 뒤로가기 버튼
+  var _backExitReady=false;
   window.addEventListener('popstate', function(e){
     const homeActive=document.getElementById('v-home').classList.contains('on');
     if(!homeActive){
@@ -5330,6 +5331,15 @@ window.onload=function(){
       document.getElementById('appHdr').style.display='none';
       document.getElementById('bnav').style.display='none';
       closeDB();updateSummary();
+      history.replaceState({view:'home'},'','');
+    } else {
+      if(_backExitReady){window.close();history.go(-1);}
+      else{
+        _backExitReady=true;
+        toast('한 번 더 누르면 종료됩니다');
+        setTimeout(function(){_backExitReady=false;},2000);
+        history.replaceState({view:'home'},'','');
+      }
     }
   });
   // 초기 history 항목 세팅
