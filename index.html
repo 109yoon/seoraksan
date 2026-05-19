@@ -2255,10 +2255,19 @@ function saveUser(){
   if(newStatus==='pending')setTimeout(showPendingScreen,300);
 }
 function _notifyNewJoiner(u){
-  // 관리자 설정 화면에 새 가입자 뱃지용 기록 (승인 불필요)
-  const list=(DB.g('pendingUsers')||[]).filter(function(p){return p.id!==String(u.kakaoId||u.name);});
-  list.push({id:String(u.kakaoId||u.name||Date.now()),realName:u.realName,name:u.name,dept:u.dept,rank:u.rank,kakaoId:u.kakaoId||null,kakaoImg:u.kakaoImg||null,submittedAt:Date.now(),approved:true,seen:false});
-  DB.s('pendingUsers',list);
+  const all=DB.g('pendingUsers')||[];
+  const uid=String(u.kakaoId||u.name||Date.now());
+  const prev=all.find(function(p){return p.id===uid;});
+  const status=u.approvalStatus||(prev&&prev.approvalStatus)||'pending';
+  const filtered=all.filter(function(p){return p.id!==uid;});
+  filtered.push({
+    id:uid,realName:u.realName,name:u.name,dept:u.dept,rank:u.rank,
+    kakaoId:u.kakaoId||null,kakaoImg:u.kakaoImg||null,
+    approvalStatus:status,
+    submittedAt:(prev&&prev.submittedAt)||Date.now(),
+    seen:(prev&&prev.seen)||false
+  });
+  DB.s('pendingUsers',filtered);
 }
 function showPendingScreen(){
   const u=DB.g('currentUser')||{};
@@ -4132,6 +4141,8 @@ function _checkAndRequireProfile(){
   if(!isKakao&&(!u.dept||!u.rank)){
     window._requireProfile=true;setTimeout(function(){openChangeUser();},300);return;
   }
+  // 프로필 완성된 카카오 사용자 → pendingUsers에 upsert (재로그인 시에도 목록 유지)
+  if(isKakao&&u.name&&u.dept&&u.rank)_notifyNewJoiner(u);
   // 카카오 가입자 중 미승인 → 승인 코드 대기 화면
   if(isKakao&&u.approvalStatus!=='approved'&&!isAdminUser(u)){
     setTimeout(showPendingScreen,300);return;
