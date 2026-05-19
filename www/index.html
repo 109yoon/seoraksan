@@ -4599,8 +4599,7 @@ const pad2=n=>String(n).padStart(2,'0');
 // ══════════════════════════════════════════
 function renderFullStats(){
   const res=DB.g('rescues')||[];const facs=DB.g('facilities')||[];
-  const haz=DB.g('hazards')||[];const wikis=DB.g('wikis')||[];
-  const hist=DB.g('history')||[];
+  const haz=DB.g('hazards')||[];const hist=DB.g('history')||[];
   const now_=new Date();const todayStr=today();
   const fy=s=>s&&s.startsWith(now_.getFullYear()+'-');
   const fy_prev=s=>s&&s.startsWith((now_.getFullYear()-1)+'-');
@@ -4661,22 +4660,13 @@ function renderFullStats(){
         <div style="font-size:9px;color:#5a8aaa;">미조치 ${haz.filter(h=>h.hazStatus==='미조치').length} · 완료 ${haz.filter(h=>h.hazStatus==='제거 완료'||h.hazStatus==='조치 완료').length}</div>
       </div>`
     )}
-    ${row2(
-      `<div class="scard">
-        <div class="stitle">🛠️ 시설물 · 점검${pHist.length}건</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;">
-          ${mini('전체',facs.length)}${mini('위험',facs.filter(f=>f.status==='bad').length,'#c0392b')}
-          ${mini('요주의',facs.filter(f=>f.status==='warn').length,'#e67e22')}${mini('기간점검',pHist.length,'#27ae60')}
-        </div>
-      </div>`,
-      `<div class="scard">
-        <div class="stitle">📚 설악위키</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;">
-          ${mini('총 문서',wikis.length,'#4fa8d0')}
-          ${mini('카테고리',[...new Set(wikis.flatMap(w=>w.cats||[]))].length)}
-        </div>
-      </div>`
-    )}
+    <div class="scard">
+      <div class="stitle">🛠️ 시설물 · 점검${pHist.length}건</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:3px;">
+        ${mini('전체',facs.length)}${mini('위험',facs.filter(f=>f.status==='bad').length,'#c0392b')}
+        ${mini('요주의',facs.filter(f=>f.status==='warn').length,'#e67e22')}${mini('기간점검',pHist.length,'#27ae60')}
+      </div>
+    </div>
     ${accRes.length?`
     <div class="scard">
       <div class="stitle">🤕 안전사고 세부 · ${accRes.length}건</div>
