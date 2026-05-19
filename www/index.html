@@ -4209,41 +4209,36 @@ function _handleKakaoCode(code){
     var u=DB.g('currentUser')||{};
     var prof=(res.kakao_account&&res.kakao_account.profile)||{};
     var kakaoId=String(res.id);
-    var deletedIds=DB.g('deletedKakaoIds')||[];
-    var wasDeleted=deletedIds.includes(kakaoId);
-    // pendingUsers 기준으로 승인 상태 검증 (삭제 계정 재로그인 대응)
+    // pendingUsers를 유일한 승인 기준으로 사용
     var pendingList=DB.g('pendingUsers')||[];
     var pendingEntry=pendingList.find(function(p){return String(p.id)===kakaoId;});
-    var confirmedApproved=!!(pendingEntry&&pendingEntry.approvalStatus==='approved');
-    if(wasDeleted){
-      DB.s('deletedKakaoIds',deletedIds.filter(function(id){return id!==kakaoId;}));
-      DB.s('currentUser',{kakaoId:kakaoId,kakaoImg:prof.profile_image_url||prof.thumbnail_image_url||'',name:prof.nickname||''});
-    }else{
-      // pendingUsers에 있으면 그 상태 따름, 없으면(삭제됐을 수 있음) pending으로 리셋
-      var newApproval=confirmedApproved?'approved':(pendingList.length>0&&!pendingEntry?'pending':u.approvalStatus);
-      DB.s('currentUser',Object.assign({},u,{
-        kakaoId:kakaoId,
-        kakaoImg:prof.profile_image_url||prof.thumbnail_image_url||'',
-        name:u.name||prof.nickname||'',
-        approvalStatus:newApproval
-      }));
-    }
+    var approvalStatus=pendingEntry&&pendingEntry.approvalStatus==='approved'?'approved':'pending';
+    var isAdmin=isAdminUser({kakaoId:kakaoId});
+    if(isAdmin)approvalStatus='approved';
+    DB.s('currentUser',Object.assign({},u,{
+      kakaoId:kakaoId,
+      kakaoImg:prof.profile_image_url||prof.thumbnail_image_url||'',
+      name:u.name||prof.nickname||'',
+      approvalStatus:approvalStatus
+    }));
     DB.s('authType','kakao');
     if(window._hideLoading)window._hideLoading();
     if(window.hideLoginScreen)window.hideLoginScreen();
     updateUserUI();
     _checkAndRequireProfile();
     toast('✅ 카카오 로그인 완료');
-    // Firestore 동기화 후 삭제 여부 재확인
+    // Firestore 동기화 후 재확인 (캐시가 stale했을 경우 보정)
     setTimeout(function(){
       _checkDeletedUser();
       var u2=DB.g('currentUser')||{};
-      if(DB.g('authType')==='kakao'&&u2.approvalStatus==='approved'){
+      if(DB.g('authType')==='kakao'&&!isAdminUser(u2)){
         var pl=DB.g('pendingUsers')||[];
         var pe=pl.find(function(p){return String(p.id)===String(u2.kakaoId);});
-        if(pl.length>0&&!pe){
+        var confirmed=pe&&pe.approvalStatus==='approved';
+        if(!confirmed&&u2.approvalStatus==='approved'){
+          // Firestore 동기화 후 승인 취소 확인
           DB.s('currentUser',Object.assign({},u2,{approvalStatus:'pending'}));
-          showPendingScreen();
+          window._requireProfile=true;openChangeUser();
         }
       }
     },4000);
