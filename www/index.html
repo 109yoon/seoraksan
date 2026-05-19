@@ -3827,33 +3827,28 @@ function admDelFac(id){if(!confirm('삭제?'))return;DB.s('facilities',(DB.g('fa
 function admEndRes(id){const res=DB.g('rescues')||[];const i=res.findIndex(x=>x.id===id);if(i===-1)return;res[i].status='done';DB.s('rescues',res);renderAdmCtrl();try{renderRescueMap();}catch(e){}toast('✅ 종료');}
 function admDelRes(id){if(!confirm('삭제?'))return;DB.s('rescues',(DB.g('rescues')||[]).filter(r=>r.id!==id));renderAdmCtrl();try{renderRescueMap();}catch(e){}toast('🗑️ 삭제');updateSummary();}
 function renderAdmMembers(){
-  const staff=sortStaff(getStaff());
   const pending=DB.g('pendingUsers')||[];
-  // 사용 중인 과/분소만 필터 칩으로
-  const usedDepts=DEPTS.filter(d=>staff.some(s=>s.dept===d)||pending.some(p=>p.dept===d));
+  const usedDepts=DEPTS.filter(d=>pending.some(p=>p.dept===d));
   const chips=['전체',...usedDepts];
   let html=`<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;">
     ${chips.map(d=>`<div onclick="setAdmMemberFilter('${d}')" style="padding:4px 10px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer;${d===_admMemberFilter?'background:#1a4a6e;color:#4fa8d0;':'background:#0b1c30;color:#4a7090;border:1px solid #1a3a5a;'}">${d}</div>`).join('')}
   </div>`;
-  const fpending=_admMemberFilter==='전체'?pending:pending.filter(p=>p.dept===_admMemberFilter);
-  const fstaff=_admMemberFilter==='전체'?staff:staff.filter(s=>s.dept===_admMemberFilter);
-  html+=`<div style="font-size:10px;color:#3a6a8a;font-weight:600;margin-bottom:8px;">전체 ${fpending.length+fstaff.length}명 (앱가입 ${fpending.length}명 · 직원 ${fstaff.length}명)</div>`;
-  if(fpending.length){
-    html+=`<div style="font-size:10px;color:#4fa8d0;font-weight:700;padding:4px 0 6px;">📱 앱 가입자</div>`;
-    html+=fpending.slice().reverse().map(u=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05);">`
-      +(u.kakaoImg?`<img src="${u.kakaoImg}" style="width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">`
-        :`<div style="width:28px;height:28px;border-radius:50%;background:#1a3a5a;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0;">👤</div>`)
+  const fp=_admMemberFilter==='전체'?pending:pending.filter(p=>p.dept===_admMemberFilter);
+  const waitCnt=fp.filter(u=>u.approvalStatus!=='approved').length;
+  html+=`<div style="font-size:10px;color:#3a6a8a;font-weight:600;margin-bottom:8px;">총 ${fp.length}명${waitCnt?' · <span style="color:#e67e22;">승인 대기 '+waitCnt+'명</span>':''}</div>`;
+  if(!fp.length){
+    html+=`<div style="font-size:11px;color:#4a7090;padding:8px 0;">가입자 없음</div>`;
+  }else{
+    html+=fp.slice().reverse().map(u=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05);">`
+      +(u.kakaoImg?`<img src="${u.kakaoImg}" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">`
+        :`<div style="width:32px;height:32px;border-radius:50%;background:#1a3a5a;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;">👤</div>`)
       +`<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:700;color:#e0edf8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${u.realName||u.name||'이름없음'}</div>`
       +`<div style="font-size:10px;color:#4a7090;margin-top:1px;">${u.dept||''}${u.rank?' · '+u.rank:''} · ${u.approvalStatus==='approved'?'<span style="color:#7ec8a0;">✅승인</span>':'<span style="color:#e67e22;">⏳대기</span>'}</div></div>`
-      +`<button onclick="deleteUser('${u.id}')" style="flex-shrink:0;background:rgba(192,57,43,.15);color:#ff8a80;border:1px solid rgba(192,57,43,.25);border-radius:6px;padding:4px 9px;font-size:10px;cursor:pointer;">삭제</button></div>`
+      +`<div style="display:flex;gap:4px;flex-shrink:0;">`
+      +(u.approvalStatus!=='approved'?`<button onclick="approveUser('${u.id}')" style="background:rgba(39,174,96,.15);color:#7ec8a0;border:1px solid rgba(39,174,96,.3);border-radius:6px;padding:4px 8px;font-size:10px;cursor:pointer;">승인</button>`:'')
+      +`<button onclick="deleteUser('${u.id}')" style="background:rgba(192,57,43,.15);color:#ff8a80;border:1px solid rgba(192,57,43,.25);border-radius:6px;padding:4px 8px;font-size:10px;cursor:pointer;">삭제</button></div></div>`
     ).join('');
   }
-  if(fstaff.length){
-    html+=`<div style="font-size:10px;color:#4fa8d0;font-weight:700;padding:${fpending.length?'10px':'4px'} 0 6px;">👤 직원</div>`;
-    html+=fstaff.map(s=>`<div class="adm-row"><div class="adm-info"><div class="adm-name">👤 ${s.name}</div><div class="adm-meta">${s.rank||'-'} · ${s.dept||'미지정'}</div></div><button class="abtn del" onclick="delStaff('${s.name}')">삭제</button></div>`).join('');
-  }
-  if(!fpending.length&&!fstaff.length)html+=`<div style="font-size:11px;color:#4a7090;padding:8px 0;">해당 과/분소 인원 없음</div>`;
-  html+=`<button class="btn btn-ghost" style="width:100%;padding:9px;border-radius:8px;margin-top:6px;font-size:12px;" onclick="addStaff()">＋ 직원 추가</button>`;
   document.getElementById('admMembersWrap').innerHTML=html;
 }
 var _admMemberFilter='전체';
@@ -3927,6 +3922,17 @@ function deleteUser(id){
   renderAdmSys();
   try{renderAdmMembers();}catch(e){}
   toast('🗑️ 삭제 완료');
+}
+function approveUser(id){
+  const list=DB.g('pendingUsers')||[];
+  const idx=list.findIndex(function(p){return p.id===id;});
+  if(idx===-1)return;
+  list[idx].approvalStatus='approved';
+  list[idx].seen=true;
+  DB.s('pendingUsers',list);
+  renderAdmMembers();
+  renderAdmSys();
+  toast('✅ 승인 완료');
 }
 function _checkDeletedUser(){
   if(DB.g('authType')!=='kakao')return;
