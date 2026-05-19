@@ -733,6 +733,7 @@ body.guest-mode .guest-hide{display:none!important;}
         <button class="btn btn-blue" id="btnAddRep" onclick="addPhase()" style="display:none;">📋 다음 보 추가</button>
         <button class="btn btn-ghost" id="btnViewRep" onclick="viewReport()" style="display:none;">📄 보고서 전체보기</button>
         <button class="btn btn-green" id="btnEndSit" onclick="endSit()" style="display:none;">✅ 상황 종료</button>
+        <button class="btn" id="btnViewResMap" onclick="viewOnResMap()" style="display:none;background:rgba(79,168,208,.1);color:#4fa8d0;border:1px solid rgba(79,168,208,.3);">🗺️ 지도에서 보기</button>
       </div>
     </div>
   </div>
@@ -2554,8 +2555,17 @@ function openResPopup(id,type='rescue'){
     document.getElementById('btnEndSit').style.display='none';
     document.getElementById('btnViewRep').style.display='none';
   }
+  const hasCoord=!!(data.lat&&data.lng);
+  document.getElementById('btnViewResMap').style.display=hasCoord?'block':'none';
   document.getElementById('facPopup').classList.remove('on');
   document.getElementById('resPopup').classList.add('on');
+}
+function viewOnResMap(){
+  const rescues=DB.g('rescues')||[];
+  const r=rescues.find(x=>x.id===selResId);
+  if(!r||!r.lat)return;
+  closeDB();
+  viewOnMap(r.lat,r.lng);
 }
 
 function openHazDetail(id){
