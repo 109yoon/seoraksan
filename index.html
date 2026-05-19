@@ -2239,11 +2239,12 @@ function selTTActor(el,actor){
 function openChangeUser(){
   const u=DB.g('currentUser')||{};
   const authType=DB.g('authType');
-  const needsCode=authType==='kakao'&&u.approvalStatus!=='approved'&&!isAdminUser(u);
+  const isKakao=authType==='kakao';
+  const notApproved=isKakao&&u.approvalStatus!=='approved'&&!isAdminUser(u);
   const titleEl=document.getElementById('modalUserTitle');
-  if(titleEl)titleEl.textContent=needsCode?'🆕 가입 신청':'👤 작성자 설정';
+  if(titleEl)titleEl.textContent=notApproved?'🆕 가입 신청':'👤 작성자 설정';
   const codeWrap=document.getElementById('uCodeWrap');
-  if(codeWrap){codeWrap.style.display=needsCode?'block':'none';}
+  if(codeWrap)codeWrap.style.display=isKakao&&!isAdminUser(u)?'block':'none';
   const codeIn=document.getElementById('uCodeIn');
   if(codeIn)codeIn.value='';
   document.getElementById('uNameIn').value=u.realName||u.name||'';
@@ -2311,10 +2312,19 @@ function saveUser(){
     if(codeVisible){
       const codeIn=document.getElementById('uCodeIn');
       const code=(codeIn?codeIn.value:'').trim().toUpperCase();
-      if(!code){toast('⚠️ 승인 코드를 입력해주세요');return;}
-      const adminCode=(DB.g('adminApprovalCode')||'SEORAKSAN').toUpperCase();
-      if(code!==adminCode){toast('❌ 올바르지 않은 코드입니다');return;}
-      newStatus='approved';
+      if(alreadyApproved){
+        // 이미 승인됨 — 코드 비워도 OK, 입력했으면 검증만
+        if(code){
+          const adminCode=(DB.g('adminApprovalCode')||'SEORAKSAN').toUpperCase();
+          if(code!==adminCode){toast('❌ 올바르지 않은 코드입니다');return;}
+        }
+        newStatus='approved';
+      }else{
+        if(!code){toast('⚠️ 승인 코드를 입력해주세요');return;}
+        const adminCode=(DB.g('adminApprovalCode')||'SEORAKSAN').toUpperCase();
+        if(code!==adminCode){toast('❌ 올바르지 않은 코드입니다');return;}
+        newStatus='approved';
+      }
     }else{
       newStatus='pending';
     }
