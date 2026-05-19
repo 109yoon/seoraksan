@@ -3578,10 +3578,20 @@ function renderInspectMap(){
   (DB.g('facilities')||[]).forEach(f=>{
     if(!f.lat||!f.lng)return;
     const el=document.createElement('div');el.className=`mpin p-${f.status}${f.status==='bad'?' blink':''}`;el.innerHTML=f.type.split(' ')[0];
-    el.onclick=e=>{e.stopPropagation();openFacDetail(f.id);};
+    el.onclick=e=>{e.stopPropagation();openFacFromMap(f.id);};
     const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(f.lat,f.lng),content:el,clickable:true});
     ov.setMap(mapI);iOvs.push(ov);
   });
+}
+function openFacFromMap(id){
+  const f=(DB.g('facilities')||[]).find(x=>x.id===id);if(!f)return;
+  selFacId=id;
+  const hist=(DB.g('history')||[]).filter(h=>h.facId===id);
+  const last=hist.length?hist[hist.length-1]:null;
+  document.getElementById('facPopTitle').textContent=f.type.split(' ')[0]+' '+f.name;
+  document.getElementById('facPopMeta').innerHTML=`<span style="color:${SC(f.status)};font-weight:700;">${SL(f.status)}</span> · ${f.loc||'-'}<br>최근 점검: ${last?last.date+' ('+SL(last.status)+')':'없음'}`;
+  document.getElementById('resPopup').classList.remove('on');
+  document.getElementById('facPopup').classList.add('on');
 }
 function renderFacList(){
   const facs=DB.g('facilities')||[];
@@ -3677,13 +3687,7 @@ function viewOnFacMap(){
   else{switchTab(1,document.getElementById('nv1'));}
   setTimeout(function(){
     try{if(mapI){mapI.setCenter(new kakao.maps.LatLng(f.lat,f.lng));mapI.setLevel(4);}renderInspectMap();}catch(e){}
-    // 하단 팝업 표시
-    const hist=(DB.g('history')||[]).filter(h=>h.facId===f.id);
-    const last=hist.length?hist[hist.length-1]:null;
-    document.getElementById('facPopTitle').textContent=f.type.split(' ')[0]+' '+f.name;
-    document.getElementById('facPopMeta').innerHTML=`<span style="color:${SC(f.status)};font-weight:700;">${SL(f.status)}</span> · ${f.loc||'-'}<br>최근 점검: ${last?last.date+' ('+SL(last.status)+')':'없음'}`;
-    document.getElementById('resPopup').classList.remove('on');
-    document.getElementById('facPopup').classList.add('on');
+    openFacFromMap(f.id);
   },220);
 }
 function openFacPopup(id){openFacDetail(id);}
