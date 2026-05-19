@@ -2308,20 +2308,11 @@ function saveUser(){
   }else{
     const codeIn=document.getElementById('uCodeIn');
     const code=(codeIn?codeIn.value:'').trim().toUpperCase();
-    if(alreadyApproved){
-      // 이미 승인된 사람: 코드 비워도 저장 가능
-      if(code){
-        const adminCode=(DB.g('adminApprovalCode')||'SEORAKSAN').toUpperCase();
-        if(code!==adminCode){toast('❌ 올바르지 않은 코드입니다');return;}
-      }
-      newStatus='approved';
-    }else{
-      // 미승인: 코드 필수
-      if(!code){toast('⚠️ 승인 코드를 입력해주세요');return;}
-      const adminCode=(DB.g('adminApprovalCode')||'SEORAKSAN').toUpperCase();
-      if(code!==adminCode){toast('❌ 올바르지 않은 코드입니다');return;}
-      newStatus='approved';
-    }
+    // 승인 여부 관계없이 코드 항상 필수
+    if(!code){toast('⚠️ 승인 코드를 입력해주세요');return;}
+    const adminCode=(DB.g('adminApprovalCode')||'SEORAKSAN').toUpperCase();
+    if(code!==adminCode){toast('❌ 올바르지 않은 코드입니다');return;}
+    newStatus='approved';
   }
   const saved={...existing,realName:name,name,dept,rank,approvalStatus:newStatus};
   DB.s('currentUser',saved);
