@@ -4662,29 +4662,29 @@ function fetchWeather(){
   if(_weatherFetched)return;
   _weatherFetched=true;
   var dt=_kmaNCSTTime(),ft=_kmaFcstTime();
-  // 속초 초단기실황 (현재 날씨)
   var ncstUrl=KMA_BASE+'/getUltraSrtNcst?authKey='+KMA_KEY+'&dataType=JSON&numOfRows=10&pageNo=1&baseDate='+dt.date+'&baseTime='+dt.time+'&nx=87&ny=141';
-  // 속초 단기예보 12h (특보 계산용)
   var fcstUrl=KMA_BASE+'/getVilageFcst?authKey='+KMA_KEY+'&dataType=JSON&numOfRows=300&pageNo=1&baseDate='+ft.date+'&baseTime='+ft.time+'&nx=87&ny=141';
   Promise.all([
-    fetch(ncstUrl).then(function(r){return r.json();}).catch(function(){return null;}),
-    fetch(fcstUrl).then(function(r){return r.json();}).catch(function(){return null;})
+    fetch(ncstUrl).then(function(r){return r.json();}),
+    fetch(fcstUrl).then(function(r){return r.json();})
   ]).then(function(results){
     var ncst=results[0],fcst=results[1];
-    if(ncst){
-      var obs={};
-      _kmaItems(ncst).forEach(function(it){obs[it.category]=it.obsrValue;});
-      var temp=parseFloat(obs.T1H||0);
-      var wspd=parseFloat(obs.WSD||0);
-      var pi=_ptyInfo(obs.PTY||0);
-      document.getElementById('wIco').textContent=pi.ico;
-      document.getElementById('wTmp').textContent=Math.round(temp)+'°';
-      document.getElementById('wDesc').textContent='속초 · '+pi.desc;
-      document.getElementById('wWind').textContent='💨 '+Math.round(wspd)+'m/s';
-      var ws=document.getElementById('weatherStrip');if(ws)ws.style.display='flex';
-    }
+    // KMA가 유효한 응답을 줬는지 확인
+    var ncstOk=ncst&&ncst.response&&ncst.response.header&&ncst.response.header.resultCode==='00';
+    if(!ncstOk){_fetchWeatherFallback();return;}
+    var obs={};
+    _kmaItems(ncst).forEach(function(it){obs[it.category]=it.obsrValue;});
+    var temp=parseFloat(obs.T1H||0);
+    var wspd=parseFloat(obs.WSD||0);
+    var pi=_ptyInfo(obs.PTY||0);
+    document.getElementById('wIco').textContent=pi.ico;
+    document.getElementById('wTmp').textContent=Math.round(temp)+'°';
+    document.getElementById('wDesc').textContent='속초 · '+pi.desc;
+    document.getElementById('wWind').textContent='💨 '+Math.round(wspd)+'m/s';
+    var ws=document.getElementById('weatherStrip');if(ws)ws.style.display='flex';
     var alertMap={};
-    if(fcst){
+    var fcstOk=fcst&&fcst.response&&fcst.response.header&&fcst.response.header.resultCode==='00';
+    if(fcstOk){
       var byTime={};
       _kmaItems(fcst).forEach(function(it){
         var k=it.fcstDate+it.fcstTime;
@@ -4709,7 +4709,52 @@ function fetchWeather(){
       if(reasons.length)alertMap['설악권']={level:level,reasons:reasons};
     }
     _renderWeatherAlerts(alertMap);
-  }).catch(function(e){console.warn('KMA 날씨 오류:',e);_weatherFetched=false;});
+  }).catch(function(e){
+    console.warn('KMA 날씨 차단/오류, open-meteo로 대체:',e);
+    _fetchWeatherFallback();
+  });
+}
+function _fetchWeatherFallback(){
+  // KMA CORS 차단 시 open-meteo로 폴백
+  var base='https://api.open-meteo.com/v1/forecast';
+  var cur=base+'?latitude=38.21&longitude=128.59&current=temperature_2m,wind_speed_10m,weather_code&wind_speed_unit=ms&timezone=Asia%2FSeoul';
+  var reg=_WEATHER_REGIONS.map(function(r){
+    // latitude/longitude from nx/ny approximation for fallback
+    var coords={87:{lat:38.21,lng:128.59},73:{lat:38.06,lng:128.17},79:{lat:38.08,lng:128.62},83:{lat:38.38,lng:128.47},80:{lat:38.13,lng:128.41}};
+    var c=coords[r.nx]||{lat:38.13,lng:128.41};
+    return base+'?latitude='+c.lat+'&longitude='+c.lng+'&hourly=precipitation,snowfall,windgusts_10m,wind_speed_10m&wind_speed_unit=ms&timezone=Asia%2FSeoul&forecast_hours=24';
+  });
+  Promise.all([fetch(cur).then(function(r){return r.json();})].concat(reg.map(function(u){return fetch(u).then(function(r){return r.json();});})))
+    .then(function(results){
+      var cw=(results[0].current||results[0].current_weather||{});
+      var code=cw.weather_code!==undefined?cw.weather_code:(cw.weathercode||0);
+      var temp=cw.temperature_2m!==undefined?cw.temperature_2m:cw.temperature;
+      var wspd=cw.wind_speed_10m!==undefined?cw.wind_speed_10m:cw.windspeed;
+      var ico=code===0?'☀️':code<=2?'🌤️':code===3?'☁️':code<=48?'🌫️':code<=55?'🌦️':code<=65?'🌧️':code<=77?'🌨️':code<=82?'🌧️':code<=86?'🌨️':'⛈️';
+      var descs=['맑음','대체로맑음','구름조금','흐림','안개','이슬비','비','눈','소나기','뇌우'];
+      var desc=descs[code===0?0:code<=1?1:code<=2?2:code<=3?3:code<=48?4:code<=55?5:code<=65?6:code<=77?7:8]||'';
+      document.getElementById('wIco').textContent=ico;
+      document.getElementById('wTmp').textContent=Math.round(temp)+'°';
+      document.getElementById('wDesc').textContent='속초 · '+desc;
+      document.getElementById('wWind').textContent='💨 '+Math.round(wspd)+'m/s';
+      var ws=document.getElementById('weatherStrip');if(ws)ws.style.display='flex';
+      var rNames=['속초','인제','양양','고성','설악'];
+      var alertMap={};
+      results.slice(1).forEach(function(d,i){
+        var h=d.hourly||{};
+        var precip=h.precipitation||[];var snow=h.snowfall||[];var gust=h.windgusts_10m||[];var wind=h.wind_speed_10m||[];
+        var s12p=precip.slice(0,12).reduce(function(a,b){return a+b;},0);
+        var s12s=snow.slice(0,12).reduce(function(a,b){return a+b;},0);
+        var mxG=Math.max.apply(null,gust.slice(0,12).concat([0]));
+        var mxW=Math.max.apply(null,wind.slice(0,12).concat([0]));
+        var reasons=[],level='';
+        if(s12p>=110){level='경보';reasons.push('호우경보');}else if(s12p>=70){level='주의보';reasons.push('호우주의보');}
+        if(mxG>=26||mxW>=21){level='경보';reasons.push('강풍경보');}else if((mxG>=20||mxW>=14)&&level!=='경보'){level='주의보';reasons.push('강풍주의보');}
+        if(s12s>=20){level='경보';reasons.push('대설경보');}else if(s12s>=5&&level!=='경보'){level='주의보';reasons.push('대설주의보');}
+        if(reasons.length)alertMap[rNames[i]]={level:level,reasons:reasons};
+      });
+      _renderWeatherAlerts(alertMap);
+    }).catch(function(e){console.warn('날씨 폴백 실패:',e);_weatherFetched=false;});
 }
 function _renderWeatherAlerts(alertMap){
   var wrap=document.getElementById('weatherAlertWrap');if(!wrap)return;
@@ -4748,19 +4793,41 @@ function _fetchWeatherDetail(){
   if(_wDetailFetching)return;
   _wDetailFetching=true;
   var dt=_kmaNCSTTime(),ft=_kmaFcstTime();
-  // 5개 지역 초단기실황
   var ncstCalls=_WEATHER_REGIONS.map(function(r){
     var url=KMA_BASE+'/getUltraSrtNcst?authKey='+KMA_KEY+'&dataType=JSON&numOfRows=10&pageNo=1&baseDate='+dt.date+'&baseTime='+dt.time+'&nx='+r.nx+'&ny='+r.ny;
-    return fetch(url).then(function(res){return res.json();}).catch(function(){return null;});
+    return fetch(url).then(function(res){return res.json();});
   });
-  // 설악 단기예보 (7일)
   var fcst7Url=KMA_BASE+'/getVilageFcst?authKey='+KMA_KEY+'&dataType=JSON&numOfRows=900&pageNo=1&baseDate='+ft.date+'&baseTime='+ft.time+'&nx=80&ny=140';
   Promise.all([
     Promise.all(ncstCalls),
     fetch(fcst7Url).then(function(res){return res.json();}).catch(function(){return null;})
   ]).then(function(all){
     _wDetailFetching=false;
+    // KMA 응답 유효성 확인 (첫 번째 지역으로 판단)
+    var firstOk=all[0][0]&&all[0][0].response&&all[0][0].response.header&&all[0][0].response.header.resultCode==='00';
+    if(!firstOk){_fetchWeatherDetailFallback();return;}
     _wDetailCache={regions:_WEATHER_REGIONS.map(function(r,i){return{region:r.name,ncst:all[0][i]};}),fcst7:all[1]};
+    _renderWeatherDetail(_wDetailCache);
+  }).catch(function(){
+    _wDetailFetching=false;
+    _fetchWeatherDetailFallback();
+  });
+}
+function _fetchWeatherDetailFallback(){
+  _wDetailFetching=true;
+  var base='https://api.open-meteo.com/v1/forecast';
+  var coords={속초:{lat:38.21,lng:128.59},인제:{lat:38.06,lng:128.17},양양:{lat:38.08,lng:128.62},고성:{lat:38.38,lng:128.47},설악:{lat:38.13,lng:128.41}};
+  var daily=base+'?latitude=38.13&longitude=128.41&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code,windgusts_10m_max&wind_speed_unit=ms&timezone=Asia%2FSeoul&forecast_days=7';
+  Promise.all([
+    Promise.all(_WEATHER_REGIONS.map(function(r){
+      var c=coords[r.name]||{lat:38.13,lng:128.41};
+      return fetch(base+'?latitude='+c.lat+'&longitude='+c.lng+'&current=temperature_2m,wind_speed_10m,weather_code&hourly=precipitation,snowfall,windgusts_10m,wind_speed_10m&wind_speed_unit=ms&timezone=Asia%2FSeoul&forecast_hours=24')
+        .then(function(res){return res.json();}).then(function(d){return{region:r.name,data:d};});
+    })),
+    fetch(daily).then(function(res){return res.json();}).catch(function(){return null;})
+  ]).then(function(all){
+    _wDetailFetching=false;
+    _wDetailCache={omFallback:true,regions:all[0],daily:all[1]};
     _renderWeatherDetail(_wDetailCache);
   }).catch(function(){
     _wDetailFetching=false;
@@ -4768,9 +4835,12 @@ function _fetchWeatherDetail(){
   });
 }
 function _renderWeatherDetail(cache){
+  // open-meteo 폴백 데이터는 별도 렌더러로 처리
+  if(cache.omFallback)return _renderWeatherDetailOM(cache);
   var results=cache.regions||[];
   var fcst7=cache.fcst7||null;
-  var html='<div style="font-size:10px;color:#3a6a8a;margin-bottom:8px;text-align:right;">'+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})+' 기준 (기상청)</div>';
+  var src=results.length&&results[0].ncst&&results[0].ncst.response?'기상청':'Open-Meteo';
+  var html='<div style="font-size:10px;color:#3a6a8a;margin-bottom:8px;text-align:right;">'+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})+' 기준 ('+src+')</div>';
   // ── 권역별 현재 날씨 (초단기실황) ─────────────────
   html+='<div class="wfc-sec"><div class="wfc-title">🌡️ 권역별 현재 날씨</div>';
   html+='<div class="wdetail-now-grid">';
@@ -4844,6 +4914,57 @@ function _renderWeatherDetail(cache){
         +'<div class="wfc-rain">'+(rain>0?'🌧️'+rain.toFixed(0)+'mm':'')+'</div>'
         +'<div class="wfc-wind">'+(gust>0?'💨'+gust.toFixed(0):'')+'</div>'
         +'</div>';
+    });
+    html+='</div>';
+  }
+  document.getElementById('weatherDetailBody').innerHTML=html;
+}
+function _renderWeatherDetailOM(cache){
+  // open-meteo 폴백용 렌더러
+  var results=cache.regions||[];
+  var daily=cache.daily||null;
+  function wico(c){return c===0?'☀️':c<=2?'🌤️':c===3?'☁️':c<=48?'🌫️':c<=55?'🌦️':c<=65?'🌧️':c<=77?'🌨️':c<=82?'🌧️':c<=86?'🌨️':'⛈️';}
+  function wdesc(c){return c===0?'맑음':c<=2?'구름조금':c===3?'흐림':c<=48?'안개':c<=55?'이슬비':c<=65?'비':c<=77?'눈':c<=82?'소나기':'뇌우';}
+  var html='<div style="font-size:10px;color:#3a6a8a;margin-bottom:8px;text-align:right;">'+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})+' 기준 (Open-Meteo)</div>';
+  html+='<div class="wfc-sec"><div class="wfc-title">🌡️ 권역별 현재 날씨</div><div class="wdetail-now-grid">';
+  var anyAlert=false,alertsAll=[];
+  results.forEach(function(item,idx){
+    var r=item.region;var d=item.data;
+    var cw=d.current||d.current_weather||{};var h=d.hourly||{};
+    var code=cw.weather_code!==undefined?cw.weather_code:(cw.weathercode||0);
+    var gust=h.windgusts_10m||[];var precip=h.precipitation||[];var snow=h.snowfall||[];
+    var mxG=Math.max.apply(null,gust.slice(0,12).concat([0]));
+    var s12p=precip.slice(0,12).reduce(function(a,b){return a+b;},0);
+    var s12s=snow.slice(0,12).reduce(function(a,b){return a+b;},0);
+    var alerts=[];
+    if(s12p>=110)alerts.push({lv:'경보',msg:r+' 호우경보'});else if(s12p>=70)alerts.push({lv:'주의보',msg:r+' 호우주의보'});
+    if(mxG>=26)alerts.push({lv:'경보',msg:r+' 강풍경보'});else if(mxG>=20)alerts.push({lv:'주의보',msg:r+' 강풍주의보'});
+    if(s12s>=20)alerts.push({lv:'경보',msg:r+' 대설경보'});else if(s12s>=5)alerts.push({lv:'주의보',msg:r+' 대설주의보'});
+    if(alerts.length){anyAlert=true;alertsAll=alertsAll.concat(alerts);}
+    var tmp=cw.temperature_2m!==undefined?Math.round(cw.temperature_2m):cw.temperature!==undefined?Math.round(cw.temperature):'-';
+    var wsp=cw.wind_speed_10m!==undefined?Math.round(cw.wind_speed_10m):cw.windspeed!==undefined?Math.round(cw.windspeed):'-';
+    var wide=(idx===4)?'wdr-wide':'';
+    html+='<div class="wdetail-region '+wide+'">'
+      +'<div class="wdetail-rname">'+r+(alerts.length?' <span style="color:#ff8a80;">⚠</span>':'')+'</div>'
+      +'<div class="wdetail-row"><div class="wdetail-ico">'+wico(code)+'</div>'
+      +'<div class="wdetail-main"><div class="wdetail-tmp">'+tmp+'°</div><div class="wdetail-desc">'+wdesc(code)+'</div></div></div>'
+      +'<div class="wdetail-meta"><span>💨'+wsp+'</span>'+(mxG>0?'<span>돌풍'+mxG.toFixed(0)+'</span>':'')+(s12p>0?'<span>🌧️'+s12p.toFixed(0)+'mm</span>':'')+(s12s>0?'<span>❄️'+s12s.toFixed(0)+'cm</span>':'')+'</div></div>';
+  });
+  html+='</div></div>';
+  if(anyAlert){html+='<div style="margin-bottom:10px;">'+alertsAll.map(function(a){return'<div class="wdetail-alert w-alert-'+a.lv+'" style="display:flex;align-items:center;gap:5px;">⚠️ <b>'+a.lv+'</b> '+a.msg+'</div>';}).join('')+'</div>';}
+  else{html+='<div style="text-align:center;padding:6px 0 10px;font-size:11px;color:#27ae60;">✅ 현재 발효 중인 특보 없음</div>';}
+  if(daily&&daily.daily){
+    var dd=daily.daily;var days=['일','월','화','수','목','금','토'];
+    html+='<div class="wfc-sec"><div class="wfc-title">📅 7일 예보 (설악 기준 · Open-Meteo)</div>';
+    (dd.time||[]).forEach(function(t,i){
+      var dt2=new Date(t);var dayLabel=i===0?'오늘':i===1?'내일':days[dt2.getDay()]+'요';
+      var code=((dd.weather_code||dd.weathercode)||[])[i]||0;
+      var tmax=(dd.temperature_2m_max||[])[i];var tmin=(dd.temperature_2m_min||[])[i];
+      var rain=(dd.precipitation_sum||[])[i]||0;var gust=(dd.windgusts_10m_max||[])[i]||0;
+      html+='<div class="wfc-row"><div class="wfc-day">'+dayLabel+'</div><div class="wfc-ico">'+wico(code)+'</div>'
+        +'<div class="wfc-tmp">'+(tmax!==undefined?Math.round(tmax):'?')+'° <span>/ '+(tmin!==undefined?Math.round(tmin):'?')+'°</span></div>'
+        +'<div class="wfc-rain">'+(rain>0?'🌧️'+rain.toFixed(0)+'mm':'')+'</div>'
+        +'<div class="wfc-wind">'+(gust>0?'💨'+gust.toFixed(0):'')+'</div></div>';
     });
     html+='</div>';
   }
