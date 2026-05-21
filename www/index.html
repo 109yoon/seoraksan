@@ -695,6 +695,9 @@ body.guest-mode .guest-hide{display:none!important;}
   </div>
   <div id="weatherAlertWrap" class="weather-alert-wrap" onclick="openWeatherDetail()" style="cursor:pointer;touch-action:manipulation;"></div>
 
+  <!-- 권한 요청 배너 (위치·알림) -->
+  <div id="permBanners" style="display:flex;flex-direction:column;gap:5px;flex-shrink:0;"></div>
+
   <!-- 4칸 메인 메뉴 -->
   <div class="home-menu" style="flex:1;min-height:0;">
     <button class="mbtn mb-red" onclick="openApp('rescue')"><div class="mbtn-ico">🚨</div><div><div class="mbtn-title">재난/구조</div><div class="mbtn-desc" id="hdR">구조보고·위험상황</div></div></button>
@@ -5894,36 +5897,92 @@ window.onload=function(){
       goHome();
     }
   }, false);
-  // 웹 브라우저 뒤로가기 버튼
-  var _backExitReady=false;
+  // 웹/PWA 뒤로가기 처리
+  var _backExitReady=false,_backExitTimer=null;
   window.addEventListener('popstate', function(e){
-    const homeActive=document.getElementById('v-home').classList.contains('on');
-    // 서브뷰 처리 (위키 페이지, 유형 세부통계)
+    // 열린 모달이 있으면 닫기
+    var openModal=document.querySelector('.modal.on,.modal-bottom.on');
+    if(openModal){openModal.classList.remove('on');history.replaceState(e.state||{view:'home'},'','');return;}
+    // 서브뷰: 유형 세부통계
     if(document.getElementById('v-type-detail').classList.contains('on')){
-      showV('v-rescue-stats');renderRescueStats();return;
+      showV('v-rescue-stats');renderRescueStats();history.replaceState({view:'rescue-stats'},'','');return;
     }
-    const wikiPageVisible=document.getElementById('wikiPageWrap').style.display==='block';
-    if(wikiPageVisible){
+    // 서브뷰: 위키 페이지
+    if(document.getElementById('wikiPageWrap').style.display==='block'){
       showWikiList();history.replaceState({view:'wiki'},'','');return;
     }
+    var homeActive=document.getElementById('v-home').classList.contains('on');
     if(!homeActive){
+      // 다른 화면 → 홈으로
       showV('v-home');
       document.getElementById('appHdr').style.display='none';
       document.getElementById('bnav').style.display='none';
       closeDB();updateSummary();
       history.replaceState({view:'home'},'','');
     } else {
-      if(_backExitReady){window.close();history.go(-1);}
-      else{
+      // 홈 화면: 두 번 누르면 종료
+      if(_backExitReady){
+        clearTimeout(_backExitTimer);
+        history.go(-1); // PWA/브라우저가 앱 이전 페이지로 이동 = 종료 효과
+      } else {
         _backExitReady=true;
         toast('한 번 더 누르면 종료됩니다');
-        setTimeout(function(){_backExitReady=false;},2000);
+        _backExitTimer=setTimeout(function(){_backExitReady=false;},2000);
         history.replaceState({view:'home'},'','');
       }
     }
   });
-  // 초기 history 항목 세팅
   history.replaceState({view:'home'},'','');
+
+  // ── 권한 배너 ──────────────────────────────────
+  function _permBanner(type,state){
+    var wrap=document.getElementById('permBanners');if(!wrap)return;
+    var id='pb-'+type;var old=document.getElementById(id);if(old)old.remove();
+    if(state==='granted')return;
+    var cfg=type==='loc'
+      ?{ico:'📍',title:'위치 권한',desc:state==='denied'?'설정에서 위치 권한을 허용해 주세요':'지도 GPS 기능을 위해 위치 접근 허용'}
+      :{ico:'🔔',title:'알림 권한',desc:state==='denied'?'설정에서 알림 권한을 허용해 주세요':'구조 발생 시 알림 수신 허용'};
+    var div=document.createElement('div');
+    div.id=id;
+    div.style.cssText='display:flex;align-items:center;gap:8px;background:rgba(79,168,208,.08);border:1px solid rgba(79,168,208,.18);border-radius:9px;padding:8px 10px;flex-shrink:0;';
+    div.innerHTML='<span style="font-size:15px;">'+cfg.ico+'</span>'
+      +'<div style="flex:1;min-width:0;">'
+        +'<div style="font-size:11px;font-weight:700;color:#4fa8d0;">'+cfg.title+'</div>'
+        +'<div style="font-size:10px;color:#3a6a8a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+cfg.desc+'</div>'
+      +'</div>'
+      +(state!=='denied'?'<button onclick="_reqPerm(\''+type+'\')" style="flex-shrink:0;background:#1a3d5c;color:#4fa8d0;border:1px solid rgba(79,168,208,.3);border-radius:6px;padding:5px 11px;font-size:10px;font-weight:700;cursor:pointer;">허용</button>':'')
+      +'<button onclick="document.getElementById(\'pb-'+type+'\').remove()" style="flex-shrink:0;background:none;border:none;color:rgba(255,255,255,.2);font-size:16px;line-height:1;cursor:pointer;padding:0 2px;">×</button>';
+    wrap.appendChild(div);
+  }
+  function _initPermBanners(){
+    // 위치 권한
+    if(navigator.permissions){
+      navigator.permissions.query({name:'geolocation'}).then(function(r){
+        _permBanner('loc',r.state);
+        r.onchange=function(){_permBanner('loc',r.state);};
+      }).catch(function(){_permBanner('loc','prompt');});
+    } else if(navigator.geolocation){
+      _permBanner('loc','prompt');
+    }
+    // 알림 권한 (지원하는 경우만)
+    if('Notification' in window){
+      _permBanner('noti',Notification.permission);
+    }
+  }
+  window._reqPerm=function(type){
+    if(type==='loc'){
+      navigator.geolocation.getCurrentPosition(
+        function(){toast('📍 위치 권한 허용됨');_permBanner('loc','granted');},
+        function(){toast('⚠️ 위치 권한이 거부되었습니다');}
+      );
+    } else if(type==='noti'){
+      Notification.requestPermission().then(function(r){
+        _permBanner('noti',r);
+        toast(r==='granted'?'🔔 알림 권한 허용됨':'⚠️ 알림 권한이 거부되었습니다');
+      });
+    }
+  };
+  setTimeout(_initPermBanners, 800); // 앱 로딩 후 표시
 
   initFirebase(function(){
     initDB();
@@ -5931,7 +5990,6 @@ window.onload=function(){
     updateSummary();updateUserUI();renderHotSearch();fetchWeather();
     const d=new Date();const days=['일','월','화','수','목','금','토'];
     document.getElementById('homeDate').textContent=d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+days[d.getDay()]+')';
-    // 카카오 redirect 콜백 처리
     if(window._kakaoAuthCode){var _kc=window._kakaoAuthCode;window._kakaoAuthCode=null;_handleKakaoCode(_kc);return;}
     // Firebase 준비 완료 시 즉시 로딩 해제 (3초 폴백보다 빠르면 여기서 처리됨)
     if(window._hideLoading) window._hideLoading();
