@@ -182,7 +182,6 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .fab2{position:absolute;bottom:66px;left:13px;background:#7a1818;color:#fff;border:none;border-radius:10px;padding:9px 14px;font-size:12px;font-weight:700;cursor:pointer;z-index:10;box-shadow:0 3px 10px rgba(0,0,0,.5);}
 .fab-gps{position:absolute;bottom:124px;right:13px;width:40px;height:40px;border-radius:50%;background:#0b1c30;color:#4fa8d0;display:flex;align-items:center;justify-content:center;font-size:16px;border:1.5px solid rgba(79,168,208,.35);cursor:pointer;z-index:10;}
 .map-ctrl{position:absolute;top:10px;left:10px;background:rgba(11,28,48,.85);color:#4fa8d0;border:1px solid rgba(79,168,208,.22);border-radius:7px;padding:5px 9px;font-size:11px;font-weight:600;cursor:pointer;z-index:10;}
-.nomap-banner{position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(11,28,48,.92);color:#c0d8ec;padding:8px 14px;border-radius:8px;font-size:11px;z-index:12;border:1px solid rgba(79,168,208,.2);white-space:nowrap;display:none;}
 .mpin{width:34px;height:34px;border-radius:50%;background:#0b1c30;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;border:2.5px solid;box-shadow:0 3px 8px rgba(0,0,0,.8);}
 .mpin-sm{width:20px;height:20px;border-radius:50%;background:#0b2a3f;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;border:1.5px solid #4fa8d0;box-shadow:0 2px 5px rgba(0,0,0,.7);opacity:.9;}
 .mpin-num{background:rgba(8,20,40,.88);border:1px solid rgba(79,168,208,.6);border-radius:3px;padding:1px 3px;font-size:6px;font-weight:700;color:#7ac8e8;white-space:nowrap;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.6);line-height:1.2;}
@@ -750,7 +749,6 @@ body.guest-mode .guest-hide{display:none!important;}
         <div id="resMFP_status"></div>
       </div>
     </div>
-    <div class="nomap-banner" id="nomapR">📍 API 키 설정 후 지도 사용 가능 — 목록탭 이용</div>
     <div class="dbcard" id="resPopup">
       <button class="dbclose" onclick="closeDB()">×</button><div class="dbhandle"></div>
       <div class="dbtitle" id="resPopTitle">핀을 탭하여 조회</div>
@@ -840,7 +838,6 @@ body.guest-mode .guest-hide{display:none!important;}
       </div>
     </div>
     <div id="inspectCoords" style="position:absolute;bottom:130px;left:10px;background:rgba(0,0,0,.6);color:#8ab4cc;font-size:10px;padding:3px 8px;border-radius:5px;z-index:9;pointer-events:none;font-family:monospace;backdrop-filter:blur(4px);letter-spacing:.3px;">--</div>
-    <div class="nomap-banner" id="nomapI">📍 API 키 설정 후 지도 사용 가능 — 목록탭 이용</div>
     <div class="dbcard" id="facPopup">
       <button class="dbclose" onclick="closeDB()">×</button><div class="dbhandle"></div>
       <div class="dbtitle" id="facPopTitle">시설물 핀을 탭하여 조회</div>
@@ -1762,13 +1759,13 @@ function openApp(mode){
     document.getElementById('nvl2').textContent='목록';
     showV('v-rescue-map');bn.style.display='flex';setNv();updateRescueCross();
     history.pushState({view:mode},'','');
-    rMaps();setTimeout(()=>{try{renderRescueMap();if(mapR&&!window._mapRInited){window._mapRInited=true;mapR.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));mapR.setLevel(9);}}catch(e){document.getElementById('nomapR').style.display='block';renderResList();}},200);
+    rMaps();setTimeout(()=>{try{renderRescueMap();if(mapR&&!window._mapRInited){window._mapRInited=true;mapR.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));mapR.setLevel(9);}}catch(e){renderResList();}},200);
   } else if(mode==='inspect'){
     document.getElementById('topTitle').textContent='시설물 점검';
     document.getElementById('nvl2').textContent='목록';
     showV('v-inspect-map');bn.style.display='flex';setNv();updateInspectCross();
     history.pushState({view:mode},'','');
-    rMaps();setTimeout(()=>{try{renderInspectMap();if(mapI&&!window._mapIInited){window._mapIInited=true;mapI.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));mapI.setLevel(9);}}catch(e){document.getElementById('nomapI').style.display='block';renderFacList();}},200);
+    rMaps();setTimeout(()=>{try{renderInspectMap();if(mapI&&!window._mapIInited){window._mapIInited=true;mapI.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));mapI.setLevel(9);}}catch(e){renderFacList();}},200);
   } else if(mode==='wiki'){
     document.getElementById('topTitle').textContent='설악위키';
     bn.style.display='none';showV('v-wiki');history.pushState({view:mode},'','');renderHotSearch();renderWikiList('');
@@ -2523,7 +2520,7 @@ function updateUserUI(){
 let selResId=null,curResId=null,resFilter='전체';
 let resTypeF=new Set(),resStatusF=new Set();
 function renderRescueMap(){
-  if(!mapR){document.getElementById('nomapR').style.display='block';return;}
+  if(!mapR){return;}
   rOvs.forEach(o=>{try{o.setMap(null);}catch(e){}});rOvs=[];rEls=[];
   _updateResFilterPanels();
   const _showRes=resTypeF.size===0||resTypeF.has('🚨구조');
@@ -3806,7 +3803,7 @@ function submitHazard(){
 let selFacId=null;
 let facMapStatusF=new Set(),facMapTypeF=new Set(),facMapLocF=new Set();
 function renderInspectMap(){
-  if(!mapI){document.getElementById('nomapI').style.display='block';return;}
+  if(!mapI){return;}
   iOvs.forEach(o=>{try{o.setMap(null);}catch(e){}});iOvs=[];iEls=[];
   const facs=DB.g('facilities')||[];
   const sMap={'전체':null,'양호':'ok','요주의':'warn','위험':'bad'};
