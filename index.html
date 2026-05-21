@@ -1130,7 +1130,7 @@ body.guest-mode .guest-hide{display:none!important;}
 <!-- ══ 모달: 시설물 등록 ══ -->
 <div id="modalAddFac" class="modal">
   <div class="mbox">
-    <div class="mhdr"><span class="mtitle">🆕 시설물 등록</span><button class="mclose" onclick="closeM('modalAddFac')">×</button></div>
+    <div class="mhdr"><span class="mtitle" id="addFacModalTitle">🆕 시설물 등록</span><button class="mclose" onclick="closeM('modalAddFac')">×</button></div>
     <div class="fg"><span class="fl">종류</span><select id="facTypeSel" class="fsel"></select></div>
     <div class="fg"><span class="fl">관리 명칭</span><input type="text" id="facNameIn" class="fi" placeholder="예: 비선대 01번 이정표"></div>
     <div class="fg"><span class="fl">위치 설명</span><input type="text" id="facLocIn" class="fi" placeholder="예: 대청봉 1.2km 지점"></div>
@@ -1165,6 +1165,10 @@ body.guest-mode .guest-hide{display:none!important;}
     <div style="display:flex;gap:7px;margin-top:12px;">
       <button class="btn btn-blue" style="flex:1;" onclick="openInspModalFromDetail()">📝 점검일지</button>
       <button class="btn btn-ghost" style="flex:1;" onclick="openHistModalFromDetail()">📖 이력 보기</button>
+    </div>
+    <div id="facDetailAdminBtns" style="display:none;margin-top:7px;display:flex;gap:7px;">
+      <button class="btn" style="flex:1;background:rgba(39,174,96,.12);color:#27ae60;border:1px solid rgba(39,174,96,.3);" onclick="openEditFac(window._selFacDetailId)">✏️ 수정</button>
+      <button class="btn" style="flex:1;background:rgba(224,80,80,.1);color:#e05050;border:1px solid rgba(224,80,80,.25);" onclick="deleteFac(window._selFacDetailId)">🗑️ 삭제</button>
     </div>
     <div id="facDetailMapBtn" style="margin-top:7px;display:none;">
       <button class="btn" style="width:100%;background:rgba(79,168,208,.1);color:#4fa8d0;border:1px solid rgba(79,168,208,.3);" onclick="viewOnFacMap()">🗺️ 지도에서 보기</button>
@@ -2091,6 +2095,7 @@ function initFormMiniMap(lat,lng){
         const v=_locked.getLat().toFixed(5)+', '+_locked.getLng().toFixed(5);
         const gpsEl=document.getElementById('r_gps');if(gpsEl)gpsEl.value=v;
         const cd=document.getElementById('r_minimap_coords');if(cd)cd.textContent=v;
+        _autoFillLoc(_locked.getLat(),_locked.getLng());
         setTimeout(()=>{ _dragging=false; },50);
       });
       kakao.maps.event.addListener(_mapFormMini,'center_changed',()=>{
@@ -2122,15 +2127,24 @@ function gpsToFormMap(){
     }
     const v=lat.toFixed(5)+', '+lng.toFixed(5);
     const gpsEl=document.getElementById('r_gps');if(gpsEl)gpsEl.value=v;
+    _autoFillLoc(lat,lng);
     toast('📍 현재 위치');
   },()=>toast('⚠️ GPS 실패'));
 }
 function syncFormMapFromInput(){
   const v=(document.getElementById('r_gps')?.value||'').split(',');
-  if(v.length===2&&_mapFormMini){
+  if(v.length===2){
     const lat=parseFloat(v[0]),lng=parseFloat(v[1]);
-    if(!isNaN(lat)&&!isNaN(lng)) _mapFormMini.setCenter(new kakao.maps.LatLng(lat,lng));
+    if(!isNaN(lat)&&!isNaN(lng)){
+      if(_mapFormMini)_mapFormMini.setCenter(new kakao.maps.LatLng(lat,lng));
+      _autoFillLoc(lat,lng);
+    }
   }
+}
+function _autoFillLoc(lat,lng){
+  var s=_nearestSign(lat,lng);
+  var el=document.getElementById('r_loc');
+  if(el&&s){el.value=s;autoGenTitle();}
 }
 
 // 장소구분 토글
@@ -2564,6 +2578,17 @@ function renderRescueMap(){
     el.textContent=code;
     el.title=f.name;
     el.onclick=e=>{e.stopPropagation();toast('📍 '+f.name);};
+    const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(f.lat,f.lng),content:el,clickable:true});
+    ov.setMap(mapR);rOvs.push(ov);rEls.push(el);
+  });
+  // 장소 — 구조 지도 표시
+  (DB.g('facilities')||[]).filter(f=>f.lat&&f.lng&&f.type&&f.type.includes('장소')).forEach(f=>{
+    const el=document.createElement('div');
+    el.className='mpin-num';
+    el.style.cssText='background:rgba(20,10,40,.88);border-color:rgba(180,100,255,.7);color:#d4a0ff;';
+    el.textContent=f.name.length>6?f.name.slice(0,6):f.name;
+    el.title=f.name;
+    el.onclick=e=>{e.stopPropagation();toast('📍 '+f.name+(f.loc?' ('+f.loc+')':''));};
     const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(f.lat,f.lng),content:el,clickable:true});
     ov.setMap(mapR);rOvs.push(ov);rEls.push(el);
   });
@@ -3990,7 +4015,8 @@ function openFacFromMap(id){
   document.getElementById('facPopup').classList.add('on');
 }
 function renderFacList(){
-  const facs=DB.g('facilities')||[];
+  const _admin=isAdminUser();
+  const facs=(DB.g('facilities')||[]).filter(f=>_admin||!f.type.includes('장소'));
   const types=[...new Set(facs.map(f=>f.type.split(' ').slice(1).join(' ')||f.type).filter(Boolean))];
   const locs=[...new Set(facs.map(f=>(f.loc||'').trim()).filter(l=>l&&l!=='-'))];
   _updateFacListFilterPanel(types,locs);
@@ -4026,7 +4052,7 @@ function renderInspectStats(){
 // 시설물 상세 (목록 탭에서 탭하면 모달로 상세 + 점검/이력 버튼)
 function openFacDetail(id){
   const facs=DB.g('facilities')||[];const f=facs.find(x=>x.id===id);if(!f)return;
-  selFacId=id;
+  selFacId=id;window._selFacDetailId=id;
   const hist=(DB.g('history')||[]).filter(h=>h.facId===id);
   const lastInsp=hist.length?hist[hist.length-1]:null;
   document.getElementById('facDetailTitle').textContent=f.name;
@@ -4049,6 +4075,8 @@ function openFacDetail(id){
     </div>`;
   const mapBtn=document.getElementById('facDetailMapBtn');
   if(mapBtn)mapBtn.style.display=(f.lat&&f.lng)?'block':'none';
+  const adminBtns=document.getElementById('facDetailAdminBtns');
+  if(adminBtns)adminBtns.style.display=isAdminUser()?'flex':'none';
   document.getElementById('modalFacDetail').classList.add('on');
   // 지도 핀에서 왔을 때도 동일하게 작동
   document.getElementById('facPopup').classList.remove('on');
@@ -4106,15 +4134,44 @@ function openHistModal(){
     </div>`).join(''):'<div class="empty"><div class="empty-txt">점검 이력 없음</div></div>';
   document.getElementById('modalHist').classList.add('on');closeDB();
 }
+var _editFacId=null;
 function openAddFac(){
   if(!isAdminUser()){toast('⚠️ 관리자만 시설물을 등록할 수 있습니다');return;}
+  _editFacId=null;
+  document.getElementById('addFacModalTitle').textContent='🆕 시설물 등록';
   fillSel('facTypeSel',DB.g('catFac')||[]);
   document.getElementById('facInstall').value=today();
   ['facNameIn','facLocIn','facGpsIn','facNote'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('facInitSt').value='ok';
   const _fa=document.getElementById('facAuthor');_fa.value=getAuthor();_fa.disabled=true;
   document.getElementById('prevFac').innerHTML='📸 촬영 또는 앨범';
   try{gpsFromMap('facGpsIn','inspect');}catch(e){}
   document.getElementById('modalAddFac').classList.add('on');
+}
+function openEditFac(id){
+  if(!isAdminUser()){toast('⚠️ 관리자만 수정 가능');return;}
+  const f=(DB.g('facilities')||[]).find(x=>x.id===id);if(!f)return;
+  _editFacId=id;
+  document.getElementById('addFacModalTitle').textContent='✏️ 시설물 수정';
+  fillSel('facTypeSel',DB.g('catFac')||[]);
+  document.getElementById('facTypeSel').value=f.type;
+  document.getElementById('facNameIn').value=f.name||'';
+  document.getElementById('facLocIn').value=f.loc||'';
+  document.getElementById('facGpsIn').value=f.lat&&f.lng?f.lat.toFixed(5)+', '+f.lng.toFixed(5):'';
+  document.getElementById('facInstall').value=f.install||'';
+  document.getElementById('facNote').value=f.note||'';
+  document.getElementById('facInitSt').value=f.status||'ok';
+  const _fa=document.getElementById('facAuthor');_fa.value=f.author||getAuthor();_fa.disabled=true;
+  document.getElementById('prevFac').innerHTML='📸 촬영 또는 앨범';
+  closeM('modalFacDetail');
+  document.getElementById('modalAddFac').classList.add('on');
+}
+function deleteFac(id){
+  if(!isAdminUser()){toast('⚠️ 관리자만 삭제 가능');return;}
+  if(!confirm('이 시설물을 삭제하시겠습니까?'))return;
+  DB.s('facilities',(DB.g('facilities')||[]).filter(f=>f.id!==id));
+  closeM('modalFacDetail');
+  try{renderInspectMap();}catch(e){}renderFacList();toast('🗑️ 삭제');updateSummary();
 }
 function submitAddFac(){
   const name=document.getElementById('facNameIn').value.trim();if(!name){toast('⚠️ 명칭 입력');return;}
@@ -4123,10 +4180,19 @@ function submitAddFac(){
   if(gs){const p=gs.split(',');lat=parseFloat(p[0]);lng=parseFloat(p[1]);if(isNaN(lat)||isNaN(lng)){lat=null;lng=null;}}
   const status=document.getElementById('facInitSt').value;
   const facs=DB.g('facilities')||[];
-  facs.push({id:Date.now(),type:document.getElementById('facTypeSel').value,name,loc:document.getElementById('facLocIn').value,status,lat,lng,install:document.getElementById('facInstall').value,note:document.getElementById('facNote').value,author:document.getElementById('facAuthor').value});
-  DB.s('facilities',facs);
-  if(status==='bad')pushNoti(`위험 시설물: ${name}`,'🚨','fac_bad',{app:'inspect',tab:2});
-  try{renderInspectMap();}catch(e){}closeM('modalAddFac');toast('✅ 시설물 등록');updateSummary();
+  const data={type:document.getElementById('facTypeSel').value,name,loc:document.getElementById('facLocIn').value,status,lat,lng,install:document.getElementById('facInstall').value,note:document.getElementById('facNote').value,author:document.getElementById('facAuthor').value};
+  if(_editFacId){
+    const idx=facs.findIndex(f=>f.id===_editFacId);
+    if(idx!==-1)facs[idx]=Object.assign(facs[idx],data);
+    _editFacId=null;
+    DB.s('facilities',facs);
+    try{renderInspectMap();}catch(e){}renderFacList();closeM('modalAddFac');toast('✅ 시설물 수정');updateSummary();
+  } else {
+    facs.push(Object.assign({id:Date.now()},data));
+    DB.s('facilities',facs);
+    if(status==='bad')pushNoti(`위험 시설물: ${name}`,'🚨','fac_bad',{app:'inspect',tab:2});
+    try{renderInspectMap();}catch(e){}closeM('modalAddFac');toast('✅ 시설물 등록');updateSummary();
+  }
 }
 
 // ══════════════════════════════════════════
