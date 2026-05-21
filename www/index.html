@@ -164,7 +164,10 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .weather-info{font-size:10px;color:#3a6a8a;flex:1;}
 .weather-wind{font-size:10px;color:#3a6a8a;}
 .hchip{display:flex;align-items:center;justify-content:center;gap:7px;padding:8px 6px;border-radius:9px;cursor:pointer;}
+.hchip>div{text-align:center;}
 .hchip-num{font-size:17px;font-weight:800;line-height:1;}
+@keyframes chipPulse{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.55;transform:scale(.9);}}
+.hchip-num.blink{animation:chipPulse 1.1s ease-in-out infinite;}
 .hchip-lbl{font-size:9px;font-weight:600;opacity:.8;margin-top:1px;}
 .hchip-r{background:rgba(192,57,43,.1);border:1px solid rgba(192,57,43,.25);}
 .hchip-r .hchip-num{color:#ff6b6b;}.hchip-r .hchip-lbl{color:#cc5555;}
@@ -666,12 +669,8 @@ body.guest-mode .guest-hide{display:none!important;}
     </div>
   </div>
 
-  <!-- 긴급 알림 배너 (진행중 구조 시 표시) -->
-  <div id="homeAlertBanner" class="home-alert" style="display:none;" onclick="openRescueAtCoord()">
-    <span class="home-alert-ico">🚨</span>
-    <div class="home-alert-text" id="homeAlertText">구조 진행중</div>
-    <span style="font-size:11px;color:rgba(255,138,128,.6);">→</span>
-  </div>
+  <!-- 긴급 알림 배너 숨김 -->
+  <div id="homeAlertBanner" style="display:none!important;"><span id="homeAlertText"></span></div>
 
   <!-- 내 정보 카드 -->
   <div class="my-card" onclick="openChangeUser()" style="flex-shrink:0;margin-bottom:0;">
@@ -1542,6 +1541,11 @@ function nowDT(){
 function toast(m,dur=2200){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),dur);}
 function closeDB(){document.querySelectorAll('.dbcard').forEach(c=>c.classList.remove('on'));}
 function closeM(id){document.getElementById(id).classList.remove('on');}
+// 모달 배경(backdrop) 클릭 시 닫기
+document.querySelectorAll('.modal').forEach(m=>{
+  if(m.id==='modalUser')return; // 필수입력 검증 때문에 별도처리
+  m.addEventListener('click',function(e){if(e.target===this)closeM(this.id);});
+});
 function prevImg(inp,pid){if(inp.files&&inp.files[0]){const r=new FileReader();r.onload=e=>document.getElementById(pid).innerHTML=`<img src="${e.target.result}">`;r.readAsDataURL(inp.files[0]);}}
 function fillSel(id,arr){document.getElementById(id).innerHTML=arr.map(v=>`<option value="${v}">${v}</option>`).join('');}
 const SC=s=>s==='ok'?'#27ae60':s==='warn'?'#e67e22':'#c0392b';
@@ -5551,9 +5555,8 @@ function updateSummary(){
   se('hs-tot',thisMonth);
   se('hs-fb',bad.length);
   se('hs-ft',facs.length);
-  const banner=document.getElementById('homeAlertBanner');
-  const bannerText=document.getElementById('homeAlertText');
-  if(banner){banner.style.display=og.length?'flex':'none';if(bannerText&&og.length)bannerText.textContent=`구조 ${og.length}건 진행중 — ${og.map(r=>r.type||'').filter(Boolean).join(', ')}`;}
+  const ogNumEl=document.getElementById('hs-og');
+  if(ogNumEl)ogNumEl.classList.toggle('blink',og.length>0);
   function sd(id,v,col){const e=document.getElementById(id);if(!e)return;e.textContent=v;e.style.color=col||'';}
   sd('hdR',og.length?`⚠️ ${og.length}건 진행중`:'구조보고·위험상황',og.length?'#ffaaaa':'');
   sd('hdI',bad.length?`⚠️ 위험 ${bad.length}개`:'시설 관리·이력',bad.length?'#ffaaaa':'');
