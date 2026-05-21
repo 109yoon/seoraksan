@@ -265,6 +265,14 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .tl-diff{background:rgba(39,174,96,.08);border:1px solid rgba(39,174,96,.2);border-radius:8px;padding:8px 10px;margin-top:7px;}
 .tl-diff-t{font-size:10px;color:#27ae60;font-weight:700;margin-bottom:4px;}
 .tl-diff-row{font-size:11px;color:#b8d4e8;padding:2px 0;}
+/* ─ waypoint simulation ─ */
+.tl-wp{position:relative;display:flex;align-items:flex-start;gap:10px;padding:8px 6px;border-radius:9px;transition:background .12s;user-select:none;-webkit-user-select:none;}
+.tl-wp.clickable:active{background:rgba(79,168,208,.06);}
+.tl-wp-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0;border:2px solid;transition:box-shadow .25s,background .25s;}
+.tl-wp-conn{position:absolute;left:13px;top:30px;width:2px;bottom:-8px;background:rgba(79,168,208,.12);}
+.tl-wp.last .tl-wp-conn{display:none;}
+@keyframes wpPulse{0%,100%{box-shadow:0 0 0 3px rgba(231,76,60,.15);}50%{box-shadow:0 0 0 7px rgba(231,76,60,.28),0 0 14px rgba(231,76,60,.4);}}
+.tl-wp-active .tl-wp-dot{animation:wpPulse 1.6s ease-in-out infinite;}
 
 /* ═══ 폼 ═══ */
 .fg{margin-bottom:11px;}.fg:last-child{margin-bottom:0;}
@@ -3066,156 +3074,280 @@ function renderPhaseBar(active,total){
 }
 // 현재 보고서 ID 기억
 let _curViewResId=null;
-let _tlViewMode='brief'; // 'brief' | 'full'
+let _tlViewMode='advanced'; // legacy compat (kept for external refs)
+let _tlMode='advanced'; // 'advanced'|'write'
+let _tlWps=[];
+let _tlWpResId=null;
+let _tlWpIdx=0;
+let _tlVehicle=false;
+let _tlAnimating=false;
 
 function _hideRepFooter(){const f=document.getElementById('rep1BoFooter');if(f)f.style.display='none';}
+
+function _buildTlWps(r){
+  const facs=DB.g('facilities')||[];
+  const signs=facs.filter(f=>f.type&&f.type.includes('다목적위치표지판'));
+  const tgtCode=((r.location||'').match(/\d+/)||[''])[0];
+  const seen=new Set();
+  const all=signs.map(f=>{const c=((f.name||'').match(/\d+/)||[''])[0];return c?{code:c,name:f.name||''}:null;})
+    .filter(Boolean).filter(w=>{if(seen.has(w.code))return false;seen.add(w.code);return true;});
+  all.sort((a,b)=>parseInt(a.code)-parseInt(b.code));
+  const ti=tgtCode?all.findIndex(w=>w.code===tgtCode):-1;
+  const wps=ti>=0?all.slice(0,ti+1):all;
+  const res=[{code:'',name:'구조대 출발',isStart:true,status:'active'}];
+  wps.forEach((w,i)=>res.push({code:w.code,name:w.name,isTarget:i===wps.length-1&&ti>=0,status:'pending'}));
+  return res;
+}
+
+function _wpItemHtml(w,i){
+  const isActive=i===_tlWpIdx;
+  const isLast=i===_tlWps.length-1;
+  let dbg,dbd,dtxt,nc,badge='';
+  if(w.status==='passed'){
+    dbg='rgba(39,174,96,.22)';dbd='#27ae60';dtxt='✓';nc='rgba(255,255,255,.42)';
+    badge='<span style="background:rgba(39,174,96,.12);color:#5dbf8a;border:1px solid rgba(39,174,96,.25);border-radius:5px;font-size:9px;padding:1px 6px;">통과</span>';
+  }else if(w.status==='skipped'){
+    dbg='rgba(120,120,120,.12)';dbd='rgba(120,120,120,.35)';dtxt='↷';nc='rgba(255,255,255,.28)';
+    badge='<span style="background:rgba(120,120,120,.1);color:rgba(180,180,180,.7);border:1px solid rgba(120,120,120,.2);border-radius:5px;font-size:9px;padding:1px 6px;">스킵</span>';
+  }else if(isActive){
+    dbg='rgba(231,76,60,.25)';dbd='#e74c3c';dtxt=w.isStart?'🏠':'📍';nc='#e0edf8';
+    badge='<span style="background:rgba(231,76,60,.18);color:#e74c3c;border:1px solid rgba(231,76,60,.38);border-radius:5px;font-size:9px;padding:1px 6px;font-weight:700;">현재 위치</span>';
+  }else if(w.isTarget){
+    dbg='rgba(192,57,43,.12)';dbd='rgba(192,57,43,.45)';dtxt='🚨';nc='rgba(220,80,80,.8)';
+    badge='<span style="background:rgba(192,57,43,.12);color:#e05050;border:1px solid rgba(192,57,43,.28);border-radius:5px;font-size:9px;padding:1px 6px;font-weight:700;">사고 위치</span>';
+  }else if(w.isStart){
+    dbg='rgba(39,174,96,.15)';dbd='rgba(39,174,96,.4)';dtxt='🏠';nc='rgba(255,255,255,.5)';
+  }else{
+    dbg='rgba(79,168,208,.08)';dbd='rgba(79,168,208,.25)';dtxt=w.code||'·';nc='rgba(255,255,255,.35)';
+  }
+  const click=(!w.isStart&&!isActive)?`onclick="tlWarpTo(${i})"`:''  ;
+  return `<div id="tlWp_${i}" class="tl-wp${isActive?' tl-wp-active':''}${isLast?' last':''}" ${click} style="${!w.isStart&&!isActive?'cursor:pointer;':''}">
+    <div style="position:relative;flex-shrink:0;">
+      <div class="tl-wp-dot" style="background:${dbg};border-color:${dbd};">${dtxt}</div>
+      ${!isLast?'<div class="tl-wp-conn"></div>':''}
+    </div>
+    <div style="padding-top:2px;flex:1;min-width:0;">
+      <div style="font-size:12px;font-weight:${isActive?700:600};color:${nc};line-height:1.35;overflow:hidden;text-overflow:ellipsis;">${w.name}</div>
+      <div style="margin-top:3px;">${badge}</div>
+    </div>
+  </div>`;
+}
+
+function _rerenderTlWps(){
+  const wrap=document.getElementById('tlWpList');if(!wrap)return;
+  wrap.innerHTML=_tlWps.map(_wpItemHtml).join('');
+  const atEnd=_tlWpIdx>=_tlWps.length-1;
+  const canSkip=_tlWpIdx<_tlWps.length-2;
+  const pb=document.getElementById('tlPassBtn');
+  const sb=document.getElementById('tlSkipBtn');
+  if(pb){pb.disabled=atEnd;pb.style.opacity=atEnd?'.3':'1';}
+  if(sb){sb.disabled=!canSkip;sb.style.opacity=canSkip?'1':'.3';}
+  setTimeout(()=>{const el=document.querySelector('.tl-wp-active');if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'});},60);
+}
+
+function tlWarpTo(idx){
+  if(_tlAnimating||idx<1||idx>=_tlWps.length)return;
+  _tlWps.forEach((w,i)=>{if(w.status!=='skipped')w.status=i<idx?'passed':i===idx?'active':'pending';});
+  _tlWpIdx=idx;_rerenderTlWps();
+}
+
+function tlPass(){
+  if(_tlAnimating||_tlWpIdx>=_tlWps.length-1)return;
+  _tlAnimating=true;
+  const next=_tlWpIdx+1;
+  const dur=_tlVehicle?350:1400;
+  const el=document.getElementById('tlWp_'+next);
+  if(el){el.style.transition='background .2s';el.style.background='rgba(231,76,60,.07)';}
+  setTimeout(()=>{
+    _tlWps[_tlWpIdx].status='passed';
+    _tlWps[next].status='active';
+    _tlWpIdx=next;
+    _tlAnimating=false;
+    _rerenderTlWps();
+    if(_tlWps[next].isTarget)toast('🎯 사고 위치 도달!');
+  },dur);
+}
+
+function tlSkip(){
+  if(_tlAnimating||_tlWpIdx>=_tlWps.length-2)return;
+  const si=_tlWpIdx+1;
+  _tlWps[si].status='skipped';
+  if(si+1<_tlWps.length){_tlWps[si+1].status='active';_tlWpIdx=si+1;}
+  else _tlWpIdx=si;
+  _rerenderTlWps();
+}
+
+function toggleTlVehicle(){
+  _tlVehicle=!_tlVehicle;
+  const b=document.getElementById('tlVehicleBtn');
+  if(b){
+    b.style.background=_tlVehicle?'rgba(231,76,60,.18)':'transparent';
+    b.style.borderColor=_tlVehicle?'rgba(231,76,60,.45)':'rgba(255,255,255,.12)';
+    b.style.color=_tlVehicle?'#e74c3c':'rgba(255,255,255,.4)';
+    b.textContent='🚗 '+(_tlVehicle?'차량 ON':'차량 OFF');
+  }
+}
+
+function _submitTlWrite(id){
+  const res=DB.g('rescues')||[];const idx=res.findIndex(x=>x.id===id);if(idx===-1)return;
+  const upd=(document.getElementById('tlWrUpd')?.value||'').trim();
+  if(!upd){toast('⚠️ 현황을 입력하세요');return;}
+  if(!res[idx].reports)res[idx].reports=[];
+  const u=DB.g('currentUser')||{};
+  res[idx].reports.push({repTime:now(),update:upd,victimChange:(document.getElementById('tlWrVic')?.value||'').trim(),addMem:(document.getElementById('tlWrMem')?.value||'').trim(),author:u.name||''});
+  DB.s('rescues',res);DB.sync();
+  toast('📋 '+(res[idx].reports.length+1)+'보 등록됨');
+  renderTimeline(res[idx],'write');
+}
 function renderTimeline(r,viewMode){
   _hideRepFooter();
   _curViewResId=r.id;
-  _tlViewMode=viewMode||'brief';
+  const mode=(viewMode==='full'||viewMode==='write')?'write':'advanced';
+  _tlMode=mode;_tlViewMode=mode;
+  if(mode==='advanced'&&_tlWpResId!==r.id){
+    _tlWps=_buildTlWps(r);_tlWpResId=r.id;_tlWpIdx=0;_tlVehicle=false;_tlAnimating=false;
+  }
   const all=[r,...(r.reports||[])];
   const w=document.getElementById('repContent');
 
-  function renderPhaseContent(p,i,mode){
-    if(i===0){
-      // 1보
-      const brief=`<div class="tl-body">📍 ${r.location||'위치 미기재'}<br>🧑 ${r.vName||'미상'} · ${r.severity||'-'}<br>🩺 ${(r.injuryParts||[]).join(', ')||'-'}<br>🚑 ${(r.rescueMethod||[]).join(', ')||'-'}</div>`;
-      const full=`<div class="tl-body">
-        <b>위치:</b> ${r.location||'-'} (${r.loctype||'-'})<br>
-        <b>사고자:</b> ${r.vName||'미상'} / ${(r.vGender&&r.vGender!=='알수없음')?r.vGender:'성별미상'} / ${(r.vNation&&r.vNation!=='알수없음')?r.vNation:'국적미상'}<br>
-        <b>연락처:</b> ${r.vTel||'-'}<br>
-        <b>중증도:</b> ${r.severity||'-'}<br>
-        <b>사고 원인:</b> ${r.cause||'-'}<br>
-        <b>부상 부위:</b> ${(r.injuryParts||[]).join(', ')||'-'}<br>
-        <b>부상 유형:</b> ${(r.injuryTypes||[]).join(', ')||'-'}<br>
-        <b>구조 방법:</b> ${(r.rescueMethod||[]).join(', ')||'-'}<br>
-        <b>출동:</b> ${r.dispatch||'-'} → 도착: ${r.arrival||'-'}<br>
-        <b>출동 대원:</b> ${(r.members||[]).join(', ')||'-'}<br>
-        <b>119:</b> ${r.r119||'-'} · 기타: ${r.others||'-'}<br>
-        <b>병원 후송:</b> ${(r.hospital&&r.hospital!=='미정')?r.hospital:'미정'}<br>
-        <b>기상:</b> ${r.weather||'-'} ${r.weatherAlert||''}<br>
-        <b>음주:</b> ${(r.alcohol&&r.alcohol!=='알수없음')?r.alcohol:'-'}<br>
-        ${r.situation?`<b>경위:</b> ${r.situation}<br>`:''}
-        ${r.extra?`<b>특이:</b> ${r.extra}`:''}
-      </div>`;
-      return mode==='full'?full:brief;
-    } else {
-      // n보
-      const brief=`<div class="tl-body">📝 ${(p.update||'내용없음').slice(0,60)}${(p.update||'').length>60?'...':''}<br>👤 ${p.victimChange||'-'}${p.addMem?` · 추가: ${p.addMem}`:''}</div>`;
-      const full=`<div class="tl-body"><b>상황:</b> ${p.update||'-'}<br><b>부상자 상태:</b> ${p.victimChange||'-'}${p.addMem?`<br><b>추가 대원:</b> ${p.addMem}`:''}</div>`;
-      return mode==='full'?full:brief;
-    }
-  }
-
-  // 타임라인 보 제목 생성 (카테고리 기반)
-  function tlTitle(p,idx){
-    if(idx===0){
-      const cats=[];
-      if(r.location)cats.push('위치·기상');
-      if(r.vName||r.severity)cats.push('환자·부상');
-      if((r.members||[]).length)cats.push('출동대원');
-      return '1보'+(cats.length?' — '+cats.join(' · '):'');
-    }
-    const cats=[];
-    if(p.update)cats.push('상황보고');
-    if(p.victimChange&&p.victimChange!=='변화없음')cats.push('부상자 '+p.victimChange);
-    if(p.addMem)cats.push('대원추가');
-    return `${idx+1}보`+(cats.length?' — '+cats.join(' · '):'');
-  }
-
-  // 댓글 렌더링
   function renderComments(resId){
-    const cmts=(DB.g('comments_'+resId)||[]);
-    if(!cmts.length) return '<div style="font-size:11px;color:rgba(255,255,255,.25);padding:4px 0;">댓글 없음</div>';
+    const cmts=DB.g('comments_'+resId)||[];
+    if(!cmts.length)return '<div style="font-size:11px;color:rgba(255,255,255,.25);padding:4px 0;">댓글 없음</div>';
     return cmts.map(cm=>`<div style="background:#060d1a;border-radius:7px;padding:8px 10px;margin-bottom:5px;">
       <div style="font-size:10px;color:#4fa8d0;font-weight:600;">${cm.author||'익명'} · ${cm.time}</div>
       <div style="font-size:12px;color:#b8d4e8;margin-top:3px;line-height:1.5;">${cm.text}</div>
     </div>`).join('');
   }
 
-  const phaseBar=Array.from({length:all.length},(_,i)=>
-    `<div class="ph ${i<all.length-1?'done':'active'}"><div class="ph-dot"></div>${i+1}보</div>`).join('');
-
-  w.innerHTML=`
-    <!-- 헤더 -->
-    <div style="background:#0b1c30;border-radius:10px;padding:11px 12px;border:.5px solid rgba(255,255,255,.07);margin-bottom:10px;">
-      <div style="font-size:14px;font-weight:700;color:#e0edf8;">${r.title}</div>
-      <div style="font-size:11px;color:#3a6a8a;margin-top:3px;">${r.type} · ${r.status==='ongoing'?'<span style="color:#c0392b;font-weight:700;">진행중</span>':'<span style="color:#27ae60;font-weight:700;">종료</span>'} · ${r.date}</div>
-      <!-- 간편/전체 토글 -->
-      <div style="display:flex;gap:5px;margin-top:9px;">
-        <button onclick="renderTimeline(getRes(${r.id}),'brief')" style="flex:1;padding:6px;border-radius:7px;border:1px solid;font-size:11px;font-weight:600;cursor:pointer;background:${'brief'===_tlViewMode?'rgba(79,168,208,.15)':'transparent'};color:${'brief'===_tlViewMode?'#4fa8d0':'rgba(255,255,255,.35)'};border-color:${'brief'===_tlViewMode?'rgba(79,168,208,.5)':'rgba(255,255,255,.1)'};">간편보기</button>
-        <button onclick="renderTimeline(getRes(${r.id}),'full')" style="flex:1;padding:6px;border-radius:7px;border:1px solid;font-size:11px;font-weight:600;cursor:pointer;background:${'full'===_tlViewMode?'rgba(79,168,208,.15)':'transparent'};color:${'full'===_tlViewMode?'#4fa8d0':'rgba(255,255,255,.35)'};border-color:${'full'===_tlViewMode?'rgba(79,168,208,.5)':'rgba(255,255,255,.1)'};">전체보기</button>
-      </div>
+  const tabHdr=`<div style="background:#0b1c30;border-radius:10px;padding:11px 12px;border:.5px solid rgba(255,255,255,.07);margin-bottom:10px;">
+    <div style="font-size:14px;font-weight:700;color:#e0edf8;">${r.title}</div>
+    <div style="font-size:11px;color:#3a6a8a;margin-top:3px;">${r.type} · ${r.status==='ongoing'?'<span style="color:#c0392b;font-weight:700;">진행중</span>':'<span style="color:#27ae60;font-weight:700;">종료</span>'} · ${r.date}</div>
+    <div style="display:flex;gap:5px;margin-top:9px;">
+      <button onclick="renderTimeline(getRes(${r.id}),'advanced')" style="flex:1;padding:6px;border-radius:7px;border:1px solid;font-size:11px;font-weight:600;cursor:pointer;background:${'advanced'===mode?'rgba(79,168,208,.15)':'transparent'};color:${'advanced'===mode?'#4fa8d0':'rgba(255,255,255,.35)'};border-color:${'advanced'===mode?'rgba(79,168,208,.5)':'rgba(255,255,255,.1)'};">📍 고도화 타임라인</button>
+      <button onclick="renderTimeline(getRes(${r.id}),'write')" style="flex:1;padding:6px;border-radius:7px;border:1px solid;font-size:11px;font-weight:600;cursor:pointer;background:${'write'===mode?'rgba(79,168,208,.15)':'transparent'};color:${'write'===mode?'#4fa8d0':'rgba(255,255,255,.35)'};border-color:${'write'===mode?'rgba(79,168,208,.5)':'rgba(255,255,255,.1)'};">✏️ 작성</button>
     </div>
+  </div>`;
 
-    <!-- 타임라인 -->
-    ${r.timetable&&r.timetable.length?`
-    <div style="background:#0b1c30;border-radius:10px;padding:12px;border:.5px solid rgba(79,168,208,.15);margin-bottom:10px;">
-      <div style="font-size:11px;color:#4fa8d0;font-weight:700;margin-bottom:8px;">⏱ 구조 타임라인</div>
-      <div style="position:relative;padding-left:16px;">
-        <div style="position:absolute;left:5px;top:0;bottom:0;width:1px;background:rgba(79,168,208,.2);"></div>
-        ${r.timetable.map((e,ti)=>`
-          <div style="position:relative;margin-bottom:10px;">
-            <div style="position:absolute;left:-14px;top:5px;width:10px;height:10px;border-radius:50%;background:${e.stage==='요구조자 조우'?'#c0392b':e.stage==='처치완료'?'#27ae60':e.stage==='출동완료'||e.stage==='현장도착'?'#e67e22':'#4fa8d0'};border:2px solid #0b1c30;box-shadow:0 0 0 2px rgba(${e.stage==='요구조자 조우'?'192,57,43':e.stage==='처치완료'?'39,174,96':'79,168,208'},.15);"></div>
+  if(mode==='advanced'){
+    const atEnd=_tlWpIdx>=_tlWps.length-1;
+    const canSkip=_tlWpIdx<_tlWps.length-2;
+    w.innerHTML=tabHdr+`
+      <div style="background:#0b1c30;border-radius:10px;padding:12px;border:.5px solid rgba(79,168,208,.2);margin-bottom:10px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;">
+          <div style="font-size:11px;color:#4fa8d0;font-weight:700;">📍 구조 경로 시뮬레이션</div>
+          <button id="tlVehicleBtn" onclick="toggleTlVehicle()" style="padding:4px 10px;border-radius:7px;border:1px solid ${_tlVehicle?'rgba(231,76,60,.45)':'rgba(255,255,255,.12)'};background:${_tlVehicle?'rgba(231,76,60,.18)':'transparent'};color:${_tlVehicle?'#e74c3c':'rgba(255,255,255,.4)'};font-size:10px;font-weight:600;cursor:pointer;">🚗 ${_tlVehicle?'차량 ON':'차량 OFF'}</button>
+        </div>
+        ${_tlWps.length>1?`
+        <div id="tlWpList">${_tlWps.map(_wpItemHtml).join('')}</div>
+        <div style="display:flex;gap:7px;margin-top:11px;padding-top:9px;border-top:1px solid rgba(255,255,255,.06);">
+          <button id="tlPassBtn" onclick="tlPass()" ${atEnd?'disabled':''} style="flex:2;padding:9px;border-radius:8px;border:1px solid rgba(79,168,208,.4);background:rgba(79,168,208,.12);color:#4fa8d0;font-size:12px;font-weight:700;cursor:pointer;opacity:${atEnd?.3:1};">→ 통과</button>
+          <button id="tlSkipBtn" onclick="tlSkip()" ${!canSkip?'disabled':''} style="flex:1;padding:9px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:transparent;color:rgba(255,255,255,.45);font-size:12px;font-weight:600;cursor:pointer;opacity:${canSkip?1:.3};">건너뛰기</button>
+        </div>`:`<div style="text-align:center;font-size:11px;color:rgba(255,255,255,.25);padding:12px;">다목적위치표지판 데이터 없음</div>`}
+      </div>
+      ${r.timetable&&r.timetable.length?`
+      <div style="background:#0b1c30;border-radius:10px;padding:12px;border:.5px solid rgba(79,168,208,.1);margin-bottom:10px;">
+        <div style="font-size:11px;color:#4fa8d0;font-weight:700;margin-bottom:8px;">⏱ 세부 기록</div>
+        <div style="position:relative;padding-left:16px;">
+          <div style="position:absolute;left:5px;top:0;bottom:0;width:1px;background:rgba(79,168,208,.2);"></div>
+          ${r.timetable.map(e=>`<div style="position:relative;margin-bottom:10px;">
+            <div style="position:absolute;left:-14px;top:5px;width:10px;height:10px;border-radius:50%;background:${e.stage==='요구조자 조우'?'#c0392b':e.stage==='처치완료'?'#27ae60':e.stage==='출동완료'||e.stage==='현장도착'?'#e67e22':'#4fa8d0'};border:2px solid #0b1c30;"></div>
             <div style="font-size:11px;font-weight:700;color:#e0edf8;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">${e.actor?`<span style="background:rgba(126,200,163,.1);border:1px solid rgba(126,200,163,.25);color:#7ec8a0;border-radius:5px;font-size:9px;font-weight:700;padding:1px 5px;">${e.actor}</span>`:''}${e.stage}</div>
-            <div style="font-size:10px;color:#4a7090;margin-top:2px;display:flex;align-items:center;gap:4px;"><span style="background:rgba(58,106,138,.15);border:1px solid rgba(79,168,208,.12);border-radius:5px;padding:1px 5px;font-size:9px;color:#4fa8d0;">${e.time||'-'}</span>${e.note?`<span style="color:#3a5a6a;">· ${e.note}</span>`:''}</div>
+            <div style="font-size:10px;color:#4a7090;margin-top:2px;"><span style="background:rgba(58,106,138,.15);border:1px solid rgba(79,168,208,.12);border-radius:5px;padding:1px 5px;font-size:9px;color:#4fa8d0;">${e.time||'-'}</span>${e.note?` · <span style="color:#3a5a6a;">${e.note}</span>`:''}</div>
           </div>`).join('')}
-      </div>
-    </div>`:''}
-    <div class="timeline">
-    ${all.map((p,i)=>`
-      <div class="tl-item">
-        <div class="tl-dot ${i<all.length-1?'done':r.status==='ongoing'?'active':'done'}"></div>
-        <div class="tl-time">
-          <span class="tl-time-badge">${i===0?r.date:p.repTime||'-'}</span>
-          <span style="color:#2a4a5a;">·</span>
-          <span style="color:#4a7090;">${i===0?r.author||'-':p.author||'-'}</span>
         </div>
-        <div class="tl-box">
-          <div class="tl-title">${tlTitle(p,i)}</div>
-          ${renderPhaseContent(p,i,_tlViewMode)}
+      </div>`:''}
+      ${r.status==='ongoing'?`
+      <div style="display:flex;gap:7px;margin-top:6px;">
+        <button class="btn-submit" style="flex:2;background:#1a4a6e;color:#fff;" onclick="selResId=${r.id};curResId=${r.id};addPhase();">📋 다음 보 추가</button>
+        <button class="btn-submit" style="flex:1;background:#0d5040;color:#fff;" onclick="selResId=${r.id};curResId=${r.id};endSit();">✅ 종료</button>
+      </div>`:'<div style="margin-top:6px;text-align:center;font-size:12px;color:#27ae60;padding:8px;">✅ 상황 종료됨</div>'}`;
+  } else {
+    // 작성 mode
+    function tlTitle(p,idx){
+      if(idx===0){
+        const cats=[];
+        if(r.location)cats.push('위치·기상');
+        if(r.vName||r.severity)cats.push('환자·부상');
+        if((r.members||[]).length)cats.push('출동대원');
+        return '1보'+(cats.length?' — '+cats.join(' · '):'');
+      }
+      const cats=[];
+      if(p.update)cats.push('상황보고');
+      if(p.victimChange&&p.victimChange!=='변화없음')cats.push('부상자 '+p.victimChange);
+      if(p.addMem)cats.push('대원추가');
+      return `${idx+1}보`+(cats.length?' — '+cats.join(' · '):'');
+    }
+    function renderPhaseContent(p,i){
+      if(i===0){
+        return `<div class="tl-body">
+          <b>위치:</b> ${r.location||'-'} (${r.loctype||'-'})<br>
+          <b>사고자:</b> ${r.vName||'미상'} / ${(r.vGender&&r.vGender!=='알수없음')?r.vGender:'성별미상'} / ${(r.vNation&&r.vNation!=='알수없음')?r.vNation:'국적미상'}<br>
+          <b>연락처:</b> ${r.vTel||'-'} · <b>중증도:</b> ${r.severity||'-'}<br>
+          <b>부상 부위:</b> ${(r.injuryParts||[]).join(', ')||'-'}<br>
+          <b>구조 방법:</b> ${(r.rescueMethod||[]).join(', ')||'-'}<br>
+          <b>출동:</b> ${r.dispatch||'-'} → 도착: ${r.arrival||'-'}<br>
+          <b>기상:</b> ${r.weather||'-'} ${r.weatherAlert||''}<br>
+          ${r.situation?`<b>경위:</b> ${r.situation}<br>`:''}${r.extra?`<b>특이:</b> ${r.extra}`:''}
+        </div>`;
+      }
+      return `<div class="tl-body"><b>상황:</b> ${p.update||'-'}<br><b>부상자 상태:</b> ${p.victimChange||'-'}${p.addMem?`<br><b>추가 대원:</b> ${p.addMem}`:''}</div>`;
+    }
+    w.innerHTML=tabHdr+`
+      <div class="timeline">
+      ${all.map((p,i)=>`
+        <div class="tl-item">
+          <div class="tl-dot ${i<all.length-1?'done':r.status==='ongoing'?'active':'done'}"></div>
+          <div class="tl-time">
+            <span class="tl-time-badge">${i===0?r.date:p.repTime||'-'}</span>
+            <span style="color:#2a4a5a;">·</span>
+            <span style="color:#4a7090;">${i===0?r.author||'-':p.author||'-'}</span>
+          </div>
+          <div class="tl-box">
+            <div class="tl-title">${tlTitle(p,i)}</div>
+            ${renderPhaseContent(p,i)}
+          </div>
+        </div>`).join('')}
+      </div>
+
+      ${r.status==='ongoing'?`
+      <div style="background:#0b1c30;border-radius:10px;padding:12px;border:.5px solid rgba(79,168,208,.15);margin-top:10px;">
+        <div style="font-size:11px;color:#4fa8d0;font-weight:700;margin-bottom:10px;">📋 ${all.length+1}보 추가</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <textarea id="tlWrUpd" class="fta" rows="2" placeholder="현황 업데이트..."></textarea>
+          <input type="text" id="tlWrVic" class="fi" placeholder="부상자 상태...">
+          <input type="text" id="tlWrMem" class="fi" placeholder="추가 대원...">
+          <div style="display:flex;gap:7px;">
+            <button class="btn-submit" style="flex:2;background:#1a4a6e;color:#fff;" onclick="_submitTlWrite(${r.id});">📋 보고 추가</button>
+            <button class="btn-submit" style="flex:1;background:#0d5040;color:#fff;" onclick="selResId=${r.id};curResId=${r.id};endSit();">✅ 종료</button>
+          </div>
         </div>
-      </div>`).join('')}
-    </div>
+      </div>`:'<div style="margin-top:8px;text-align:center;font-size:12px;color:#27ae60;padding:8px;">✅ 상황 종료됨</div>'}
 
-    <!-- 댓글 -->
-    <div style="background:#0b1c30;border-radius:10px;padding:12px;border:.5px solid rgba(255,255,255,.07);margin-top:10px;">
-      <div style="font-size:11px;color:#4fa8d0;font-weight:700;margin-bottom:8px;">💬 댓글</div>
-      <div id="commentList_${r.id}">${renderComments(r.id)}</div>
-      <div style="display:flex;gap:6px;margin-top:8px;">
-        <input type="text" id="cmtInput_${r.id}" class="fi" placeholder="댓글 입력..." style="flex:1;">
-        <button onclick="submitComment(${r.id})" style="background:#1a4a6e;color:#fff;border:none;padding:0 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">등록</button>
+      <div style="background:#0b1c30;border-radius:10px;padding:12px;border:.5px solid rgba(255,255,255,.07);margin-top:10px;">
+        <div style="font-size:11px;color:#4fa8d0;font-weight:700;margin-bottom:8px;">💬 댓글</div>
+        <div id="commentList_${r.id}">${renderComments(r.id)}</div>
+        <div style="display:flex;gap:6px;margin-top:8px;">
+          <input type="text" id="cmtInput_${r.id}" class="fi" placeholder="댓글 입력..." style="flex:1;">
+          <button onclick="submitComment(${r.id})" style="background:#1a4a6e;color:#fff;border:none;padding:0 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">등록</button>
+        </div>
       </div>
-    </div>
 
-    <!-- 액션 버튼 -->
-    <!-- 출동 인원 표시 -->
-    <div style="background:#0b1c30;border-radius:10px;padding:11px 12px;border:.5px solid rgba(79,168,208,.12);margin-top:8px;">
-      <div style="font-size:11px;color:#4fa8d0;font-weight:700;margin-bottom:7px;">👥 출동 인원</div>
-      <div style="font-size:11px;color:#b8d4e8;margin-bottom:4px;">
-        <span style="color:#4a7090;font-weight:600;">초동팀:</span> ${(r.members||[]).join(', ')||'미기재'}
-      </div>
-      ${(r.extraTeams&&r.extraTeams.length)?r.extraTeams.map(t=>`
-        <div style="font-size:11px;color:#b8d4e8;margin-bottom:3px;">
-          <span style="color:#7ec8a0;font-weight:600;">${t.teamName}:</span> ${t.members.join(', ')}
-        </div>`).join(''):''}
-      ${(r.agencies)?(()=>{
-        const ag=r.agencies; const parts=[];
-        if(ag.hwandongha) parts.push(`🚒 환동해 ${ag.hwTeam||'?'}팀`);
-        if(ag.fireAgencies&&ag.fireAgencies.length) ag.fireAgencies.forEach(a=>parts.push(`🚒 ${a.name}`));
-        if(ag.police) parts.push('🚔 경찰');
-        if(ag.forestry) parts.push('🌲 산림청');
-        if(ag.other) parts.push(ag.other);
-        if(ag.agenciesNote) parts.push(`(${ag.agenciesNote})`);
-        return parts.length?`<div style="font-size:11px;color:#b8d4e8;margin-top:2px;"><span style="color:#4a7090;">유관기관:</span> ${parts.join(' · ')}</div>`:'';
-      })():''}
-    </div>
-
-    ${r.status==='ongoing'?`
-    <div style="display:flex;gap:7px;margin-top:10px;">
-      <button class="btn-submit" style="flex:2;background:#1a4a6e;color:#fff;" onclick="selResId=${r.id};curResId=${r.id};addPhase();">📋 다음 보 추가</button>
-      <button class="btn-submit" style="flex:1;background:#0d5040;color:#fff;" onclick="selResId=${r.id};curResId=${r.id};endSit();">✅ 종료</button>
-    </div>`:'<div style="margin-top:10px;text-align:center;font-size:12px;color:#27ae60;padding:8px;">✅ 상황 종료됨</div>'}`;
+      <div style="background:#0b1c30;border-radius:10px;padding:11px 12px;border:.5px solid rgba(79,168,208,.12);margin-top:8px;">
+        <div style="font-size:11px;color:#4fa8d0;font-weight:700;margin-bottom:7px;">👥 출동 인원</div>
+        <div style="font-size:11px;color:#b8d4e8;margin-bottom:4px;"><span style="color:#4a7090;font-weight:600;">초동팀:</span> ${(r.members||[]).join(', ')||'미기재'}</div>
+        ${(r.extraTeams&&r.extraTeams.length)?r.extraTeams.map(t=>`<div style="font-size:11px;color:#b8d4e8;margin-bottom:3px;"><span style="color:#7ec8a0;font-weight:600;">${t.teamName}:</span> ${t.members.join(', ')}</div>`).join(''):''}
+        ${(r.agencies)?(()=>{
+          const ag=r.agencies;const parts=[];
+          if(ag.hwandongha)parts.push(`🚒 환동해 ${ag.hwTeam||'?'}팀`);
+          if(ag.fireAgencies&&ag.fireAgencies.length)ag.fireAgencies.forEach(a=>parts.push(`🚒 ${a.name}`));
+          if(ag.police)parts.push('🚔 경찰');
+          if(ag.forestry)parts.push('🌲 산림청');
+          if(ag.other)parts.push(ag.other);
+          if(ag.agenciesNote)parts.push(`(${ag.agenciesNote})`);
+          return parts.length?`<div style="font-size:11px;color:#b8d4e8;margin-top:2px;"><span style="color:#4a7090;">유관기관:</span> ${parts.join(' · ')}</div>`:'';
+        })():''}
+      </div>`;
+  }
 }
 function getRes(id){return (DB.g('rescues')||[]).find(r=>r.id===id)||{};}
 function submitComment(resId){
