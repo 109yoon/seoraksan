@@ -4136,10 +4136,10 @@ function openHistModal(){
 }
 var _editFacId=null;
 function openAddFac(){
-  if(!isAdminUser()){toast('⚠️ 관리자만 시설물을 등록할 수 있습니다');return;}
   _editFacId=null;
   document.getElementById('addFacModalTitle').textContent='🆕 시설물 등록';
-  fillSel('facTypeSel',DB.g('catFac')||[]);
+  const _cats=(DB.g('catFac')||[]).filter(c=>isAdminUser()||!c.includes('장소'));
+  fillSel('facTypeSel',_cats);
   document.getElementById('facInstall').value=today();
   ['facNameIn','facLocIn','facGpsIn','facNote'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('facInitSt').value='ok';
@@ -4630,13 +4630,7 @@ function openGuide(key){const g=GUIDES[key];if(!g)return;document.getElementById
 function kakaoLogin(){
   if(!window.Kakao||!Kakao.isInitialized()){toast('⚠️ 카카오 SDK 오류');return;}
   var isNative=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
-  if(isNative){
-    // APK: 카카오 웹 로그인 후 커스텀 스킴으로 앱 복귀
-    Kakao.Auth.authorize({redirectUri:'kakao'+KAKAO_KEY+'://oauth',throughTalk:false});
-  } else {
-    // 웹: 브라우저 OAuth 리다이렉트
-    Kakao.Auth.authorize({redirectUri:'https://109yoon.github.io/seoraksan/',throughTalk:false});
-  }
+  Kakao.Auth.authorize({redirectUri:'https://109yoon.github.io/seoraksan/',throughTalk:false});
 }
 function _handleKakaoCode(code,redirectUri){
   var _uri=redirectUri||'https://109yoon.github.io/seoraksan/';
