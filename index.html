@@ -185,6 +185,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .mpin{width:34px;height:34px;border-radius:50%;background:#0b1c30;display:flex;align-items:center;justify-content:center;font-size:15px;cursor:pointer;border:2.5px solid;box-shadow:0 3px 8px rgba(0,0,0,.8);}
 .mpin-sm{width:20px;height:20px;border-radius:50%;background:#0b2a3f;display:flex;align-items:center;justify-content:center;font-size:10px;cursor:pointer;border:1.5px solid #4fa8d0;box-shadow:0 2px 5px rgba(0,0,0,.7);opacity:.9;}
 .mpin-num{background:rgba(8,20,40,.88);border:1px solid rgba(79,168,208,.6);border-radius:3px;padding:1px 3px;font-size:6px;font-weight:700;color:#7ac8e8;white-space:nowrap;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.6);line-height:1.2;}
+.mpin-shelter{border-color:#27ae60;}
 .p-ok{border-color:#27ae60;}.p-warn{border-color:#e67e22;}.p-bad{border-color:#c0392b;}
 .p-acc{border-color:#c0392b;background:#c0392b;color:#fff;}.p-rock{border-color:#7d3c98;background:#7d3c98;color:#fff;}
 .p-tree{border-color:#ca6f1e;background:#ca6f1e;color:#fff;}.p-fire{border-color:#a93226;background:#a93226;color:#fff;}
@@ -1031,7 +1032,7 @@ body.guest-mode .guest-hide{display:none!important;}
         <select id="r_vChg" class="fsel"><option>변화없음</option><option>호전</option><option>악화</option><option>심정지</option></select>
       </div>
       <div class="fg"><span class="fl">추가 출동 대원</span><input type="text" id="r_addMem" class="fi" placeholder="추가 투입 대원명"></div>
-      <div class="fg"><span class="fl">작성자</span><input type="text" id="r_repAuthor" class="fi"></div>
+      <div class="fg"><span class="fl">작성자</span><input type="text" id="r_repAuthor" class="fi" style="opacity:.6;cursor:default;"></div>
       <textarea id="r_repExtra" class="fta" rows="2" placeholder="기타 특이사항 (선택)" style="width:100%;margin-top:4px;margin-bottom:0;"></textarea>
       <button class="btn-submit" style="background:#1a4a6e;color:#fff;margin-top:10px;" onclick="submitNBo()">💾 저장</button>
     </div>
@@ -1121,7 +1122,7 @@ body.guest-mode .guest-hide{display:none!important;}
         <button onclick="confirmHazFireTL()" style="background:#1a4a6e;color:#fff;border:none;padding:9px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;margin-bottom:11px;">추가</button>
       </div>
     </div>
-    <div class="fg"><span class="fl">보고자</span><input type="text" id="hz_author" class="fi"></div>
+    <div class="fg"><span class="fl">보고자</span><input type="text" id="hz_author" class="fi" style="opacity:.6;cursor:default;"></div>
     <button class="btn-submit" style="background:#7a3800;color:#fff;" onclick="submitHazard()">⚠️ 위험상황 등록</button>
   </div>
 </div>
@@ -1145,7 +1146,7 @@ body.guest-mode .guest-hide{display:none!important;}
       <select id="facInitSt" class="fsel"><option value="ok">✅ 신규/양호</option><option value="warn">⚠️ 일부 파손</option><option value="bad">🚨 파손 심각</option></select>
     </div>
     <div class="fg"><span class="fl">특이사항</span><textarea id="facNote" class="fta" rows="2" placeholder="재질, 설치기관 등"></textarea></div>
-    <div class="fg"><span class="fl">등록자</span><input type="text" id="facAuthor" class="fi"></div>
+    <div class="fg"><span class="fl">등록자</span><input type="text" id="facAuthor" class="fi" style="opacity:.6;cursor:default;"></div>
     <div class="fg"><span class="fl">초기 사진</span>
       <div class="photo-slot" onclick="document.getElementById('fileFac').click()">
         <input type="file" id="fileFac" accept="image/*" capture="environment" style="display:none;" onchange="prevImg(this,'prevFac')">
@@ -1439,11 +1440,13 @@ function initDB(){
   if(!_existStaff||(_existStaff.length&&['손경완','김택찬','염원종','김종식','나진영','양지석','윤태종'].some(n=>_existStaff.some(s=>s.name===n)))){
     DB.s('staff',[]);
   }
-  if(!DB.g('catFac'))     DB.s('catFac',['🪧 위치표지판','🪧 다목적위치표지판','🛤️ 데크/계단','🌉 교량','🏠 대피소','🛡️ 안전난간','🪵 목재계단','🚿 계곡시설']);
+  if(!DB.g('catFac'))     DB.s('catFac',['🪧 다목적위치표지판','📍 장소','🛤️ 데크/계단','🌉 교량','🏠 대피소','🛡️ 안전난간','🪵 목재계단','🚿 계곡시설']);
+  // 카테고리 마이그레이션: 위치표지판 제거, 장소 추가
+  (function(){var c=DB.g('catFac');if(!c)return;var c2=c.filter(function(x){return x!=='🪧 위치표지판';});if(!c2.includes('📍 장소'))c2.splice(1,0,'📍 장소');if(c2.length!==c.length||!c.includes('📍 장소'))DB.s('catFac',c2);})();
   if(!DB.g('wikiCats'))   DB.s('wikiCats',['지형','안전','장비','법령','응급','탐방로','시설','동식물','기상']);
   if(!DB.g('facilities')) DB.s('facilities',[
     {id:1,type:'🌉 교량',name:'설악-01 출렁다리',loc:'소공원 입구',status:'bad',lat:38.170,lng:128.480,install:'2025-05-10',note:'강철 와이어 부식',author:'손경완'},
-    {id:2,type:'🪧 위치표지판',name:'천불동 04지점',loc:'천불동 계곡',status:'ok',lat:38.165,lng:128.475,install:'2024-11-20',note:'',author:'김택찬'},
+    {id:2,type:'🪧 다목적위치표지판',name:'천불동 04지점',loc:'천불동 계곡',status:'ok',lat:38.165,lng:128.475,install:'2024-11-20',note:'',author:'김택찬'},
     {id:3,type:'🛡️ 안전난간',name:'비선대 상단 난간',loc:'비선대 직상부',status:'warn',lat:38.168,lng:128.483,install:'2023-08-15',note:'볼트 2개 이완',author:'손경완'},
   ]);
   if(!DB.g('rescues'))    DB.s('rescues',[]);
@@ -1613,7 +1616,7 @@ function _haversine(lat1,lng1,lat2,lng2){
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 function _nearestSign(lat,lng){
-  var signs=(DB.g('facilities')||[]).filter(function(f){return f.lat&&f.lng&&f.type&&(f.type.includes('위치표지')||f.type.includes('다목적'));});
+  var signs=(DB.g('facilities')||[]).filter(function(f){return f.lat&&f.lng&&f.type&&f.type.includes('다목적위치표지판');});
   var best=null,bestD=Infinity;
   signs.forEach(function(f){var d=_haversine(lat,lng,f.lat,f.lng);if(d<bestD){bestD=d;best=f;}});
   if(!best||bestD>3000)return null;
@@ -2553,14 +2556,23 @@ function renderRescueMap(){
     const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(h.lat,h.lng),content:el,clickable:true});
     ov.setMap(mapR);rOvs.push(ov);rEls.push(el);
   });
-  // 위치표지판 — 구조 위치 파악용 참조 마커 (번호 라벨)
-  (DB.g('facilities')||[]).filter(f=>f.lat&&f.lng&&f.type&&(f.type.includes('위치표지')||f.type.includes('다목적'))).forEach(f=>{
+  // 다목적위치표지판 — 구조 위치 파악용 번호 라벨
+  (DB.g('facilities')||[]).filter(f=>f.lat&&f.lng&&f.type&&f.type.includes('다목적위치표지판')).forEach(f=>{
     const el=document.createElement('div');
     el.className='mpin-num';
     const code=(f.name.match(/\d[\d\-]*\d|\d/)||[f.name.slice(0,6)])[0];
     el.textContent=code;
     el.title=f.name;
     el.onclick=e=>{e.stopPropagation();toast('📍 '+f.name);};
+    const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(f.lat,f.lng),content:el,clickable:true});
+    ov.setMap(mapR);rOvs.push(ov);rEls.push(el);
+  });
+  // 대피소 — 구조 지도 표시
+  (DB.g('facilities')||[]).filter(f=>f.lat&&f.lng&&f.type&&f.type.includes('대피소')).forEach(f=>{
+    const el=document.createElement('div');
+    el.className='mpin mpin-shelter';
+    el.innerHTML='🏠';el.title=f.name;
+    el.onclick=e=>{e.stopPropagation();toast('🏠 '+f.name+(f.loc?' ('+f.loc+')':''));};
     const ov=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(f.lat,f.lng),content:el,clickable:true});
     ov.setMap(mapR);rOvs.push(ov);rEls.push(el);
   });
@@ -3571,7 +3583,7 @@ function render1BoForm(prefill=null){
           <input type="text" id="r_title" class="fi" placeholder="위치·기상 탭 입력 시 자동생성" value="${p.title||''}">
         </div>
         <div class="fg"><span class="fl">보고 작성자</span>
-          <input type="text" id="r_author" class="fi" value="${getAuthor()}">
+          <input type="text" id="r_author" class="fi" value="${getAuthor()}" disabled style="opacity:.6;cursor:default;">
         </div>
         <div class="fg"><span class="fl">기타 특이사항</span>
           <textarea id="r_extra" class="fta" rows="3">${p.extra||''}</textarea>
@@ -3768,7 +3780,7 @@ function openNewHazard(){
   _hazFireTL=[];
   document.getElementById('hz_dt').value=nowDT();
   document.getElementById('hz_loc').value='';document.getElementById('hz_gps').value='';
-  document.getElementById('hz_desc').value='';document.getElementById('hz_author').value=getAuthor();
+  document.getElementById('hz_desc').value='';const _ha=document.getElementById('hz_author');_ha.value=getAuthor();_ha.disabled=true;
   document.getElementById('prevHaz').innerHTML='📸 현장 사진';
   document.getElementById('hazFireTimelineWrap').style.display='none';
   ['hazTypePills','hazDangerPills','hazStatusPills','hazOnSitePills','hazResponsePills'].forEach(id=>{document.querySelectorAll(`#${id} .pill`).forEach(p=>p.classList.remove('on'));});
@@ -4095,10 +4107,11 @@ function openHistModal(){
   document.getElementById('modalHist').classList.add('on');closeDB();
 }
 function openAddFac(){
+  if(!isAdminUser()){toast('⚠️ 관리자만 시설물을 등록할 수 있습니다');return;}
   fillSel('facTypeSel',DB.g('catFac')||[]);
   document.getElementById('facInstall').value=today();
   ['facNameIn','facLocIn','facGpsIn','facNote'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('facAuthor').value=getAuthor();
+  const _fa=document.getElementById('facAuthor');_fa.value=getAuthor();_fa.disabled=true;
   document.getElementById('prevFac').innerHTML='📸 촬영 또는 앨범';
   try{gpsFromMap('facGpsIn','inspect');}catch(e){}
   document.getElementById('modalAddFac').classList.add('on');
@@ -5265,6 +5278,7 @@ function selectPhaseChoice(choice,el){
   el.style.background='rgba(79,168,208,.12)';el.style.color='#4fa8d0';el.style.borderColor='rgba(79,168,208,.5)';
   document.getElementById('phaseChoiceWrap').style.display='none';
   document.getElementById('phaseFormWrap').style.display='block';
+  const _ra=document.getElementById('r_repAuthor');if(_ra){_ra.value=getAuthor();_ra.disabled=true;}
   const prevWrap=document.getElementById('prevReadonlyWrap');
   // 전보 내용 표시
   const res=DB.g('rescues')||[];const r=res.find(x=>x.id===curResId);
