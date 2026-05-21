@@ -3855,6 +3855,7 @@ function renderInspectMap(){
   const locs=['전체',...new Set(facs.map(f=>(f.loc||'').trim()).filter(Boolean))];
   _updateInspFilterPanel(types,locs);
   const filtered=facs.filter(f=>{
+    if(!isAdminUser()&&f.type.includes('장소'))return false;
     const sOk=facMapStatusF.size===0||facMapStatusF.has(f.status);
     const tOk=facMapTypeF.size===0||[...facMapTypeF].some(t=>f.type.includes(t));
     const lOk=facMapLocF.size===0||facMapLocF.has((f.loc||'').trim());
