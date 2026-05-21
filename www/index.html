@@ -717,10 +717,13 @@ body.guest-mode .guest-hide{display:none!important;}
     <div id="mapRescue" class="kakaomap"></div>
     <!-- 십자선 조준점 -->
     <div id="rescueCross" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:8;pointer-events:none;">
-      <div style="position:relative;width:24px;height:24px;">
-        <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:rgba(255,255,255,.55);transform:translateY(-50%);"></div>
-        <div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(255,255,255,.55);transform:translateX(-50%);"></div>
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:3px;height:3px;border-radius:50%;background:#4fa8d0;"></div>
+      <div style="position:relative;width:52px;height:52px;">
+        <div style="position:absolute;left:50%;top:0;height:calc(50% - 10px);width:2px;background:#fff;transform:translateX(-50%);box-shadow:0 0 4px 1px rgba(0,0,0,.9),-1px 0 0 rgba(0,0,0,.7),1px 0 0 rgba(0,0,0,.7);"></div>
+        <div style="position:absolute;left:50%;top:calc(50% + 10px);bottom:0;width:2px;background:#fff;transform:translateX(-50%);box-shadow:0 0 4px 1px rgba(0,0,0,.9),-1px 0 0 rgba(0,0,0,.7),1px 0 0 rgba(0,0,0,.7);"></div>
+        <div style="position:absolute;top:50%;left:0;right:calc(50% + 10px);height:2px;background:#fff;transform:translateY(-50%);box-shadow:0 0 4px 1px rgba(0,0,0,.9),0 -1px 0 rgba(0,0,0,.7),0 1px 0 rgba(0,0,0,.7);"></div>
+        <div style="position:absolute;top:50%;left:calc(50% + 10px);right:0;height:2px;background:#fff;transform:translateY(-50%);box-shadow:0 0 4px 1px rgba(0,0,0,.9),0 -1px 0 rgba(0,0,0,.7),0 1px 0 rgba(0,0,0,.7);"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:18px;height:18px;border-radius:50%;border:2px solid #4fa8d0;box-shadow:0 0 0 1px rgba(0,0,0,.8),0 0 6px rgba(79,168,208,.8);"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:5px;height:5px;border-radius:50%;background:#ff4c4c;box-shadow:0 0 4px rgba(255,76,76,.9),0 0 0 1px rgba(0,0,0,.6);"></div>
       </div>
     </div>
     <button class="map-ctrl" onclick="toggleMapType('rescue')">위성/일반</button>
@@ -800,10 +803,13 @@ body.guest-mode .guest-hide{display:none!important;}
     <div id="mapInspect" class="kakaomap"></div>
     <!-- 십자선 조준점 -->
     <div id="inspectCross" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:8;pointer-events:none;">
-      <div style="position:relative;width:24px;height:24px;">
-        <div style="position:absolute;top:50%;left:0;right:0;height:1px;background:rgba(255,255,255,.55);transform:translateY(-50%);"></div>
-        <div style="position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(255,255,255,.55);transform:translateX(-50%);"></div>
-        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:3px;height:3px;border-radius:50%;background:#27ae60;"></div>
+      <div style="position:relative;width:52px;height:52px;">
+        <div style="position:absolute;left:50%;top:0;height:calc(50% - 10px);width:2px;background:#fff;transform:translateX(-50%);box-shadow:0 0 4px 1px rgba(0,0,0,.9),-1px 0 0 rgba(0,0,0,.7),1px 0 0 rgba(0,0,0,.7);"></div>
+        <div style="position:absolute;left:50%;top:calc(50% + 10px);bottom:0;width:2px;background:#fff;transform:translateX(-50%);box-shadow:0 0 4px 1px rgba(0,0,0,.9),-1px 0 0 rgba(0,0,0,.7),1px 0 0 rgba(0,0,0,.7);"></div>
+        <div style="position:absolute;top:50%;left:0;right:calc(50% + 10px);height:2px;background:#fff;transform:translateY(-50%);box-shadow:0 0 4px 1px rgba(0,0,0,.9),0 -1px 0 rgba(0,0,0,.7),0 1px 0 rgba(0,0,0,.7);"></div>
+        <div style="position:absolute;top:50%;left:calc(50% + 10px);right:0;height:2px;background:#fff;transform:translateY(-50%);box-shadow:0 0 4px 1px rgba(0,0,0,.9),0 -1px 0 rgba(0,0,0,.7),0 1px 0 rgba(0,0,0,.7);"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:18px;height:18px;border-radius:50%;border:2px solid #27ae60;box-shadow:0 0 0 1px rgba(0,0,0,.8),0 0 6px rgba(39,174,96,.8);"></div>
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:5px;height:5px;border-radius:50%;background:#ff4c4c;box-shadow:0 0 4px rgba(255,76,76,.9),0 0 0 1px rgba(0,0,0,.6);"></div>
       </div>
     </div>
     <button class="map-ctrl" onclick="toggleMapType('inspect')">위성/일반</button>
@@ -4620,58 +4626,90 @@ function _checkAndRequireProfile(){
 }
 
 var _weatherFetched=false;
-// 지역별 좌표: 설악산 영향권 5개 지점
+var KMA_KEY='S3Nk1fdqSpqzZNX3anqaWA';
+var KMA_BASE='https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstInfoService_2.0';
+// 지역별 KMA 격자 좌표
 var _WEATHER_REGIONS=[
-  {name:'속초',lat:38.21,lng:128.59},
-  {name:'인제',lat:38.06,lng:128.17},
-  {name:'양양',lat:38.08,lng:128.62},
-  {name:'고성',lat:38.38,lng:128.47},
-  {name:'설악',lat:38.13,lng:128.41}
+  {name:'속초',nx:87,ny:141},
+  {name:'인제',nx:73,ny:132},
+  {name:'양양',nx:79,ny:138},
+  {name:'고성',nx:83,ny:146},
+  {name:'설악',nx:80,ny:140}
 ];
+function _kmaNCSTTime(){
+  var n=new Date(),m=n.getMinutes();
+  var d=m<10?new Date(n-3600000):n;
+  var h=d.getHours();
+  return{date:d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0'),time:String(h).padStart(2,'0')+'00'};
+}
+function _kmaFcstTime(){
+  var n=new Date(),h=n.getHours(),m=n.getMinutes();
+  var slots=[23,20,17,14,11,8,5,2];
+  for(var i=0;i<slots.length;i++){var s=slots[i];if(h>s||(h===s&&m>=10))return{date:n.getFullYear()+String(n.getMonth()+1).padStart(2,'0')+String(n.getDate()).padStart(2,'0'),time:String(s).padStart(2,'0')+'00'};}
+  var p=new Date(n-86400000);return{date:p.getFullYear()+String(p.getMonth()+1).padStart(2,'0')+String(p.getDate()).padStart(2,'0'),time:'2300'};
+}
+function _kmaItems(json){
+  if(!json||!json.response)return[];
+  var b=json.response.body;if(!b||!b.items)return[];
+  var it=b.items.item;return Array.isArray(it)?it:(it?[it]:[]);
+}
+function _parsePCP(v){if(!v||v==='강수없음')return 0;if(v.includes('미만'))return 0.5;var n=parseFloat(v);return isNaN(n)?0:n;}
+function _parseSNO(v){if(!v||v==='적설없음')return 0;if(v.includes('미만'))return 0.5;var n=parseFloat(v);return isNaN(n)?0:n;}
+function _ptyInfo(pty){var p=parseInt(pty||0);return{ico:p===0?'☀️':p===1||p===4?'🌧️':p===2?'🌨️':p===3?'❄️':'🌤️',desc:['맑음','비','비/눈','눈','소나기'][p]||'맑음'};}
+function _skyIco(sky,pty){var p=parseInt(pty||0);if(p===1||p===4)return'🌧️';if(p===2)return'🌨️';if(p===3)return'❄️';var s=parseInt(sky||1);return s===1?'☀️':s===3?'⛅':s===4?'☁️':'🌤️';}
+function _skyDesc(sky,pty){var p=parseInt(pty||0);if(p===1)return'비';if(p===2)return'비/눈';if(p===3)return'눈';if(p===4)return'소나기';var s=parseInt(sky||1);return s===1?'맑음':s===3?'구름많음':s===4?'흐림':'맑음';}
 function fetchWeather(){
   if(_weatherFetched)return;
   _weatherFetched=true;
-  var baseUrl='https://api.open-meteo.com/v1/forecast';
-  var regionParams=_WEATHER_REGIONS.map(function(r){
-    return baseUrl+'?latitude='+r.lat+'&longitude='+r.lng+'&hourly=precipitation,snowfall,windgusts_10m,wind_speed_10m&wind_speed_unit=ms&timezone=Asia%2FSeoul&forecast_hours=24';
-  });
-  // current 파라미터 (최신 API)
-  var currentUrl=baseUrl+'?latitude=38.21&longitude=128.59&current=temperature_2m,wind_speed_10m,weather_code&wind_speed_unit=ms&timezone=Asia%2FSeoul';
-  Promise.all([fetch(currentUrl).then(function(r){return r.json();})].concat(regionParams.map(function(u){return fetch(u).then(function(r){return r.json();});})))
-    .then(function(results){
-      var cur=results[0];var regResults=results.slice(1);
-      var cw=cur.current||cur.current_weather;if(!cw)return;
-      var code=cw.weather_code!==undefined?cw.weather_code:(cw.weathercode||0);
-      var temp=cw.temperature_2m!==undefined?cw.temperature_2m:cw.temperature;
-      var wspd=cw.wind_speed_10m!==undefined?cw.wind_speed_10m:cw.windspeed;
-      var ico=code===0?'☀️':code<=2?'🌤️':code===3?'☁️':code<=48?'🌫️':code<=55?'🌦️':code<=65?'🌧️':code<=77?'🌨️':code<=82?'🌧️':code<=86?'🌨️':'⛈️';
-      document.getElementById('wIco').textContent=ico;
+  var dt=_kmaNCSTTime(),ft=_kmaFcstTime();
+  // 속초 초단기실황 (현재 날씨)
+  var ncstUrl=KMA_BASE+'/getUltraSrtNcst?authKey='+KMA_KEY+'&dataType=JSON&numOfRows=10&pageNo=1&baseDate='+dt.date+'&baseTime='+dt.time+'&nx=87&ny=141';
+  // 속초 단기예보 12h (특보 계산용)
+  var fcstUrl=KMA_BASE+'/getVilageFcst?authKey='+KMA_KEY+'&dataType=JSON&numOfRows=300&pageNo=1&baseDate='+ft.date+'&baseTime='+ft.time+'&nx=87&ny=141';
+  Promise.all([
+    fetch(ncstUrl).then(function(r){return r.json();}).catch(function(){return null;}),
+    fetch(fcstUrl).then(function(r){return r.json();}).catch(function(){return null;})
+  ]).then(function(results){
+    var ncst=results[0],fcst=results[1];
+    if(ncst){
+      var obs={};
+      _kmaItems(ncst).forEach(function(it){obs[it.category]=it.obsrValue;});
+      var temp=parseFloat(obs.T1H||0);
+      var wspd=parseFloat(obs.WSD||0);
+      var pi=_ptyInfo(obs.PTY||0);
+      document.getElementById('wIco').textContent=pi.ico;
       document.getElementById('wTmp').textContent=Math.round(temp)+'°';
-      document.getElementById('wDesc').textContent='속초 · '+(['맑음','대체로맑음','구름조금','흐림','안개','이슬비','비','눈','소나기','뇌우'][code===0?0:code<=1?1:code<=2?2:code<=3?3:code<=48?4:code<=55?5:code<=65?6:code<=77?7:code<=82?8:8]||'');
+      document.getElementById('wDesc').textContent='속초 · '+pi.desc;
       document.getElementById('wWind').textContent='💨 '+Math.round(wspd)+'m/s';
       var ws=document.getElementById('weatherStrip');if(ws)ws.style.display='flex';
-      var alertMap={};
-      regResults.forEach(function(d,i){
-        var rName=_WEATHER_REGIONS[i].name;
-        var h=d.hourly;if(!h)return;
-        var precip=h.precipitation||[];var snow=h.snowfall||[];var gust=h.windgusts_10m||[];var wind=h.wind_speed_10m||[];
-        var sum12Precip=precip.slice(0,12).reduce(function(a,b){return a+b;},0);
-        var sum12Snow=snow.slice(0,12).reduce(function(a,b){return a+b;},0);
-        var maxHourPrecip=Math.max.apply(null,precip.slice(0,12).concat([0]));
-        var maxGust=Math.max.apply(null,gust.slice(0,12).concat([0]));
-        var maxWind=Math.max.apply(null,wind.slice(0,12).concat([0]));
-        var reasons=[];var level='';
-        if(maxHourPrecip>=50||sum12Precip>=110){level='경보';reasons.push('호우경보(12h'+sum12Precip.toFixed(0)+'mm)');}
-        else if(maxHourPrecip>=30||sum12Precip>=70){if(level!=='경보')level='주의보';reasons.push('호우주의보');}
-        if(maxGust>=26||maxWind>=21){level='경보';reasons.push('강풍경보(돌풍'+maxGust.toFixed(0)+'m/s)');}
-        else if(maxGust>=20||maxWind>=14){if(level!=='경보')level='주의보';reasons.push('강풍주의보');}
-        if(sum12Snow>=20){level='경보';reasons.push('대설경보('+sum12Snow.toFixed(0)+'cm)');}
-        else if(sum12Snow>=5){if(level!=='경보')level='주의보';reasons.push('대설주의보');}
-        if(reasons.length>0)alertMap[rName]={level,reasons};
+    }
+    var alertMap={};
+    if(fcst){
+      var byTime={};
+      _kmaItems(fcst).forEach(function(it){
+        var k=it.fcstDate+it.fcstTime;
+        if(!byTime[k])byTime[k]={};
+        byTime[k][it.category]=it.fcstValue;
       });
-      _renderWeatherAlerts(alertMap);
-    })
-    .catch(function(e){console.warn('날씨 로드 실패:',e);_weatherFetched=false;});
+      var keys=Object.keys(byTime).sort().slice(0,12);
+      var pcpSum=0,snoSum=0,wsdMax=0;
+      keys.forEach(function(k){
+        var d=byTime[k];
+        pcpSum+=_parsePCP(d.PCP);
+        snoSum+=_parseSNO(d.SNO);
+        var w=parseFloat(d.WSD||0);if(w>wsdMax)wsdMax=w;
+      });
+      var reasons=[],level='';
+      if(pcpSum>=110){level='경보';reasons.push('호우경보('+pcpSum.toFixed(0)+'mm)');}
+      else if(pcpSum>=70){level='주의보';reasons.push('호우주의보');}
+      if(wsdMax>=21){level='경보';reasons.push('강풍경보('+wsdMax.toFixed(0)+'m/s)');}
+      else if(wsdMax>=14&&level!=='경보'){level='주의보';reasons.push('강풍주의보');}
+      if(snoSum>=20){level='경보';reasons.push('대설경보('+snoSum.toFixed(0)+'cm)');}
+      else if(snoSum>=5&&level!=='경보'){level='주의보';reasons.push('대설주의보');}
+      if(reasons.length)alertMap['설악권']={level:level,reasons:reasons};
+    }
+    _renderWeatherAlerts(alertMap);
+  }).catch(function(e){console.warn('KMA 날씨 오류:',e);_weatherFetched=false;});
 }
 function _renderWeatherAlerts(alertMap){
   var wrap=document.getElementById('weatherAlertWrap');if(!wrap)return;
@@ -4709,68 +4747,61 @@ function refreshWeatherDetail(){
 function _fetchWeatherDetail(){
   if(_wDetailFetching)return;
   _wDetailFetching=true;
-  var base='https://api.open-meteo.com/v1/forecast';
-  var dailyUrl=base+'?latitude=38.13&longitude=128.41&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,weather_code,windgusts_10m_max&wind_speed_unit=ms&timezone=Asia%2FSeoul&forecast_days=7';
+  var dt=_kmaNCSTTime(),ft=_kmaFcstTime();
+  // 5개 지역 초단기실황
+  var ncstCalls=_WEATHER_REGIONS.map(function(r){
+    var url=KMA_BASE+'/getUltraSrtNcst?authKey='+KMA_KEY+'&dataType=JSON&numOfRows=10&pageNo=1&baseDate='+dt.date+'&baseTime='+dt.time+'&nx='+r.nx+'&ny='+r.ny;
+    return fetch(url).then(function(res){return res.json();}).catch(function(){return null;});
+  });
+  // 설악 단기예보 (7일)
+  var fcst7Url=KMA_BASE+'/getVilageFcst?authKey='+KMA_KEY+'&dataType=JSON&numOfRows=900&pageNo=1&baseDate='+ft.date+'&baseTime='+ft.time+'&nx=80&ny=140';
   Promise.all([
-    Promise.all(_WEATHER_REGIONS.map(function(r){
-      return fetch(base+'?latitude='+r.lat+'&longitude='+r.lng+'&current=temperature_2m,wind_speed_10m,weather_code&hourly=precipitation,snowfall,windgusts_10m,wind_speed_10m&wind_speed_unit=ms&timezone=Asia%2FSeoul&forecast_hours=24')
-        .then(function(res){return res.json();})
-        .then(function(d){return{region:r.name,data:d};});
-    })),
-    fetch(dailyUrl).then(function(res){return res.json();}).catch(function(){return null;})
-  ])
-  .then(function(all){
+    Promise.all(ncstCalls),
+    fetch(fcst7Url).then(function(res){return res.json();}).catch(function(){return null;})
+  ]).then(function(all){
     _wDetailFetching=false;
-    _wDetailCache={regions:all[0],daily:all[1]};
+    _wDetailCache={regions:_WEATHER_REGIONS.map(function(r,i){return{region:r.name,ncst:all[0][i]};}),fcst7:all[1]};
     _renderWeatherDetail(_wDetailCache);
-  })
-  .catch(function(){
+  }).catch(function(){
     _wDetailFetching=false;
     document.getElementById('weatherDetailBody').innerHTML='<div class="wdetail-loading">날씨 데이터를 불러오지 못했습니다. ↻ 를 눌러 재시도하세요.</div>';
   });
 }
 function _renderWeatherDetail(cache){
-  var results=cache.regions||cache;
-  var daily=cache.daily||null;
-  function wico(c){return c===0?'☀️':c<=2?'🌤️':c===3?'☁️':c<=48?'🌫️':c<=55?'🌦️':c<=65?'🌧️':c<=77?'🌨️':c<=82?'🌧️':c<=86?'🌨️':'⛈️';}
-  function wdesc(c){return c===0?'맑음':c<=2?'구름조금':c===3?'흐림':c<=48?'안개':c<=55?'이슬비':c<=65?'비':c<=77?'눈':c<=82?'소나기':'뇌우';}
-  var html='<div style="font-size:10px;color:#3a6a8a;margin-bottom:8px;text-align:right;">'+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})+' 기준 (Open-Meteo)</div>';
-  // ── 현재 날씨 (compact grid) ─────────────────
+  var results=cache.regions||[];
+  var fcst7=cache.fcst7||null;
+  var html='<div style="font-size:10px;color:#3a6a8a;margin-bottom:8px;text-align:right;">'+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'})+' 기준 (기상청)</div>';
+  // ── 권역별 현재 날씨 (초단기실황) ─────────────────
   html+='<div class="wfc-sec"><div class="wfc-title">🌡️ 권역별 현재 날씨</div>';
   html+='<div class="wdetail-now-grid">';
   var anyAlert=false,alertsAll=[];
   results.forEach(function(item,idx){
-    var r=item.region;var d=item.data;
-    var cw=d.current||d.current_weather||{};var h=d.hourly||{};
-    var code=cw.weather_code!==undefined?cw.weather_code:(cw.weathercode||0);
-    var gust=h.windgusts_10m||[];var precip=h.precipitation||[];var snow=h.snowfall||[];
-    var maxGust=Math.max.apply(null,gust.slice(0,12).concat([0]));
-    var sum12p=precip.slice(0,12).reduce(function(a,b){return a+b;},0);
-    var sum12s=snow.slice(0,12).reduce(function(a,b){return a+b;},0);
-    // 특보
+    var r=item.region;
+    var obs={};
+    _kmaItems(item.ncst).forEach(function(it){obs[it.category]=it.obsrValue;});
+    var temp=parseFloat(obs.T1H||0);
+    var wspd=parseFloat(obs.WSD||0);
+    var rn1=parseFloat(obs.RN1||0);
+    var pi=_ptyInfo(obs.PTY||0);
     var alerts=[];
-    if(sum12p>=110)alerts.push({lv:'경보',msg:r+' 호우경보'});
-    else if(sum12p>=70)alerts.push({lv:'주의보',msg:r+' 호우주의보'});
-    if(maxGust>=26)alerts.push({lv:'경보',msg:r+' 강풍경보'});
-    else if(maxGust>=20)alerts.push({lv:'주의보',msg:r+' 강풍주의보'});
-    if(sum12s>=20)alerts.push({lv:'경보',msg:r+' 대설경보'});
-    else if(sum12s>=5)alerts.push({lv:'주의보',msg:r+' 대설주의보'});
+    if(rn1>=30)alerts.push({lv:'경보',msg:r+' 호우경보'});
+    else if(rn1>=15)alerts.push({lv:'주의보',msg:r+' 호우주의보'});
+    if(wspd>=21)alerts.push({lv:'경보',msg:r+' 강풍경보'});
+    else if(wspd>=14)alerts.push({lv:'주의보',msg:r+' 강풍주의보'});
     if(alerts.length){anyAlert=true;alertsAll=alertsAll.concat(alerts);}
     var wide=(idx===4)?'wdr-wide':'';
     html+='<div class="wdetail-region '+wide+'">'
       +'<div class="wdetail-rname">'+r+(alerts.length?' <span style="color:#ff8a80;">⚠</span>':'')+'</div>'
       +'<div class="wdetail-row">'
-        +'<div class="wdetail-ico">'+wico(code)+'</div>'
+        +'<div class="wdetail-ico">'+pi.ico+'</div>'
         +'<div class="wdetail-main">'
-          +'<div class="wdetail-tmp">'+(cw.temperature_2m!==undefined?Math.round(cw.temperature_2m):cw.temperature!==undefined?Math.round(cw.temperature):'-')+'°</div>'
-          +'<div class="wdetail-desc">'+wdesc(code)+'</div>'
+          +'<div class="wdetail-tmp">'+Math.round(temp)+'°</div>'
+          +'<div class="wdetail-desc">'+pi.desc+'</div>'
         +'</div>'
       +'</div>'
       +'<div class="wdetail-meta">'
-        +'<span>💨'+(cw.wind_speed_10m!==undefined?Math.round(cw.wind_speed_10m):cw.windspeed!==undefined?Math.round(cw.windspeed):'-')+'</span>'
-        +(maxGust>0?'<span>돌풍'+maxGust.toFixed(0)+'</span>':'')
-        +(sum12p>0?'<span>🌧️'+sum12p.toFixed(0)+'mm</span>':'')
-        +(sum12s>0?'<span>❄️'+sum12s.toFixed(0)+'cm</span>':'')
+        +'<span>💨'+Math.round(wspd)+'</span>'
+        +(rn1>0?'<span>🌧️'+rn1.toFixed(1)+'mm</span>':'')
       +'</div>'
       +'</div>';
   });
@@ -4783,23 +4814,33 @@ function _renderWeatherDetail(cache){
   }else{
     html+='<div style="text-align:center;padding:6px 0 10px;font-size:11px;color:#27ae60;">✅ 현재 발효 중인 특보 없음</div>';
   }
-  // ── 7일 예보 (설악 기준) ──────────────────────
-  if(daily&&daily.daily){
-    var dd=daily.daily;
-    var days=['일','월','화','수','목','금','토'];
-    html+='<div class="wfc-sec"><div class="wfc-title">📅 7일 예보 (설악 기준 · Open-Meteo)</div>';
-    (dd.time||[]).forEach(function(t,i){
-      var dt=new Date(t);
-      var dayLabel=i===0?'오늘':i===1?'내일':days[dt.getDay()]+'요';
-      var code=((dd.weather_code||dd.weathercode)||[])[i]||0;
-      var tmax=(dd.temperature_2m_max||[])[i];
-      var tmin=(dd.temperature_2m_min||[])[i];
-      var rain=(dd.precipitation_sum||[])[i]||0;
-      var gust=(dd.windgusts_10m_max||[])[i]||0;
+  // ── 7일 예보 (설악 단기예보) ──────────────────────
+  if(fcst7){
+    var items=_kmaItems(fcst7);
+    var byDate={};
+    items.forEach(function(it){
+      var dk=it.fcstDate;
+      if(!byDate[dk])byDate[dk]={};
+      if(it.category==='TMX')byDate[dk].TMX=parseFloat(it.fcstValue);
+      else if(it.category==='TMN')byDate[dk].TMN=parseFloat(it.fcstValue);
+      else if(it.category==='SKY'&&it.fcstTime==='1200')byDate[dk].SKY=it.fcstValue;
+      else if(it.category==='PTY'&&it.fcstTime==='1200')byDate[dk].PTY=it.fcstValue;
+      else if(it.category==='PCP'){var p=_parsePCP(it.fcstValue);byDate[dk].PCP=(byDate[dk].PCP||0)+p;}
+      else if(it.category==='WSD'){var w=parseFloat(it.fcstValue||0);if(w>(byDate[dk].WSD||0))byDate[dk].WSD=w;}
+    });
+    var dayNames=['일','월','화','수','목','금','토'];
+    var dateKeys=Object.keys(byDate).sort().slice(0,7);
+    html+='<div class="wfc-sec"><div class="wfc-title">📅 7일 예보 (설악 기준 · 기상청)</div>';
+    dateKeys.forEach(function(dk,i){
+      var dd=byDate[dk];
+      var d2=new Date(dk.slice(0,4)+'-'+dk.slice(4,6)+'-'+dk.slice(6,8));
+      var dayLabel=i===0?'오늘':i===1?'내일':dayNames[d2.getDay()]+'요';
+      var ico=_skyIco(dd.SKY||'1',dd.PTY||'0');
+      var rain=dd.PCP||0;var gust=dd.WSD||0;
       html+='<div class="wfc-row">'
         +'<div class="wfc-day">'+dayLabel+'</div>'
-        +'<div class="wfc-ico">'+wico(code)+'</div>'
-        +'<div class="wfc-tmp">'+(tmax!==undefined?Math.round(tmax):'?')+'° <span>/ '+(tmin!==undefined?Math.round(tmin):'?')+'°</span></div>'
+        +'<div class="wfc-ico">'+ico+'</div>'
+        +'<div class="wfc-tmp">'+(dd.TMX!==undefined?Math.round(dd.TMX):'?')+'° <span>/ '+(dd.TMN!==undefined?Math.round(dd.TMN):'?')+'°</span></div>'
         +'<div class="wfc-rain">'+(rain>0?'🌧️'+rain.toFixed(0)+'mm':'')+'</div>'
         +'<div class="wfc-wind">'+(gust>0?'💨'+gust.toFixed(0):'')+'</div>'
         +'</div>';
