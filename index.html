@@ -3910,7 +3910,7 @@ function renderInspectMap(){
   const sCol={'전체':'rgba(200,220,240,.6)','양호':'#27ae60','요주의':'#e67e22','위험':'#c0392b'};
   const types=['전체',...new Set(facs.map(f=>f.type.split(' ').slice(1).join(' ')||f.type).filter(Boolean))];
   const _signFacs=(DB.g('facilities')||[]).filter(f=>f.type&&f.type.includes('다목적위치표지판'));
-  const locs=['전체',...new Set(_signFacs.map(f=>(f.name.match(/\d[\d\-]*\d|\d/)||[''])[0]).filter(Boolean)).values()].sort((a,b)=>a==='전체'?-1:a.localeCompare(b,'ko'));
+  const locs=['전체',...new Set(_signFacs.map(f=>(f.name.match(/\d+/)||[''])[0]).filter(Boolean)).values()].sort((a,b)=>a==='전체'?-1:a.localeCompare(b,'ko'));
   _updateInspFilterPanel(types,locs);
   const filtered=facs.filter(f=>{
     const sOk=facMapStatusF.size===0||facMapStatusF.has(f.status);
@@ -4026,7 +4026,7 @@ function _updateFacListFilterPanel(types,locs){
     const _f=(DB.g('facilities')||[]).filter(f=>_a||!(_m2[f.type]||{}).adminOnly);
     types=types||[...(new Set(_f.map(f=>f.type.split(' ').slice(1).join(' ')||f.type).filter(Boolean)))];
     const _sf2=(DB.g('facilities')||[]).filter(f=>f.type&&f.type.includes('다목적위치표지판'));
-    locs=locs||[...new Set(_sf2.map(f=>(f.name.match(/\d[\d\-]*\d|\d/)||[''])[0]).filter(Boolean))].sort();
+    locs=locs||[...new Set(_sf2.map(f=>(f.name.match(/\d+/)||[''])[0]).filter(Boolean))].sort();
   }
   const chip=(label,set,val,onclick,col)=>{const on=set.has(val);const c=col||(on?'#4fa8d0':'rgba(255,255,255,.5)');return `<span onclick="${onclick}" style="display:inline-block;margin:2px 2px;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:600;cursor:pointer;border:1.5px solid ${on?c:'rgba(255,255,255,.12)'};color:${on?c:'rgba(255,255,255,.35)'};background:${on?c+'22':'transparent'};">${label}</span>`;};
   const sec=(id,title,html,set)=>{const el=document.getElementById(id);if(!el)return;const cnt=set.size,open=window._fpSec&&window._fpSec[id];el.innerHTML=`<div onclick="_toggleFPSec('${id}')" style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer;user-select:none;"><span style="font-size:11px;font-weight:700;color:#9bbdd4;">${title}${cnt?` <span style="color:#e05050;font-size:10px;">(${cnt})</span>`:''}</span><b style="font-size:13px;color:#3a6a8a;font-weight:400;">${open?'⌄':'›'}</b></div><div style="display:${open?'block':'none'};padding:4px 0 2px;">${html}</div>`;};
@@ -4146,7 +4146,7 @@ function renderFacList(){
   const facs=(DB.g('facilities')||[]).filter(f=>_admin||!(_meta[f.type]||{}).adminOnly);
   const types=[...new Set(facs.map(f=>f.type.split(' ').slice(1).join(' ')||f.type).filter(Boolean))];
   const _sf=(DB.g('facilities')||[]).filter(f=>f.type&&f.type.includes('다목적위치표지판'));
-  const locs=[...new Set(_sf.map(f=>(f.name.match(/\d[\d\-]*\d|\d/)||[''])[0]).filter(Boolean))].sort();
+  const locs=[...new Set(_sf.map(f=>(f.name.match(/\d+/)||[''])[0]).filter(Boolean))].sort();
   _updateFacListFilterPanel(types,locs);
   const filtered=facs.filter(f=>{
     const sOk=facMapStatusF.size===0||facMapStatusF.has(f.status);
