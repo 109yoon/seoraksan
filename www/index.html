@@ -6038,7 +6038,9 @@ window.onload=function(){
   function _permBanner(type,state){
     var wrap=document.getElementById('permBanners');if(!wrap)return;
     var id='pb-'+type;var old=document.getElementById(id);if(old)old.remove();
-    if(state==='granted')return;
+    if(state==='granted'){localStorage.setItem('_permOk_'+type,'1');return;}
+    if(localStorage.getItem('_permOk_'+type)==='1')return;
+    if(state==='denied')localStorage.removeItem('_permOk_'+type);
     var cfg=type==='loc'
       ?{ico:'📍',title:'위치 권한',desc:state==='denied'?'설정에서 위치 권한을 허용해 주세요':'지도 GPS 기능을 위해 위치 접근 허용'}
       :{ico:'🔔',title:'알림 권한',desc:state==='denied'?'설정에서 알림 권한을 허용해 주세요':'구조 발생 시 알림 수신 허용'};
