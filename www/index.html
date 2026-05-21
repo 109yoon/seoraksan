@@ -4565,8 +4565,8 @@ function kakaoLogin(){
   if(!window.Kakao||!Kakao.isInitialized()){toast('⚠️ 카카오 SDK 오류');return;}
   var isNative=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
   if(isNative){
-    // APK: 카카오톡 앱으로 인증, 커스텀 스킴으로 복귀
-    Kakao.Auth.authorize({redirectUri:'kakao'+KAKAO_KEY+'://oauth',throughTalk:true});
+    // APK: 카카오 웹 로그인 후 커스텀 스킴으로 앱 복귀
+    Kakao.Auth.authorize({redirectUri:'kakao'+KAKAO_KEY+'://oauth',throughTalk:false});
   } else {
     // 웹: 브라우저 OAuth 리다이렉트
     Kakao.Auth.authorize({redirectUri:'https://109yoon.github.io/seoraksan/',throughTalk:false});
