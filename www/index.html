@@ -3254,64 +3254,7 @@ function confirmTlBuild(){
 function toggleTlSetup(){} // kept for compat
 
 
-  _tlSetupOpen=!_tlSetupOpen;
-  const panel=document.getElementById('tlSetupPanel');
-  const btn=document.getElementById('tlSetupBtn');
-  if(panel){panel.style.display=_tlSetupOpen?'block':'none';}
-  if(btn){btn.style.background=_tlSetupOpen?'rgba(79,168,208,.18)':'transparent';btn.style.color=_tlSetupOpen?'#4fa8d0':'rgba(255,255,255,.45)';}
-}
 
-function _renderTlSetupPanel(r){
-  const staff=getTeamMembers();
-  const curMembers=r.members||[];
-  const extraTeams=r.extraTeams||[];
-  function memberChips(members,label,teamIdx){
-    return `<div style="margin-bottom:10px;">
-      <div style="font-size:10px;color:#4fa8d0;font-weight:700;margin-bottom:5px;">${label}</div>
-      <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;">
-        ${staff.map(s=>{
-          const on=members.includes(s.name);
-          return `<div onclick="_tlToggleMember(${teamIdx},'${s.name.replace(/'/g,"\\'")}',this)" style="cursor:pointer;background:${on?'rgba(126,200,163,.2)':'rgba(255,255,255,.04)'};color:${on?'#7ec8a0':'rgba(255,255,255,.45)'};border:1px solid ${on?'rgba(126,200,163,.4)':'rgba(255,255,255,.12)'};border-radius:20px;font-size:10px;font-weight:700;padding:3px 9px;transition:all .15s;">${s.name}${s.rank?` <span style="font-size:8px;opacity:.7;">${s.rank}</span>`:''}</div>`;
-        }).join('')}
-      </div>
-    </div>`;
-  }
-  let html=memberChips(curMembers,'👥 초동팀',-1);
-  extraTeams.forEach((t,i)=>{
-    html+=memberChips(t.members||[],`👥 ${t.teamName||'추가팀'+(i+1)}`,i);
-  });
-  return html;
-}
-
-function _tlToggleMember(teamIdx,name,el){
-  const res=getRes(_tlWpResId);if(!res)return;
-  if(teamIdx===-1){
-    const m=res.members||[];
-    const idx=m.indexOf(name);
-    if(idx>=0)m.splice(idx,1);else m.push(name);
-    res.members=m;
-  }else{
-    const t=(res.extraTeams||[])[teamIdx];if(!t)return;
-    const m=t.members||[];
-    const idx=m.indexOf(name);
-    if(idx>=0)m.splice(idx,1);else m.push(name);
-    t.members=m;
-  }
-  const on=el.style.background.includes('126,200');
-  el.style.background=on?'rgba(255,255,255,.04)':'rgba(126,200,163,.2)';
-  el.style.color=on?'rgba(255,255,255,.45)':'#7ec8a0';
-  el.style.borderColor=on?'rgba(255,255,255,.12)':'rgba(126,200,163,.4)';
-}
-
-function _applyTlTeamSetup(resId){
-  const res=getRes(resId);if(!res)return;
-  const all=DB.g('rescues')||[];
-  const idx=all.findIndex(r=>r.id===resId);
-  if(idx>=0){all[idx]=res;DB.s('rescues',all);}
-  _tlWpResId=null; // force re-init teams from updated data
-  toast('팀 구성 저장됨');
-  renderTimeline(res,'advanced');
-}
 
 function _initTlMiniMap(wps){
   const el=document.getElementById('tlMiniMap');
