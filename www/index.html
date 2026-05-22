@@ -5063,7 +5063,8 @@ function openGuide(key){const g=GUIDES[key];if(!g)return;document.getElementById
 function kakaoLogin(){
   if(!window.Kakao||!Kakao.isInitialized()){toast('⚠️ 카카오 SDK 오류');return;}
   var isNative=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
-  Kakao.Auth.authorize({redirectUri:'https://109yoon.github.io/seoraksan/',throughTalk:false});
+  var redirectUri=isNative?'kakao4ba2cd810d516a4f336d4dee5fa5eba5://oauth':'https://109yoon.github.io/seoraksan/';
+  Kakao.Auth.authorize({redirectUri:redirectUri,throughTalk:false});
 }
 function _handleKakaoCode(code,redirectUri){
   var _uri=redirectUri||'https://109yoon.github.io/seoraksan/';
