@@ -3395,7 +3395,7 @@ function _wpItemHtmlTeam(w,i,team,teamIdx){
     </div>
     <div style="padding-top:2px;flex:1;min-width:0;">
       <div style="font-size:12px;font-weight:${isActive?700:600};color:${nc};line-height:1.35;overflow:hidden;text-overflow:ellipsis;">${w.name}</div>
-      <div style="margin-top:3px;">${badge}</div>
+      <div style="margin-top:3px;">${badge}${w.passedAt?`<span style="font-size:9px;color:rgba(255,255,255,.28);margin-left:5px;">${w.passedAt}</span>`:''}</div>
     </div>
   </div>`;
 }
@@ -3491,7 +3491,7 @@ function tlPass(){
   const el=document.getElementById('tlWp_'+next);
   if(el){el.style.transition='background .2s';el.style.background='rgba(231,76,60,.07)';}
   setTimeout(()=>{
-    _tlWps[_tlWpIdx].status='passed';_tlWps[next].status='active';
+    _tlWps[_tlWpIdx].passedAt=now();_tlWps[_tlWpIdx].status='passed';_tlWps[next].status='active';
     _tlWpIdx=next;_saveTeamState();_tlAnimating=false;_rerenderTlFull();
     if(_tlWps[next].isTarget)toast('🎯 사고 위치 도달!');
   },dur);
@@ -3567,12 +3567,7 @@ function renderTimeline(r,viewMode){
       <!-- 팀 생성 영역 -->
       <div id="tlBuildArea">
         ${_tlBuilding?_renderBuildPanelHtml():_renderCreateBtnsHtml()}
-      </div>
-      <!-- 하단 종료만 -->
-      ${r.status==='ongoing'?`
-      <div style="margin-top:4px;padding-top:8px;border-top:.5px solid rgba(255,255,255,.06);">
-        <button class="btn-submit" style="width:100%;background:#0d5040;color:#fff;" onclick="selResId=${r.id};curResId=${r.id};endSit();">✅ 종료</button>
-      </div>`:'<div style="margin-top:8px;text-align:center;font-size:12px;color:#27ae60;padding:8px;">✅ 상황 종료됨</div>'}`;
+      </div>`;
     if(_tlTeams.some(t=>t.wps.some(w=>w.lat&&w.lng)))setTimeout(()=>_initTlMiniMap((_tlTeams.find(t=>t.wps.some(w=>w.lat&&w.lng))||{wps:[]}).wps),150);
   } else {
     // 작성 mode
@@ -3620,23 +3615,12 @@ function renderTimeline(r,viewMode){
       ${all.map((p,i)=>`
         <div class="tl-item">
           <div class="tl-dot ${i<all.length-1?'done':r.status==='ongoing'?'active':'done'}"></div>
-          <div class="tl-time">
-            <span class="tl-time-badge">${i===0?r.date:p.repTime||'-'}</span>
-            <span style="color:#2a4a5a;">·</span>
-            <span style="color:#4a7090;">${i===0?r.author||'-':p.author||'-'}</span>
-          </div>
           <div class="tl-box">
             <div class="tl-title">${tlTitle(p,i)}</div>
             ${renderPhaseContent(p,i)}
           </div>
         </div>`).join('')}
       </div>
-
-      ${r.status==='ongoing'?`
-      <div style="display:flex;gap:7px;margin-top:10px;">
-        <button class="btn-submit" style="flex:2;background:#1a4a6e;color:#fff;" onclick="selResId=${r.id};curResId=${r.id};addPhase();">📋 보 추가</button>
-        <button class="btn-submit" style="flex:1;background:#0d5040;color:#fff;" onclick="selResId=${r.id};curResId=${r.id};endSit();">✅ 종료</button>
-      </div>`:'<div style="margin-top:8px;text-align:center;font-size:12px;color:#27ae60;padding:8px;">✅ 상황 종료됨</div>'}
 
       <div style="background:#0b1c30;border-radius:10px;padding:12px;border:.5px solid rgba(255,255,255,.07);margin-top:10px;">
         <div style="font-size:11px;color:#4fa8d0;font-weight:700;margin-bottom:8px;">💬 댓글</div>
@@ -3663,6 +3647,50 @@ function renderTimeline(r,viewMode){
         })():''}
       </div>`;
   }
+  // sticky footer
+  const _ftEl=document.getElementById('rep1BoFooter');
+  if(_ftEl){
+    if(r.status==='ongoing'){
+      _ftEl.style.display='block';
+      if(mode==='write'){
+        const _histBtn=all.length>1?`<button onclick="showPrevHistModal(${r.id})" style="display:block;width:100%;padding:6px 10px;border-radius:7px;border:.5px solid rgba(79,168,208,.25);background:rgba(79,168,208,.07);color:#4a8aaa;font-size:11px;font-weight:600;cursor:pointer;margin-bottom:6px;text-align:left;">📋 이전 이력 보기 (${all.length-1}건)</button>`:'';
+        _ftEl.innerHTML=_histBtn+`<div style="display:flex;gap:7px;"><button class="btn-submit" style="flex:2;background:#1a4a6e;color:#fff;" onclick="selResId=${r.id};curResId=${r.id};addPhase();">📝 내용 추가</button><button class="btn-submit" style="flex:1;background:#0d5040;color:#fff;" onclick="selResId=${r.id};curResId=${r.id};endSit();">✅ 종료</button></div>`;
+      } else {
+        _ftEl.innerHTML=`<button class="btn-submit" style="width:100%;background:#0d5040;color:#fff;" onclick="selResId=${r.id};curResId=${r.id};endSit();">✅ 종료</button>`;
+      }
+    } else {
+      _ftEl.style.display='block';
+      _ftEl.innerHTML='<div style="text-align:center;font-size:12px;color:#27ae60;padding:8px;">✅ 상황 종료됨</div>';
+    }
+  }
+}
+function showPrevHistModal(id){
+  const res=DB.g('rescues')||[];
+  const r=res.find(x=>x.id===id);
+  if(!r)return;
+  const all=[r,...(r.reports||[])];
+  if(all.length<=1){toast('이전 이력 없음');return;}
+  let ov=document.getElementById('prevHistOv');
+  if(!ov){ov=document.createElement('div');ov.id='prevHistOv';document.body.appendChild(ov);}
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:flex-end;';
+  const rows=all.slice(0,-1).reverse().map((p,ri)=>{
+    const origIdx=all.length-2-ri;
+    const label=origIdx===0?`1보 · ${r.date||'-'}`:`${origIdx+1}보 · ${p.repTime||'-'}`;
+    const author=origIdx===0?r.author||'-':p.author||'-';
+    const body=origIdx===0?[r.location,r.situation,r.extra].filter(Boolean).join(' · '):(p.update||'');
+    return `<div style="padding:9px 14px;border-bottom:.5px solid rgba(255,255,255,.06);">
+      <div style="font-size:10px;color:#4fa8d0;font-weight:700;margin-bottom:3px;">${label} · ${author}</div>
+      ${body?`<div style="font-size:11px;color:#b8d4e8;line-height:1.5;">${body}</div>`:''}
+    </div>`;
+  }).join('');
+  ov.innerHTML=`<div style="background:#040a16;border-radius:14px 14px 0 0;width:100%;max-height:70vh;overflow:hidden;display:flex;flex-direction:column;border-top:.5px solid rgba(79,168,208,.25);">
+    <div style="padding:14px 16px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:.5px solid rgba(255,255,255,.07);flex-shrink:0;">
+      <span style="font-size:13px;font-weight:700;color:#e0edf8;">📋 이전 이력 (${all.length-1}건)</span>
+      <button onclick="document.getElementById('prevHistOv').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer;padding:0 4px;line-height:1;">×</button>
+    </div>
+    <div style="overflow-y:auto;flex:1;">${rows}</div>
+  </div>`;
+  ov.onclick=e=>{if(e.target===ov)ov.style.display='none';};
 }
 function getRes(id){return (DB.g('rescues')||[]).find(r=>r.id===id)||{};}
 function submitComment(resId){
