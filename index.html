@@ -3096,9 +3096,8 @@ function viewReport(){
   curResId=selResId;
   document.getElementById('topTitle').textContent=r.title+' 보고서';
   document.getElementById('bnav').style.display='none';
+  document.getElementById('phaseBar').innerHTML='';
   showV('v-report');closeDB();
-  const tot=(r.reports||[]).length+1;
-  renderPhaseBar(tot-1,tot);
   renderTimeline(r,'write');
 }
 function viewTimeline(){
@@ -3106,9 +3105,8 @@ function viewTimeline(){
   curResId=selResId;
   document.getElementById('topTitle').textContent=r.title;
   document.getElementById('bnav').style.display='none';
+  document.getElementById('phaseBar').innerHTML='';
   showV('v-report');closeDB();
-  const tot=(r.reports||[]).length+1;
-  renderPhaseBar(tot-1,tot);
   renderTimeline(r,'advanced');
 }
 function renderPhaseBar(active,total){
@@ -3260,8 +3258,18 @@ function _buildRoute(r,facs){
     else{base='백담탐방지원센터';route=[...upto(10,28),...seg(13,5,code)];}
   }else if(zone===14){base='점봉산탐방지원센터';route=upto(14,code);}
   else return[];
+  // If target code not in wm, find nearest waypoint in same zone
+  const _tzs=String(zone).padStart(2,'0');
+  const _tKey=`${_tzs}-${String(code).padStart(2,'0')}`;
+  if(!wm[_tKey]&&base){
+    let _nearest=null;
+    for(let _d=1;_d<=15&&!_nearest;_d++){
+      for(const _s of [1,-1]){const _n=code+_d*_s;if(_n<1)continue;const _k=`${_tzs}-${String(_n).padStart(2,'0')}`;if(wm[_k]){_nearest={...wm[_k],approx:true};break;}}
+    }
+    if(_nearest&&!route.some(w=>w.code===_nearest.code))route.push(_nearest);
+  }
   const res=[{code:'',name:base,isBase:true,status:'active'}];
-  route.forEach((w,i)=>res.push({code:w.code,name:w.name,lat:w.lat,lng:w.lng,isTarget:i===route.length-1,status:'pending'}));
+  route.forEach((w,i)=>res.push({code:w.code,name:w.name,lat:w.lat,lng:w.lng,approx:w.approx||false,isTarget:i===route.length-1,status:'pending'}));
   return res;
 }
 
@@ -3270,22 +3278,22 @@ function _initTlTeams(r){
   _tlWpResId=r.id;_tlVehicle=false;_tlAnimating=false;_tlSelTeam=0;_tlTeams=[];
   const facs=DB.g('facilities')||[];
   const mainRoute=_buildRoute(r,facs);
-  function mk(id,name,type,route){return{id,name,type,wpIdx:0,wps:route.map(w=>({...w,status:w.isBase?'active':'pending'}))};}
+  function mk(id,name,type,route,collapsed){return{id,name,type,wpIdx:0,wps:route.map(w=>({...w,status:w.isBase?'active':'pending'})),collapsed:!!collapsed};}
   function cloneR(){return mainRoute.map(w=>({...w,status:w.isBase?'active':'pending'}));}
   if(!mainRoute.length){
-    _tlTeams=[{id:'initial',name:(r.members||[]).slice(0,2).join('·')||'초동팀',type:'foot',wpIdx:0,wps:[]}];
+    _tlTeams=[{id:'initial',name:(r.members||[]).slice(0,2).join('·')||'초동팀',type:'foot',wpIdx:0,wps:[],collapsed:false}];
     _tlWps=[];_tlWpIdx=0;return;
   }
-  _tlTeams.push(mk('initial',(r.members||[]).slice(0,2).join('·')||'초동팀','foot',cloneR()));
-  (r.extraTeams||[]).forEach((t,i)=>_tlTeams.push(mk('extra_'+i,t.teamName||`추가팀${i+1}`,'foot',cloneR())));
+  _tlTeams.push(mk('initial',(r.members||[]).slice(0,2).join('·')||'초동팀','foot',cloneR(),false));
+  (r.extraTeams||[]).forEach((t,i)=>_tlTeams.push(mk('extra_'+i,t.teamName||`추가팀${i+1}`,'foot',cloneR(),true)));
   if(r.agencies&&r.agencies.hwandongha){
     const sr=cloneR();if(sr.length)sr[0]={...sr[0],name:'소공원탐방지원센터'};
-    _tlTeams.push(mk('special',`특수구조대(환동해 ${r.agencies.hwTeam||''}팀)`,'foot',sr));
+    _tlTeams.push(mk('special',`특수구조대(환동해 ${r.agencies.hwTeam||''}팀)`,'foot',sr,true));
   }
   if(r.agencies&&r.agencies.fireAgencies&&r.agencies.fireAgencies.length)
-    r.agencies.fireAgencies.forEach((a,i)=>_tlTeams.push(mk('fire_'+i,a.name||'소방팀','vehicle',cloneR())));
+    r.agencies.fireAgencies.forEach((a,i)=>_tlTeams.push(mk('fire_'+i,a.name||'소방팀','vehicle',cloneR(),true)));
   if(r.r119&&r.r119.trim()&&r.r119!=='-')
-    _tlTeams.push(mk('heli','🚁 119 헬기','heli',[{code:'',name:'헬기 기지',isBase:true,status:'active'},{code:'',name:r.location||'사고지점',isTarget:true,status:'pending'}]));
+    _tlTeams.push(mk('heli','🚁 119 헬기','heli',[{code:'',name:'헬기 기지',isBase:true,status:'active'},{code:'',name:r.location||'사고지점',isTarget:true,status:'pending'}],true));
   _tlWps=_tlTeams[0].wps;_tlWpIdx=0;
 }
 
@@ -3307,38 +3315,9 @@ function _teamStageIdx(team){
   return 1;
 }
 
-function _tlTeamCardHtml(team,idx){
-  const isSel=idx===_tlSelTeam;
-  const si=_teamStageIdx(team);
-  const typeIco=team.type==='heli'?'🚁':team.type==='vehicle'?'🚐':'🥾';
-  const sc=si>=2?'#27ae60':si>=1?'#4fa8d0':'rgba(255,255,255,.38)';
-  const dots=_TL_STAGES.map((s,di)=>{
-    const done=di<si,act=di===si;
-    const dc=done?'#27ae60':act?'#4fa8d0':'rgba(255,255,255,.12)';
-    const tc=done?'#5dbf8a':act?'#4fa8d0':'rgba(255,255,255,.22)';
-    return (di>0?`<div style="flex:1;height:2px;background:${done?'#27ae60':act?'rgba(79,168,208,.3)':'rgba(255,255,255,.07)'};margin:0 1px;align-self:center;"></div>`:'')
-      +`<div style="text-align:center;flex-shrink:0;"><div style="width:20px;height:20px;border-radius:50%;background:${done?'rgba(39,174,96,.2)':act?'rgba(79,168,208,.18)':'rgba(255,255,255,.04)'};border:1.5px solid ${dc};display:flex;align-items:center;justify-content:center;font-size:9px;color:${dc};margin:0 auto;${act?'animation:wpPulse 1.6s ease-in-out infinite;':''}">${done?'✓':''}</div><div style="font-size:8px;color:${tc};margin-top:2px;white-space:nowrap;">${s}</div></div>`;
-  }).join('');
-  return `<div onclick="selectTlTeam(${idx})" style="background:${isSel?'rgba(79,168,208,.09)':'rgba(255,255,255,.02)'};border:1px solid ${isSel?'rgba(79,168,208,.38)':'rgba(255,255,255,.07)'};border-radius:10px;padding:10px 12px;cursor:pointer;transition:background .15s;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
-      <span style="font-size:11px;font-weight:700;color:${isSel?'#4fa8d0':'#b8d4e8'};">${typeIco} ${team.name}</span>
-      <span style="font-size:9px;font-weight:600;color:${sc};">${_TL_STAGES[si]}</span>
-    </div>
-    <div style="display:flex;align-items:flex-start;">${dots}</div>
-  </div>`;
-}
-
-function _rerenderTlFull(){
-  const el=document.getElementById('tlTeamCards');
-  if(el)el.innerHTML=_tlTeams.map(_tlTeamCardHtml).join('');
-  const selLabel=document.getElementById('tlSelTeamLabel');
-  if(selLabel&&_tlTeams[_tlSelTeam])selLabel.textContent=(_tlTeams[_tlSelTeam].name||'')+'  경로';
-  _rerenderTlWps();
-}
-
-function _wpItemHtml(w,i){
-  const isActive=i===_tlWpIdx;
-  const isLast=i===_tlWps.length-1;
+function _wpItemHtmlTeam(w,i,team,teamIdx){
+  const isActive=i===team.wpIdx;
+  const isLast=i===team.wps.length-1;
   const isBase=w.isBase||w.isStart;
   let dbg,dbd,dtxt,nc,badge='';
   if(w.status==='passed'){
@@ -3352,14 +3331,14 @@ function _wpItemHtml(w,i){
     badge='<span style="background:rgba(231,76,60,.18);color:#e74c3c;border:1px solid rgba(231,76,60,.38);border-radius:5px;font-size:9px;padding:1px 6px;font-weight:700;">현재 위치</span>';
   }else if(w.isTarget){
     dbg='rgba(192,57,43,.12)';dbd='rgba(192,57,43,.45)';dtxt='🚨';nc='rgba(220,80,80,.8)';
-    badge='<span style="background:rgba(192,57,43,.12);color:#e05050;border:1px solid rgba(192,57,43,.28);border-radius:5px;font-size:9px;padding:1px 6px;font-weight:700;">사고 위치</span>';
+    badge=`<span style="background:rgba(192,57,43,.12);color:#e05050;border:1px solid rgba(192,57,43,.28);border-radius:5px;font-size:9px;padding:1px 6px;font-weight:700;">사고지점${w.approx?' (근처)':''}</span>`;
   }else if(isBase){
     dbg='rgba(39,174,96,.15)';dbd='rgba(39,174,96,.4)';dtxt='🏠';nc='rgba(255,255,255,.5)';
   }else{
     dbg='rgba(79,168,208,.08)';dbd='rgba(79,168,208,.25)';dtxt=w.code||'·';nc='rgba(255,255,255,.35)';
   }
-  const click=(!isBase&&!isActive)?`onclick="tlWarpTo(${i})"`:''  ;
-  return `<div id="tlWp_${i}" class="tl-wp${isActive?' tl-wp-active':''}${isLast?' last':''}" ${click} style="${!isBase&&!isActive?'cursor:pointer;':''}">
+  const click=(!isBase&&!isActive)?`onclick="event.stopPropagation();tlWarpToTeam(${teamIdx},${i})"`:'' ;
+  return `<div id="tlWp_${teamIdx}_${i}" class="tl-wp${isActive?' tl-wp-active':''}${isLast?' last':''}" ${click} style="${!isBase&&!isActive?'cursor:pointer;':''}">
     <div style="position:relative;flex-shrink:0;">
       <div class="tl-wp-dot" style="background:${dbg};border-color:${dbd};">${dtxt}</div>
       ${!isLast?'<div class="tl-wp-conn"></div>':''}
@@ -3371,16 +3350,80 @@ function _wpItemHtml(w,i){
   </div>`;
 }
 
+function _wpItemHtml(w,i){return _wpItemHtmlTeam(w,i,{wps:_tlWps,wpIdx:_tlWpIdx},_tlSelTeam);}
+
+function _tlTeamFullHtml(team,idx){
+  const isSel=idx===_tlSelTeam&&!team.collapsed;
+  const si=_teamStageIdx(team);
+  const typeIco=team.type==='heli'?'🚁':team.type==='vehicle'?'🚐':'🥾';
+  const sc=si>=2?'#27ae60':si>=1?'#4fa8d0':'rgba(255,255,255,.38)';
+  const dots=_TL_STAGES.map((s,di)=>{
+    const done=di<si,act=di===si;
+    const dc=done?'#27ae60':act?'#4fa8d0':'rgba(255,255,255,.12)';
+    const tc=done?'#5dbf8a':act?'#4fa8d0':'rgba(255,255,255,.22)';
+    return (di>0?`<div style="flex:1;height:2px;background:${done?'#27ae60':act?'rgba(79,168,208,.3)':'rgba(255,255,255,.07)'};margin:0 1px;align-self:center;"></div>`:'')
+      +`<div style="text-align:center;flex-shrink:0;"><div style="width:20px;height:20px;border-radius:50%;background:${done?'rgba(39,174,96,.2)':act?'rgba(79,168,208,.18)':'rgba(255,255,255,.04)'};border:1.5px solid ${dc};display:flex;align-items:center;justify-content:center;font-size:9px;color:${dc};margin:0 auto;${act?'animation:wpPulse 1.6s ease-in-out infinite;':''}">${done?'✓':''}</div><div style="font-size:8px;color:${tc};margin-top:2px;white-space:nowrap;">${s}</div></div>`;
+  }).join('');
+  const isCollapsed=!!team.collapsed;
+  const atEnd=team.wpIdx>=team.wps.length-1;
+  const canSkip=team.wpIdx<team.wps.length-2;
+  const routeInner=team.wps.length>1
+    ?`<div id="tlWpList_${idx}">${team.wps.map((w,i)=>_wpItemHtmlTeam(w,i,team,idx)).join('')}</div>
+       <div style="display:flex;gap:6px;margin-top:9px;padding-top:8px;border-top:1px solid rgba(255,255,255,.06);">
+         <button id="tlPassBtn_${idx}" onclick="event.stopPropagation();tlPassTeam(${idx})" ${atEnd?'disabled':''} style="flex:2;padding:8px;border-radius:8px;border:1px solid rgba(79,168,208,.4);background:rgba(79,168,208,.12);color:#4fa8d0;font-size:12px;font-weight:700;cursor:pointer;opacity:${atEnd?.3:1};">→ 통과</button>
+         <button id="tlSkipBtn_${idx}" onclick="event.stopPropagation();tlSkipTeam(${idx})" ${!canSkip?'disabled':''} style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:transparent;color:rgba(255,255,255,.45);font-size:12px;font-weight:600;cursor:pointer;opacity:${canSkip?1:.3};">건너뛰기</button>
+       </div>`
+    :`<div style="text-align:center;font-size:11px;color:rgba(255,255,255,.25);padding:10px 0;">경로 데이터 없음</div>`;
+  return `<div id="tlTeamCard_${idx}" style="background:${isSel?'rgba(79,168,208,.07)':'rgba(255,255,255,.02)'};border:1px solid ${isSel?'rgba(79,168,208,.3)':'rgba(255,255,255,.07)'};border-radius:10px;margin-bottom:7px;overflow:hidden;">
+    <div onclick="toggleTlTeamRoute(${idx})" style="padding:10px 12px;cursor:pointer;user-select:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
+        <span style="font-size:11px;font-weight:700;color:${isSel?'#4fa8d0':'#b8d4e8'};">${typeIco} ${team.name}</span>
+        <div style="display:flex;align-items:center;gap:7px;">
+          <span style="font-size:9px;font-weight:600;color:${sc};">${_TL_STAGES[si]}</span>
+          <span style="font-size:10px;color:rgba(255,255,255,.3);font-weight:600;">${isCollapsed?'▼ 경로':'▲'}</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:flex-start;">${dots}</div>
+    </div>
+    <div id="tlTeamRoute_${idx}" style="display:${isCollapsed?'none':'block'};padding:0 12px 12px;border-top:.5px solid rgba(255,255,255,.05);">
+      ${routeInner}
+    </div>
+  </div>`;
+}
+
+function toggleTlTeamRoute(idx){
+  if(!_tlTeams[idx])return;
+  const wasCollapsed=_tlTeams[idx].collapsed;
+  _tlTeams[idx].collapsed=!wasCollapsed;
+  if(wasCollapsed){_saveTeamState();_tlSelTeam=idx;_tlWps=_tlTeams[idx].wps;_tlWpIdx=_tlTeams[idx].wpIdx;}
+  _rerenderTlFull();
+}
+function tlPassTeam(idx){_saveTeamState();_tlSelTeam=idx;_tlWps=_tlTeams[idx].wps;_tlWpIdx=_tlTeams[idx].wpIdx;tlPass();}
+function tlSkipTeam(idx){_saveTeamState();_tlSelTeam=idx;_tlWps=_tlTeams[idx].wps;_tlWpIdx=_tlTeams[idx].wpIdx;tlSkip();}
+function tlWarpToTeam(teamIdx,wpIdx){_saveTeamState();_tlSelTeam=teamIdx;_tlWps=_tlTeams[teamIdx].wps;_tlWpIdx=_tlTeams[teamIdx].wpIdx;tlWarpTo(wpIdx);}
+
+function _rerenderTlFull(){
+  const el=document.getElementById('tlAllTeams');
+  if(el)el.innerHTML=_tlTeams.map((t,i)=>_tlTeamFullHtml(t,i)).join('');
+}
+
 function _rerenderTlWps(){
-  const wrap=document.getElementById('tlWpList');if(!wrap)return;
-  wrap.innerHTML=_tlWps.map(_wpItemHtml).join('');
-  const atEnd=_tlWpIdx>=_tlWps.length-1;
-  const canSkip=_tlWpIdx<_tlWps.length-2;
-  const pb=document.getElementById('tlPassBtn');
-  const sb=document.getElementById('tlSkipBtn');
-  if(pb){pb.disabled=atEnd;pb.style.opacity=atEnd?'.3':'1';}
-  if(sb){sb.disabled=!canSkip;sb.style.opacity=canSkip?'1':'.3';}
-  setTimeout(()=>{const el=document.querySelector('.tl-wp-active');if(el)el.scrollIntoView({behavior:'smooth',block:'nearest'});},60);
+  _tlTeams.forEach((team,idx)=>{
+    if(!team.collapsed&&team.wps.length>1){
+      const wrap=document.getElementById('tlWpList_'+idx);
+      if(wrap)wrap.innerHTML=team.wps.map((w,i)=>_wpItemHtmlTeam(w,i,team,idx)).join('');
+      const atEnd=team.wpIdx>=team.wps.length-1;
+      const canSkip=team.wpIdx<team.wps.length-2;
+      const pb=document.getElementById('tlPassBtn_'+idx);
+      const sb=document.getElementById('tlSkipBtn_'+idx);
+      if(pb){pb.disabled=atEnd;pb.style.opacity=atEnd?'.3':'1';}
+      if(sb){sb.disabled=!canSkip;sb.style.opacity=canSkip?'1':'.3';}
+    }
+  });
+  const si=_tlSelTeam;
+  if(_tlTeams[si]&&!_tlTeams[si].collapsed){
+    setTimeout(()=>{const el=document.getElementById('tlWpList_'+si);if(el){const a=el.querySelector('.tl-wp-active');if(a)a.scrollIntoView({behavior:'smooth',block:'nearest'});}},60);
+  }
 }
 
 function tlWarpTo(idx){
@@ -3454,17 +3497,14 @@ function renderTimeline(r,viewMode){
     <div style="font-size:11px;color:#3a6a8a;margin-top:3px;">${r.type} · ${r.status==='ongoing'?'<span style="color:#c0392b;font-weight:700;">진행중</span>':'<span style="color:#27ae60;font-weight:700;">종료</span>'} · ${r.date}</div>
     <div style="display:flex;gap:5px;margin-top:9px;">
       <button onclick="renderTimeline(getRes(${r.id}),'advanced')" style="flex:1;padding:6px;border-radius:7px;border:1px solid;font-size:11px;font-weight:600;cursor:pointer;background:${'advanced'===mode?'rgba(79,168,208,.15)':'transparent'};color:${'advanced'===mode?'#4fa8d0':'rgba(255,255,255,.35)'};border-color:${'advanced'===mode?'rgba(79,168,208,.5)':'rgba(255,255,255,.1)'};">📍 고도화 타임라인</button>
-      <button onclick="renderTimeline(getRes(${r.id}),'write')" style="flex:1;padding:6px;border-radius:7px;border:1px solid;font-size:11px;font-weight:600;cursor:pointer;background:${'write'===mode?'rgba(79,168,208,.15)':'transparent'};color:${'write'===mode?'#4fa8d0':'rgba(255,255,255,.35)'};border-color:${'write'===mode?'rgba(79,168,208,.5)':'rgba(255,255,255,.1)'};">✏️ 작성</button>
+      <button onclick="renderTimeline(getRes(${r.id}),'write')" style="flex:1;padding:6px;border-radius:7px;border:1px solid;font-size:11px;font-weight:600;cursor:pointer;background:${'write'===mode?'rgba(79,168,208,.15)':'transparent'};color:${'write'===mode?'#4fa8d0':'rgba(255,255,255,.35)'};border-color:${'write'===mode?'rgba(79,168,208,.5)':'rgba(255,255,255,.1)'};">📄 보고서</button>
     </div>
   </div>`;
 
   if(mode==='advanced'){
     _initTlTeams(r);
-    const atEnd=_tlWpIdx>=_tlWps.length-1;
-    const canSkip=_tlWpIdx<_tlWps.length-2;
-    const isNonTrail=(r.loctype||'')!=='법정탐방로';
-    const selTeamName=_tlTeams[_tlSelTeam]?_tlTeams[_tlSelTeam].name:'';
-    const hasWpCoords=_tlWps.some(w=>w.lat&&w.lng);
+    const hasWpCoords=_tlTeams.some(t=>t.wps.some(w=>w.lat&&w.lng));
+    const firstWps=(_tlTeams[0]||{}).wps||[];
     w.innerHTML=tabHdr+`
       <!-- 팀/인원 설정 패널 -->
       <div style="background:#0b1c30;border-radius:10px;border:.5px solid rgba(79,168,208,.15);margin-bottom:10px;overflow:hidden;">
@@ -3477,29 +3517,15 @@ function renderTimeline(r,viewMode){
           <button onclick="_applyTlTeamSetup(${r.id})" style="width:100%;padding:8px;border-radius:8px;background:rgba(79,168,208,.18);border:1px solid rgba(79,168,208,.4);color:#4fa8d0;font-size:12px;font-weight:700;cursor:pointer;margin-top:4px;">💾 적용</button>
         </div>
       </div>
-      <!-- 팀 카드 (배달추적 스타일) -->
-      ${_tlTeams.length?`
-      <div id="tlTeamCards" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">
-        ${_tlTeams.map(_tlTeamCardHtml).join('')}
-      </div>`:''}
       <!-- 다목적위치표지판 미니맵 -->
       ${hasWpCoords?`
       <div style="background:#0b1c30;border-radius:10px;border:.5px solid rgba(79,168,208,.15);margin-bottom:10px;overflow:hidden;">
         <div style="font-size:11px;color:#4fa8d0;font-weight:700;padding:10px 12px 6px;">🗺️ 다목적위치표지판 경로</div>
         <div id="tlMiniMap" style="width:100%;height:200px;"></div>
       </div>`:''}
-      <!-- 선택된 팀의 상세 경로 -->
-      <div style="background:#0b1c30;border-radius:10px;padding:12px;border:.5px solid rgba(79,168,208,.2);margin-bottom:10px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;">
-          <div style="font-size:11px;color:#4fa8d0;font-weight:700;">📍 <span id="tlSelTeamLabel">${selTeamName} 경로</span></div>
-          <button id="tlVehicleBtn" onclick="toggleTlVehicle()" style="padding:4px 10px;border-radius:7px;border:1px solid ${_tlVehicle?'rgba(231,76,60,.45)':'rgba(255,255,255,.12)'};background:${_tlVehicle?'rgba(231,76,60,.18)':'transparent'};color:${_tlVehicle?'#e74c3c':'rgba(255,255,255,.4)'};font-size:10px;font-weight:600;cursor:pointer;">🚗 ${_tlVehicle?'차량 ON':'차량 OFF'}</button>
-        </div>
-        ${_tlWps.length>1?`
-        <div id="tlWpList">${_tlWps.map(_wpItemHtml).join('')}</div>
-        <div style="display:flex;gap:7px;margin-top:11px;padding-top:9px;border-top:1px solid rgba(255,255,255,.06);">
-          <button id="tlPassBtn" onclick="tlPass()" ${atEnd?'disabled':''} style="flex:2;padding:9px;border-radius:8px;border:1px solid rgba(79,168,208,.4);background:rgba(79,168,208,.12);color:#4fa8d0;font-size:12px;font-weight:700;cursor:pointer;opacity:${atEnd?.3:1};">→ 통과</button>
-          <button id="tlSkipBtn" onclick="tlSkip()" ${!canSkip?'disabled':''} style="flex:1;padding:9px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:transparent;color:rgba(255,255,255,.45);font-size:12px;font-weight:600;cursor:pointer;opacity:${canSkip?1:.3};">건너뛰기</button>
-        </div>`:isNonTrail?`<div style="text-align:center;font-size:11px;color:rgba(255,255,255,.28);padding:16px 8px;line-height:1.7;">비법정탐방로·암빙벽은<br>경로 시뮬레이션을 제공하지 않습니다</div>`:`<div style="text-align:center;font-size:11px;color:rgba(255,255,255,.25);padding:12px;">다목적위치표지판 데이터 없음</div>`}
+      <!-- 팀별 경로 카드 (접기/펼치기) -->
+      <div id="tlAllTeams">
+        ${_tlTeams.map((t,i)=>_tlTeamFullHtml(t,i)).join('')}
       </div>
       ${r.timetable&&r.timetable.length?`
       <div style="background:#0b1c30;border-radius:10px;padding:12px;border:.5px solid rgba(79,168,208,.1);margin-bottom:10px;">
@@ -3515,10 +3541,10 @@ function renderTimeline(r,viewMode){
       </div>`:''}
       ${r.status==='ongoing'?`
       <div style="display:flex;gap:7px;margin-top:6px;">
-        <button class="btn-submit" style="flex:2;background:#1a4a6e;color:#fff;" onclick="selResId=${r.id};curResId=${r.id};addPhase();">📋 다음 보 추가</button>
+        <button class="btn-submit" style="flex:2;background:#1a4a6e;color:#fff;" onclick="selResId=${r.id};curResId=${r.id};addPhase();">📋 보 추가</button>
         <button class="btn-submit" style="flex:1;background:#0d5040;color:#fff;" onclick="selResId=${r.id};curResId=${r.id};endSit();">✅ 종료</button>
       </div>`:'<div style="margin-top:6px;text-align:center;font-size:12px;color:#27ae60;padding:8px;">✅ 상황 종료됨</div>'}`;
-    if(hasWpCoords)setTimeout(()=>_initTlMiniMap(_tlWps),150);
+    if(hasWpCoords)setTimeout(()=>_initTlMiniMap(firstWps),150);
   } else {
     // 작성 mode
     function tlTitle(p,idx){
@@ -3536,19 +3562,29 @@ function renderTimeline(r,viewMode){
       return `${idx+1}보`+(cats.length?' — '+cats.join(' · '):'');
     }
     function renderPhaseContent(p,i){
+      const _ok=v=>{if(!v&&v!==0)return false;const s=String(v).trim();return s&&s!=='-'&&!['미상','없음','모르겠음','알수없음','미정','해당없음'].includes(s);};
+      const _okA=v=>(Array.isArray(v)?v:[]).filter(x=>_ok(x));
       if(i===0){
-        return `<div class="tl-body">
-          <b>위치:</b> ${r.location||'-'} (${r.loctype||'-'})<br>
-          <b>사고자:</b> ${r.vName||'미상'} / ${(r.vGender&&r.vGender!=='알수없음')?r.vGender:'성별미상'} / ${(r.vNation&&r.vNation!=='알수없음')?r.vNation:'국적미상'}<br>
-          <b>연락처:</b> ${r.vTel||'-'} · <b>중증도:</b> ${r.severity||'-'}<br>
-          <b>부상 부위:</b> ${(r.injuryParts||[]).join(', ')||'-'}<br>
-          <b>구조 방법:</b> ${(r.rescueMethod||[]).join(', ')||'-'}<br>
-          <b>출동:</b> ${r.dispatch||'-'} → 도착: ${r.arrival||'-'}<br>
-          <b>기상:</b> ${r.weather||'-'} ${r.weatherAlert||''}<br>
-          ${r.situation?`<b>경위:</b> ${r.situation}<br>`:''}${r.extra?`<b>특이:</b> ${r.extra}`:''}
-        </div>`;
+        const rows=[];
+        if(_ok(r.location))rows.push(`<b>위치:</b> ${r.location}${_ok(r.loctype)?' ('+r.loctype+')':''}`);
+        const vp=[_ok(r.vName)?r.vName:'',_ok(r.vBirth)?new Date().getFullYear()-parseInt((r.vBirth||'').slice(0,4))+'세':'',_ok(r.vGender)&&r.vGender!=='알수없음'?r.vGender:'',_ok(r.vNation)&&r.vNation!=='알수없음'?r.vNation:''].filter(Boolean).join(' / ');
+        if(vp)rows.push(`<b>사고자:</b> ${vp}`);
+        if(_ok(r.vTel))rows.push(`<b>연락처:</b> ${r.vTel}`);
+        if(_ok(r.severity))rows.push(`<b>중증도:</b> ${r.severity}`);
+        const inj=_okA(r.injuryParts);if(inj.length)rows.push(`<b>부상:</b> ${inj.join(', ')}`);
+        const rm=_okA(r.rescueMethod);if(rm.length)rows.push(`<b>구조:</b> ${rm.join(', ')}`);
+        if(_ok(r.dispatch)||_ok(r.arrival))rows.push(`<b>출동:</b> ${_ok(r.dispatch)?r.dispatch:'-'} → ${_ok(r.arrival)?r.arrival:'-'}`);
+        const wx=[_ok(r.weather)?r.weather:'',_ok(r.weatherAlert)?r.weatherAlert:''].filter(Boolean).join(' ');
+        if(wx)rows.push(`<b>기상:</b> ${wx}`);
+        if(_ok(r.situation))rows.push(`<b>경위:</b> ${r.situation}`);
+        if(_ok(r.extra))rows.push(`<b>특이:</b> ${r.extra}`);
+        return `<div class="tl-body">${rows.join('<br>')||'입력된 정보 없음'}</div>`;
       }
-      return `<div class="tl-body"><b>상황:</b> ${p.update||'-'}<br><b>부상자 상태:</b> ${p.victimChange||'-'}${p.addMem?`<br><b>추가 대원:</b> ${p.addMem}`:''}</div>`;
+      const rows=[];
+      if(p.update)rows.push(`<b>상황:</b> ${p.update}`);
+      if(p.victimChange&&p.victimChange!=='변화없음')rows.push(`<b>부상자:</b> ${p.victimChange}`);
+      if(p.addMem)rows.push(`<b>추가 대원:</b> ${p.addMem}`);
+      return `<div class="tl-body">${rows.join('<br>')||'내용 없음'}</div>`;
     }
     w.innerHTML=tabHdr+`
       <div class="timeline">
@@ -3568,17 +3604,9 @@ function renderTimeline(r,viewMode){
       </div>
 
       ${r.status==='ongoing'?`
-      <div style="background:#0b1c30;border-radius:10px;padding:12px;border:.5px solid rgba(79,168,208,.15);margin-top:10px;">
-        <div style="font-size:11px;color:#4fa8d0;font-weight:700;margin-bottom:10px;">📋 ${all.length+1}보 추가</div>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <textarea id="tlWrUpd" class="fta" rows="2" placeholder="현황 업데이트..."></textarea>
-          <input type="text" id="tlWrVic" class="fi" placeholder="부상자 상태...">
-          <input type="text" id="tlWrMem" class="fi" placeholder="추가 대원...">
-          <div style="display:flex;gap:7px;">
-            <button class="btn-submit" style="flex:2;background:#1a4a6e;color:#fff;" onclick="_submitTlWrite(${r.id});">📋 보고 추가</button>
-            <button class="btn-submit" style="flex:1;background:#0d5040;color:#fff;" onclick="selResId=${r.id};curResId=${r.id};endSit();">✅ 종료</button>
-          </div>
-        </div>
+      <div style="display:flex;gap:7px;margin-top:10px;">
+        <button class="btn-submit" style="flex:2;background:#1a4a6e;color:#fff;" onclick="selResId=${r.id};curResId=${r.id};addPhase();">📋 보 추가</button>
+        <button class="btn-submit" style="flex:1;background:#0d5040;color:#fff;" onclick="selResId=${r.id};curResId=${r.id};endSit();">✅ 종료</button>
       </div>`:'<div style="margin-top:8px;text-align:center;font-size:12px;color:#27ae60;padding:8px;">✅ 상황 종료됨</div>'}
 
       <div style="background:#0b1c30;border-radius:10px;padding:12px;border:.5px solid rgba(255,255,255,.07);margin-top:10px;">
