@@ -3528,7 +3528,6 @@ function render1BoForm(prefill=null){
     {id:'repSec1', icon:'📍', label:'위치·기상'},
     {id:'repSec2', icon:'🤕', label:'환자·부상'},
     {id:'repSec3', icon:'🧑', label:'인적사항'},
-    {id:'repSec4', icon:'🚁', label:'출동'},
     {id:'repSec5', icon:'📝', label:'기타'},
   ];
 
@@ -3784,70 +3783,9 @@ function render1BoForm(prefill=null){
       </div>
     </div>
 
-    <!-- ══ 섹터4: 출동·유관기관 ══ -->
-    <div id="repSec4" class="rep-sec" style="display:none;padding:12px;overflow-y:auto;">
-
-      <!-- 공단 초동 출동팀 -->
-      <div class="rsec">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <div class="rsec-t" style="margin-bottom:0;">🏔️ 공단 초동 출동팀</div>
-          <button id="memberEditBtn" onclick="editMemberSection()" style="display:none;background:rgba(79,168,208,.12);border:1px solid rgba(79,168,208,.25);color:#4fa8d0;border-radius:6px;font-size:11px;padding:4px 10px;cursor:pointer;">✏️ 인원 수정</button>
-        </div>
-        <!-- 요약 줄 (접힌 상태) -->
-        <div id="memberSummary" style="display:none;padding:8px 10px;background:#060d1a;border-radius:8px;border:1px solid rgba(79,168,208,.15);margin-bottom:6px;">
-          <span id="memberSummaryText" style="font-size:12px;color:#c0d8ec;line-height:1.6;"></span>
-        </div>
-        <!-- 전체 선택 (펼쳐진 상태) -->
-        <div id="memberFullSection" style="overflow:hidden;transition:max-height .3s ease,opacity .25s ease;max-height:1000px;opacity:1;">
-          <div id="memChkGrid" style="display:flex;flex-direction:column;gap:8px;">
-            ${(()=>{
-              const curDept=(DB.g('currentUser')||{}).dept||'';
-              const groups={};
-              ms.forEach(s=>{if(!groups[s.dept])groups[s.dept]=[];groups[s.dept].push(s);});
-              const myGroup=groups[curDept]||[];
-              const otherDepts=[...new Set([...DEPTS,...Object.keys(groups)])].filter(d=>d!==curDept&&groups[d]);
-              // 내 과/분소 (기본 표시)
-              const mySection=myGroup.length
-                ?`<div>
-                    <div style="font-size:10px;color:#4fa8d0;font-weight:700;margin-bottom:5px;">${curDept} ★</div>
-                    <div class="chk-grid">${myGroup.map(s=>{
-                      const checked=(p.members!=null?(p.members||[]).includes(s.name):s.name===curUserName);
-                      return `<div class="chk-item${checked?' on':''}" onclick="tChk(this);updateInitTeamState()">
-                        <div class="chk-box${checked?' on':''}"></div>
-                        <span class="chk-txt">${s.name}<span style="font-size:9px;color:#4a7090;margin-left:3px;">${s.rank}</span></span>
-                      </div>`;
-                    }).join('')}</div>
-                  </div>`
-                :'<div style="font-size:11px;color:#4a7090;padding:4px 0;">소속 과/분소 가입 인원 없음</div>';
-              // 다른 과/분소 (접혀있음)
-              const otherSection=otherDepts.length
-                ?`<div id="memOtherDepts" style="display:none;display:${p.members&&p.members.some(m=>myGroup.every(s=>s.name!==m))?'block':'none'};">
-                    ${otherDepts.map(dept=>`
-                      <div style="margin-top:8px;">
-                        <div style="font-size:10px;color:#4a7090;font-weight:700;margin-bottom:5px;">${dept}</div>
-                        <div class="chk-grid">${groups[dept].map(s=>{
-                          const checked=(p.members!=null&&(p.members||[]).includes(s.name));
-                          return `<div class="chk-item${checked?' on':''}" onclick="tChk(this);updateInitTeamState()">
-                            <div class="chk-box${checked?' on':''}"></div>
-                            <span class="chk-txt">${s.name}<span style="font-size:9px;color:#4a7090;margin-left:3px;">${s.rank}</span></span>
-                          </div>`;
-                        }).join('')}</div>
-                      </div>`).join('')}
-                  </div>
-                  <button id="memOtherBtn" onclick="toggleMemOtherDepts()" style="width:100%;margin-top:6px;padding:7px;background:rgba(255,255,255,.04);border:1px dashed rgba(79,168,208,.25);color:#4fa8d0;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;">＋ 다른 과/분소 인원 추가</button>`
-                :'';
-              return mySection+otherSection;
-            })()}
-          </div>
-          <button onclick="confirmMemberSection()" style="width:100%;margin-top:10px;padding:8px;background:rgba(79,168,208,.1);border:1px solid rgba(79,168,208,.3);color:#4fa8d0;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">✅ 확인</button>
-        </div>
-        <!-- 추가팀 (복수) -->
-        <div id="extraTeamsWrap" style="margin-top:8px;"></div>
-        <button onclick="addExtraTeam()" style="width:100%;margin-top:8px;padding:8px;background:rgba(126,200,163,.08);border:1px dashed rgba(126,200,163,.3);color:#7ec8a0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">＋ 추가팀</button>
-      </div>
-
-      <!-- 동원 장비 -->
-      <div class="rsec" style="margin-top:12px;"><div class="rsec-t">🛠️ 동원 장비</div>
+    <!-- ══ 섹터4: 기타 ══ -->
+    <div id="repSec5" class="rep-sec" style="display:none;padding:12px;overflow-y:auto;">
+      <div class="rsec"><div class="rsec-t">🛠️ 동원 장비</div>
         <div class="fg"><span class="fl">구조 방법 (복수)</span>
           <div class="pills" id="rescMeth">${['들것','부축','헬기','차량','자력하산','로프구조','기타'].map(o=>`<div class="pill${(p.rescueMethod||[]).includes(o)?' on':''}" onclick="tPill(this)">${o}</div>`).join('')}</div>
         </div>
@@ -3855,11 +3793,7 @@ function render1BoForm(prefill=null){
           <textarea id="r_equip" class="fta" rows="2" placeholder="들것, 로프, AED, 헬기 등">${p.equipment||''}</textarea>
         </div>
       </div>
-    </div>
-
-    <!-- ══ 섹터5: 기타 ══ -->
-    <div id="repSec5" class="rep-sec" style="display:none;padding:12px;overflow-y:auto;">
-      <div class="rsec"><div class="rsec-t">🚑 병원 후송</div>
+      <div class="rsec" style="margin-top:12px;"><div class="rsec-t">🚑 병원 후송</div>
         <select id="r_hosp" class="fsel">${['미정','후송 없음','후송 완료','후송 중','본인 귀가','기타'].map(o=>`<option${(p.hospital||'미정')===o?' selected':''}>${o}</option>`).join('')}</select>
       </div>
       <div class="rsec" style="margin-top:12px;"><div class="rsec-t">📋 사고 제목 및 작성 정보</div>
