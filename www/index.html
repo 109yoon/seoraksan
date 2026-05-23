@@ -19,6 +19,7 @@
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <!-- 카카오 SDK (지도 + 로그인) -->
 <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js" crossorigin="anonymous"></script>
 <script>
@@ -1401,6 +1402,7 @@ const _SHARED_DOC=['history','wikis','facilities','staff','catFac','catFacMeta',
 const _SHARED=[..._SHARED_COLL,..._SHARED_DOC]; // 하위 호환용
 const _fs={};   // Firestore 인메모리 캐시
 let _fdb=null;
+let _fst=null;
 
 const DB={
   g(k){
@@ -1453,6 +1455,7 @@ function initFirebase(onReady){
     if(!firebase.apps.length) firebase.initializeApp(_FB_CFG);
     _fdb=firebase.firestore();
     _fdb.enablePersistence().catch(()=>{});
+    _fst=firebase.storage();
     const totalKeys=_SHARED.length;
     const loaded=new Set();
     function _checkReady(){if(loaded.size===totalKeys){onReady&&onReady();onReady=null;}}
@@ -1607,7 +1610,29 @@ document.querySelectorAll('.modal').forEach(m=>{
   if(m.id==='modalUser')return; // 필수입력 검증 때문에 별도처리
   m.addEventListener('click',function(e){if(e.target===this)closeM(this.id);});
 });
-function prevImg(inp,pid){if(inp.files&&inp.files[0]){const r=new FileReader();r.onload=e=>document.getElementById(pid).innerHTML=`<img src="${e.target.result}">`;r.readAsDataURL(inp.files[0]);}}
+async function uploadImageToStorage(file,path){
+  if(!_fst)throw new Error('Storage 미초기화');
+  const ref=_fst.ref().child(path+'/'+Date.now()+'_'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_'));
+  const snap=await ref.put(file);
+  return await snap.ref.getDownloadURL();
+}
+async function prevImg(inp,pid){
+  if(!inp.files||!inp.files[0])return;
+  const file=inp.files[0];
+  const prev=document.getElementById(pid);
+  const objUrl=URL.createObjectURL(file);
+  prev.innerHTML=`<img src="${objUrl}" style="opacity:.6"><div style="font-size:10px;color:#4fa8d0;margin-top:3px;">업로드 중...</div>`;
+  prev.dataset.url='';
+  try{
+    const url=await uploadImageToStorage(file,'photos/'+pid);
+    prev.dataset.url=url;
+    prev.innerHTML=`<img src="${url}">`;
+  }catch(e){
+    prev.innerHTML=`<img src="${objUrl}">`;
+    prev.dataset.url='';
+    toast('⚠️ 사진 업로드 실패 (로컬만 저장)');
+  }
+}
 function fillSel(id,arr){document.getElementById(id).innerHTML=arr.map(v=>`<option value="${v}">${v}</option>`).join('');}
 const SC=s=>s==='ok'?'#27ae60':s==='warn'?'#e67e22':'#c0392b';
 const SL=s=>s==='ok'?'양호':s==='warn'?'보수필요':'파손위험';
@@ -4252,6 +4277,8 @@ function submit1Bo(){
     hasRep:document.getElementById('r_hasRep')?.value||'n',
     repName:document.getElementById('r_repName')?.value||'',
     repTel:document.getElementById('r_repTel')?.value||'',
+    injuryPhoto:document.getElementById('prevInj')?.dataset?.url||'',
+    transPhoto:document.getElementById('prevTrans')?.dataset?.url||'',
     timetable: sortTTByTime(_ttInlineEntries||[]),
     status:'ongoing', reports:[],
   };
@@ -4341,6 +4368,7 @@ function submitHazard(){
     hazStatus:getSelPills('hazStatusPills')[0]||'미조치',
     onSite:getSelPills('hazOnSitePills')[0]||'',response:getSelPills('hazResponsePills')[0]||'',
     author:document.getElementById('hz_author').value,
+    photo:document.getElementById('prevHaz')?.dataset?.url||'',
     fireTL:type.includes('산불')?[..._hazFireTL]:[],
   };
   const haz=DB.g('hazards')||[];haz.push(h);DB.s('hazards',haz);
@@ -4695,7 +4723,7 @@ function submitInsp(){
   facs[idx].status=ns;
   const hist=DB.g('history')||[];
   const inspDT=document.getElementById('inspDateTime')?.value||now();
-  const h={id:Date.now(),facId:selFacId,facName:facs[idx].name,date:inspDT,status:ns,note,author};
+  const h={id:Date.now(),facId:selFacId,facName:facs[idx].name,date:inspDT,status:ns,note,author,photo:document.getElementById('prevInsp')?.dataset?.url||''};
   hist.push(h);DB.s('facilities',facs);DB.s('history',hist);
   if(ns==='bad')pushNoti(`점검 위험: ${facs[idx].name}`,'🚨','fac_bad',{app:'inspect',tab:2,id:selFacId});
   else if(ns==='warn')pushNoti(`보수필요: ${facs[idx].name}`,'⚠️','fac_warn',{app:'inspect',tab:2,id:selFacId});
@@ -4763,7 +4791,7 @@ function submitAddFac(){
   if(gs){const p=gs.split(',');lat=parseFloat(p[0]);lng=parseFloat(p[1]);if(isNaN(lat)||isNaN(lng)){lat=null;lng=null;}}
   const status=document.getElementById('facInitSt').value;
   const facs=DB.g('facilities')||[];
-  const data={type:document.getElementById('facTypeSel').value,name,loc:document.getElementById('facLocIn').value,status,lat,lng,install:document.getElementById('facInstall').value,note:document.getElementById('facNote').value,author:document.getElementById('facAuthor').value};
+  const data={type:document.getElementById('facTypeSel').value,name,loc:document.getElementById('facLocIn').value,status,lat,lng,install:document.getElementById('facInstall').value,note:document.getElementById('facNote').value,author:document.getElementById('facAuthor').value,photo:document.getElementById('prevFac')?.dataset?.url||''};
   if(_editFacId){
     const idx=facs.findIndex(f=>f.id===_editFacId);
     if(idx!==-1)facs[idx]=Object.assign(facs[idx],data);
@@ -4901,7 +4929,7 @@ function submitWiki(){
   const cats=[..._selCats];const editId=document.getElementById('wikiEditId').value;
   const wikis=DB.g('wikis')||[];
   if(editId){const idx=wikis.findIndex(x=>String(x.id)===String(editId));if(idx!==-1){if(!wikis[idx].versions)wikis[idx].versions=[];wikis[idx].versions.push({body:wikis[idx].body,savedAt:now(),author:wikis[idx].author});wikis[idx]={...wikis[idx],title,cats,body,author};}}
-  else{wikis.push({id:Date.now(),title,cats,body,photo:'',author,versions:[]});}
+  else{wikis.push({id:Date.now(),title,cats,body,photo:document.getElementById('prevWiki')?.dataset?.url||'',author,versions:[]});}
   DB.s('wikis',wikis);closeM('modalWikiEdit');renderWikiList('');toast('✅ 위키 저장');updateSummary();
 }
 function deleteWiki(id){
@@ -4923,19 +4951,22 @@ function insWikiLink(title){const ta=document.getElementById('wikiBodyIn');const
 function wIns(b,a,newline=false){const ta=document.getElementById('wikiBodyIn');const s=ta.selectionStart,e=ta.selectionEnd;const prefix=newline&&s>0&&ta.value[s-1]!=='\n'?'\n':'';ta.value=ta.value.slice(0,s)+prefix+b+(ta.value.slice(s,e)||'텍스트')+a+ta.value.slice(e);ta.focus();}
 function insTable(){const ta=document.getElementById('wikiBodyIn');const s=ta.selectionStart;const tbl='\n| 항목 | 내용 |\n|---|---|\n| 값1 | 내용1 |\n| 값2 | 내용2 |\n';ta.value=ta.value.slice(0,s)+tbl+ta.value.slice(s);ta.focus();}
 function insList(){const ta=document.getElementById('wikiBodyIn');const s=ta.selectionStart;const lst='\n• 항목 1\n• 항목 2\n• 항목 3\n';ta.value=ta.value.slice(0,s)+lst+ta.value.slice(s);ta.focus();}
-function insBodyImg(inp){
+async function insBodyImg(inp){
   if(!inp.files||!inp.files[0])return;
-  const r=new FileReader();
-  r.onload=e=>{
-    const b64=e.target.result;
-    const ta=document.getElementById('wikiBodyIn');
-    const s=ta.selectionStart;
-    const imgTag='\n![사진]('+b64+')\n';
-    ta.value=ta.value.slice(0,s)+imgTag+ta.value.slice(s);
-    ta.focus();
+  const file=inp.files[0];
+  const ta=document.getElementById('wikiBodyIn');
+  const s=ta.selectionStart;
+  const placeholder='\n![사진](업로드중...)\n';
+  ta.value=ta.value.slice(0,s)+placeholder+ta.value.slice(s);
+  ta.focus();
+  try{
+    const url=await uploadImageToStorage(file,'photos/wiki');
+    ta.value=ta.value.replace('![사진](업로드중...)',`![사진](${url})`);
     toast('📷 사진 삽입 완료');
-  };
-  r.readAsDataURL(inp.files[0]);
+  }catch(e){
+    ta.value=ta.value.replace(placeholder,'');
+    toast('⚠️ 사진 업로드 실패');
+  }
 }
 
 document.addEventListener('click',ev=>{if(!ev.target.closest('#wikiBodyIn')&&!ev.target.closest('#wikiAC')){const b=document.getElementById('wikiAC');if(b)b.style.display='none';}});
