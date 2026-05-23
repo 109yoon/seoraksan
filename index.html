@@ -779,6 +779,7 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>
     </button>
     <div id="rescueCoords" style="position:absolute;bottom:130px;left:10px;background:rgba(0,0,0,.6);color:#8ab4cc;font-size:10px;padding:4px 8px;border-radius:5px;z-index:9;pointer-events:none;font-family:monospace;backdrop-filter:blur(4px);letter-spacing:.3px;line-height:1.6;"><span id="rescueCoordsLat">--</span></div>
+    <div id="rescueZoneBadge" style="display:none;position:absolute;bottom:162px;left:10px;background:rgba(26,58,95,.88);color:#7dd3fa;font-size:10px;font-weight:700;padding:3px 9px;border-radius:12px;z-index:9;pointer-events:none;backdrop-filter:blur(4px);border:1px solid rgba(79,168,208,.35);letter-spacing:.4px;"></div>
     <button class="fab" style="background:#7a1818;color:#fff;" onclick="openNewRescue()">🚨</button>
     <button class="fab2" onclick="openNewHazard()">⚠️ 위험상황 보고</button>
     <!-- 재난/구조 필터 패널 -->
@@ -1279,6 +1280,7 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
       </div>
       <!-- 현재 좌표 표시 -->
       <div id="pickerCoords" style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(11,28,48,.9);color:#4fa8d0;padding:5px 13px;border-radius:20px;font-size:11px;font-weight:600;z-index:10;border:1px solid rgba(79,168,208,.3);white-space:nowrap;"></div>
+      <div id="pickerZoneBadge" style="display:none;position:absolute;bottom:44px;left:50%;transform:translateX(-50%);background:rgba(26,58,95,.92);color:#7dd3fa;padding:4px 13px;border-radius:12px;font-size:11px;font-weight:700;z-index:10;border:1px solid rgba(79,168,208,.38);white-space:nowrap;letter-spacing:.4px;"></div>
     </div>
     <!-- 확인 버튼 -->
     <div style="padding:12px 15px;flex-shrink:0;border-top:1px solid rgba(255,255,255,.07);">
@@ -1978,12 +1980,14 @@ function initMaps(){
           window._lastCrosshairCoord={lat:coord.getLat(),lng:coord.getLng()};
           const cd=document.getElementById('rescueCoords');
           if(cd){var _s=_nearestSign(coord.getLat(),coord.getLng());cd.innerHTML=coord.getLat().toFixed(5)+', '+coord.getLng().toFixed(5)+(_s?'<br><span style="color:#f0c040;font-size:9.5px;">📍 '+_s+'</span>':'');}
+          _updateZoneBadge(coord.getLat(),coord.getLng(),'rescueZoneBadge');
           return;
         }
       }catch(e){}
       const c=mapR.getCenter();window._lastCrosshairCoord={lat:c.getLat(),lng:c.getLng()};
       const cd=document.getElementById('rescueCoords');
       if(cd){var _s=_nearestSign(c.getLat(),c.getLng());cd.innerHTML=c.getLat().toFixed(5)+', '+c.getLng().toFixed(5)+(_s?'<br><span style="color:#f0c040;font-size:9.5px;">📍 '+_s+'</span>':'');}
+      _updateZoneBadge(c.getLat(),c.getLng(),'rescueZoneBadge');
     }
     kakao.maps.event.addListener(mapR,'center_changed',saveMapCenter);
     saveMapCenter();
@@ -2209,6 +2213,43 @@ function closeChangelog(){
 let _extraTeams=[]; // [{teamName, members:[]}]
 const _ROCK_LOCS=['천화대','흑범길','염라길','석주길','적벽','장군봉','삼형제길','유선대','울산암벽','하나되는길','돌잔치길','나들이길','소토왕골암장','한편의시를위한길','솜다리의추억','경원대길','4인의우정길','별을따는소년들','미륵장군봉','몽유도원도','아갈바위','칠형제봉'];
 const _ICE_LOCS=['토왕성폭포','두줄폭포','형제폭포','50m/100m폭포','건폭포','소승폭포','실폭포'];
+
+// ── ZZ-NN 구역 관리 체계 ─────────────────────────────────
+// lat/lng: 각 구역 탐방로 중심점 (실측 후 수정 권장)
+const SEORAK_ZONES = {
+  '01':{name:'천불동계곡',     base:'소공원탐방지원센터',    lat:38.1720,lng:128.4770},
+  '02':{name:'천불동→대청봉', base:'소공원/백담탐방지원센터',lat:38.1420,lng:128.4620},
+  '03':{name:'공룡능선',       base:'소공원탐방지원센터',    lat:38.1540,lng:128.5480},
+  '04':{name:'소공원 서측',    base:'소공원탐방지원센터',    lat:38.1810,lng:128.4940},
+  '05':{name:'신흥사·비선대', base:'소공원탐방지원센터',    lat:38.1760,lng:128.4820},
+  '06':{name:'오색',           base:'남설악탐방지원센터',    lat:38.0280,lng:128.5180},
+  '07':{name:'주전골',         base:'용소탐방지원센터',      lat:38.0430,lng:128.5360},
+  '08':{name:'흘림골',         base:'흘림골탐방지원센터',    lat:38.0490,lng:128.5830},
+  '09':{name:'수렴동',         base:'백담탐방지원센터',      lat:38.1070,lng:128.3940},
+  '10':{name:'백담계곡',       base:'백담탐방지원센터',      lat:38.1530,lng:128.3870},
+  '11':{name:'장수대·한계령', base:'한계산성분소',           lat:38.0720,lng:128.3260},
+  '12':{name:'울산바위',       base:'소공원탐방지원센터',    lat:38.2070,lng:128.5000},
+  '13':{name:'귀때기청봉',     base:'소공원/백담탐방지원센터',lat:38.1350,lng:128.4300},
+  '14':{name:'점봉산',         base:'점봉산탐방지원센터',    lat:38.0920,lng:128.5620},
+};
+
+// 좌표 → 가장 가까운 Zone ID (8km 초과 시 null)
+function getZoneId(lat,lng){
+  var best=null,bestD=Infinity;
+  Object.keys(SEORAK_ZONES).forEach(function(k){
+    var z=SEORAK_ZONES[k],d=_haversine(lat,lng,z.lat,z.lng);
+    if(d<bestD){bestD=d;best=k;}
+  });
+  return(best&&bestD<=8000)?best:null;
+}
+
+// Zone 뱃지 DOM 업데이트 헬퍼
+function _updateZoneBadge(lat,lng,elId){
+  var el=document.getElementById(elId);if(!el)return;
+  var zid=getZoneId(lat,lng);
+  if(zid){var z=SEORAK_ZONES[zid];el.textContent='Zone '+zid+' · '+z.name;el.style.display='block';}
+  else el.style.display='none';
+}
 let _extraTeamCollapsed=[];
 let _extraTeamOtherOpen=[];
 let _extraTeamOtherFilter=[];
@@ -6699,24 +6740,33 @@ function openMapPicker(){
         const c=mapPicker.getCenter();
         const coordEl=document.getElementById('pickerCoords');
         if(coordEl) coordEl.textContent=c.getLat().toFixed(5)+', '+c.getLng().toFixed(5);
+        _updateZoneBadge(c.getLat(),c.getLng(),'pickerZoneBadge');
       });
     } else {
       mapPicker.relayout();
       mapPicker.setCenter(new kakao.maps.LatLng(initLat,initLng));
     }
-    // 초기 좌표 표시
+    // 초기 좌표·Zone 뱃지 표시
     const coordEl=document.getElementById('pickerCoords');
     if(coordEl) coordEl.textContent=initLat.toFixed(5)+', '+initLng.toFixed(5);
+    _updateZoneBadge(initLat,initLng,'pickerZoneBadge');
   },200);
 }
 
 function confirmMapPicker(){
   if(!mapPicker){ toast('⚠️ 지도 로딩 필요'); return; }
   const center=mapPicker.getCenter();
-  const coords=center.getLat().toFixed(5)+', '+center.getLng().toFixed(5);
+  const lat=center.getLat(),lng=center.getLng();
+  const coords=lat.toFixed(5)+', '+lng.toFixed(5);
   const gpsEl=document.getElementById('r_gps');
   if(gpsEl) gpsEl.value=coords;
   syncFormMapFromInput();
+  // 사고 장소 비어 있으면 Zone 정보 자동 채우기
+  const locEl=document.getElementById('r_loc');
+  if(locEl&&!locEl.value.trim()&&!locEl.dataset.userEdited){
+    const zid=getZoneId(lat,lng);
+    if(zid){const z=SEORAK_ZONES[zid];locEl.value='Zone '+zid+' ('+z.name+') 구간';autoGenTitle();}
+  }
   closeM('modalMapPicker');
   toast('📍 위치 선택 완료');
 }
