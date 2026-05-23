@@ -20,6 +20,7 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-messaging-compat.js"></script>
 <!-- 카카오 SDK (지도 + 로그인) -->
 <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js" crossorigin="anonymous"></script>
 <script>
@@ -1403,6 +1404,15 @@ const _SHARED=[..._SHARED_COLL,..._SHARED_DOC]; // 하위 호환용
 const _fs={};   // Firestore 인메모리 캐시
 let _fdb=null;
 let _fst=null;
+let _fmsg=null;
+let _swReg=null;
+// 기기 고유 ID (localStorage 영속, 알림 브로드캐스트 출처 구분용)
+const _MY_DEVICE_ID=(function(){
+  let id=localStorage.getItem('_deviceId');
+  if(!id){id=Date.now().toString(36)+Math.random().toString(36).slice(2);localStorage.setItem('_deviceId',id);}
+  return id;
+})();
+let _maxSharedNotiAt=0,_sharedNotiInited=false;
 
 const DB={
   g(k){
@@ -1456,6 +1466,7 @@ function initFirebase(onReady){
     _fdb=firebase.firestore();
     _fdb.enablePersistence().catch(()=>{});
     _fst=firebase.storage();
+    try{_fmsg=firebase.messaging();}catch(e){}
     const totalKeys=_SHARED.length;
     const loaded=new Set();
     function _checkReady(){if(loaded.size===totalKeys){onReady&&onReady();onReady=null;}}
@@ -1484,6 +1495,30 @@ function initFirebase(onReady){
       },()=>{if(!loaded.has(k)){loaded.add(k);_checkReady();}});
     });
     // ── 구버전 단일 문서 → 개별 문서 마이그레이션 ──
+    // ── 기기 간 알림 브로드캐스트 리스너 (준비 체크에 미포함) ──
+    _fdb.collection('sharedNotis').orderBy('at','desc').limit(50)
+      .onSnapshot(snap=>{
+        if(!_sharedNotiInited){
+          // 첫 스냅샷: 현재 최신 ts 기록 → 기존 알림은 무시
+          _maxSharedNotiAt=snap.docs.reduce((m,d)=>Math.max(m,d.data().at||0),0);
+          _sharedNotiInited=true;
+          return;
+        }
+        snap.docChanges().forEach(ch=>{
+          if(ch.type!=='added')return;
+          const d=ch.doc.data();
+          if((d.at||0)<=_maxSharedNotiAt)return;
+          if(d.deviceId===_MY_DEVICE_ID)return; // 내가 보낸 것
+          _maxSharedNotiAt=Math.max(_maxSharedNotiAt,d.at||0);
+          // 앱 내 벨 알림 추가
+          const ns=DB.g('notis')||[];
+          ns.unshift({id:d.id||Date.now(),msg:d.msg,ico:d.ico,time:d.timeStr||now(),read:false,link:d.link||null});
+          if(ns.length>80)ns.splice(80);
+          DB.s('notis',ns);updateBell();
+          // OS 시스템 알림 (앱이 백그라운드일 때만)
+          _showSystemNoti(d.msg,d.ico);
+        });
+      },()=>{});
     _migrateLegacyCollections();
     setTimeout(()=>{if(onReady){onReady();onReady=null;}},10000);
   }catch(e){onReady&&onReady();}
@@ -1708,8 +1743,47 @@ function chkNation(sel){
 // ══════════════════════════════════════════
 function pushNoti(msg,ico,type='info',link=null){
   const s=DB.g('notiSetting')||{};if(type!=='info'&&s[type]===false)return;
-  const ns=DB.g('notis')||[];ns.unshift({id:Date.now(),msg,ico,time:now(),read:false,link});
+  const id=Date.now();
+  const ns=DB.g('notis')||[];ns.unshift({id,msg,ico,time:now(),read:false,link});
   if(ns.length>80)ns.splice(80);DB.s('notis',ns);updateBell();
+  // 기기 간 Firestore 브로드캐스트
+  if(_fdb){
+    _fdb.collection('sharedNotis').doc(String(id)).set({
+      id,msg,ico,type:type||'info',link:link||null,
+      at:id,timeStr:now(),deviceId:_MY_DEVICE_ID
+    }).catch(()=>{});
+    if(Math.random()<0.02)_cleanOldSharedNotis(); // ~2% 확률로 24h 이상 알림 정리
+  }
+}
+function _cleanOldSharedNotis(){
+  if(!_fdb)return;
+  const cutoff=Date.now()-24*60*60*1000;
+  _fdb.collection('sharedNotis').where('at','<',cutoff).get()
+    .then(snap=>snap.docs.forEach(d=>d.ref.delete())).catch(()=>{});
+}
+function _showSystemNoti(body,ico){
+  if(document.visibilityState==='visible')return; // 앱 보이는 중이면 불필요
+  if(Notification.permission!=='granted')return;
+  const title='설악산 현장관리 '+(ico||'🔔');
+  if(_swReg){
+    _swReg.showNotification(title,{body,icon:'/icons/icon-192.png',vibrate:[200,100,200]});
+  }else if('Notification' in window){
+    try{new Notification(title,{body});}catch(e){}
+  }
+}
+// VAPID 키 설정 후 FCM 토큰 등록 (Firebase Console > Project Settings > Cloud Messaging > Web Push 인증서)
+const _FCM_VAPID=''; // ← 여기에 Firebase Console에서 발급한 VAPID 키 입력
+async function _initFCM(){
+  if(!_fmsg||!_fdb||!_swReg||Notification.permission!=='granted'||!_FCM_VAPID)return;
+  try{
+    const token=await _fmsg.getToken({vapidKey:_FCM_VAPID,serviceWorkerRegistration:_swReg});
+    if(token){
+      const u=DB.g('currentUser')||{};
+      _fdb.collection('fcmTokens').doc(_MY_DEVICE_ID).set({
+        token,userId:u.id||'',name:u.name||'',updatedAt:Date.now()
+      }).catch(()=>{});
+    }
+  }catch(e){}
 }
 function updateBell(){
   const cnt=(DB.g('notis')||[]).filter(n=>!n.read).length;
@@ -6748,10 +6822,19 @@ window.onload=function(){
       Notification.requestPermission().then(function(r){
         _permBanner('noti',r);
         toast(r==='granted'?'🔔 알림 권한 허용됨':'⚠️ 알림 권한이 거부되었습니다');
+        if(r==='granted') _initFCM();
       });
     }
   };
   setTimeout(_initPermBanners, 800); // 앱 로딩 후 표시
+
+  // ── Service Worker 등록 (PWA 오프라인 + FCM 백그라운드 알림) ──
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.register('/sw.js').then(function(reg){
+      _swReg=reg;
+      if(Notification.permission==='granted') _initFCM();
+    }).catch(function(){});
+  }
 
   initFirebase(function(){
     initDB();
@@ -6760,7 +6843,8 @@ window.onload=function(){
     const d=new Date();const days=['일','월','화','수','목','금','토'];
     document.getElementById('homeDate').textContent=d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+days[d.getDay()]+')';
     if(window._kakaoAuthCode){var _kc=window._kakaoAuthCode;window._kakaoAuthCode=null;_handleKakaoCode(_kc);return;}
-    // Firebase 준비 완료 시 즉시 로딩 해제 (3초 폴백보다 빠르면 여기서 처리됨)
+    // Firebase 준비 후 FCM 토큰 갱신 (권한·SW·VAPID 모두 준비된 경우만)
+    if(Notification.permission==='granted') _initFCM();
     if(window._hideLoading) window._hideLoading();
   });
 };
