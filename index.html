@@ -1644,11 +1644,7 @@ function initDB(){
     if(fc)DB.s('facilities',f2);
   })();
   if(!DB.g('wikiCats'))   DB.s('wikiCats',['지형','안전','장비','법령','응급','탐방로','시설','동식물','기상']);
-  if(!DB.g('facilities')) DB.s('facilities',[
-    {id:1,type:'🌉 교량',name:'설악-01 출렁다리',loc:'소공원 입구',status:'bad',lat:38.170,lng:128.480,install:'2025-05-10',note:'강철 와이어 부식',author:'손경완'},
-    {id:2,type:'🪧 다목적위치표지판',name:'천불동 04지점',loc:'천불동 계곡',status:'ok',lat:38.165,lng:128.475,install:'2024-11-20',note:'',author:'김택찬'},
-    {id:3,type:'🛡️ 안전난간',name:'비선대 상단 난간',loc:'비선대 직상부',status:'warn',lat:38.168,lng:128.483,install:'2023-08-15',note:'볼트 2개 이완',author:'손경완'},
-  ]);
+  if(!DB.g('facilities')) DB.s('facilities',[]);
   if(!DB.g('rescues'))    DB.s('rescues',[]);
   if(!DB.g('hazards'))    DB.s('hazards',[]);
   if(!DB.g('history'))    DB.s('history',[]);
@@ -5342,6 +5338,23 @@ function renderAdmSys(){
     </div>
     <div class="scard" style="margin-bottom:8px;"><div class="stitle">📊 데이터 현황</div>
       <div style="font-size:12px;color:#b8d4e8;line-height:2.1;">시설물 <b>${(DB.g('facilities')||[]).length}개</b> · 점검이력 <b>${(DB.g('history')||[]).length}건</b><br>구조이력 <b>${(DB.g('rescues')||[]).length}건</b> · 위험상황 <b>${(DB.g('hazards')||[]).length}건</b><br>위키 <b>${(DB.g('wikis')||[]).length}건</b> · 대원 <b>${(DB.g('members')||[]).length}명</b></div>
+      <div style="margin-top:8px;display:flex;align-items:center;gap:6px;font-size:11px;">
+        <span style="width:8px;height:8px;border-radius:50%;background:${_fdb?'#27ae60':'#e05050'};display:inline-block;flex-shrink:0;"></span>
+        <span style="color:${_fdb?'#5dbf8a':'#e05050'};font-weight:700;">Firebase ${_fdb?'연결됨':'미연결'}</span>
+        ${_fdb?'<span style="color:#4a7090;">· 모든 데이터 실시간 동기화 중</span>':'<span style="color:#7a3020;">· 오프라인 상태입니다</span>'}
+      </div>
+    </div>
+    <div class="scard" style="margin-bottom:8px;">
+      <div class="stitle">📁 데이터 백업 / 복원</div>
+      <div style="font-size:11px;color:#7a9cb8;margin-bottom:10px;">시설물·구조이력·위키 전체를 JSON 파일로 내보내거나 복원합니다</div>
+      <div style="display:flex;flex-direction:column;gap:7px;">
+        <button onclick="exportAllData()" style="width:100%;background:rgba(39,174,96,.12);color:#5dbf8a;border:1px solid rgba(39,174,96,.3);padding:10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">📤 JSON 내보내기 (백업)</button>
+        <label style="width:100%;background:rgba(79,168,208,.1);color:#4fa8d0;border:1px solid rgba(79,168,208,.28);padding:10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;text-align:center;display:block;">
+          📥 JSON 가져오기 (복원)
+          <input type="file" accept=".json" style="display:none;" onchange="importAllData(this.files[0]);this.value=''">
+        </label>
+        <button onclick="forceSyncFirestore()" style="width:100%;background:rgba(255,165,0,.1);color:#f0a020;border:1px solid rgba(255,165,0,.28);padding:10px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">🔄 Firebase 강제 동기화</button>
+      </div>
     </div>
     <div class="scard"><div class="stitle" style="color:#c0392b;">⚠️ 위험 작업</div>
       <div style="display:flex;flex-direction:column;gap:7px;">
@@ -5390,6 +5403,54 @@ function _checkDeletedUser(){
 }
 function resetAll(){if(!confirm('모든 데이터 초기화. 되돌릴 수 없습니다.'))return;['members','catFac','wikiCats','facilities','rescues','hazards','history','wikis','notis','hotSearch','notiSetting','currentUser','sheetsUrl'].forEach(k=>DB.d(k));initDB();toast('✅ 초기화');renderAdmSys();updateSummary();}
 function clearNotisOnly(){DB.s('notis',[]);updateBell();toast('🗑️ 알림 이력 삭제');renderAdmSys();}
+
+function exportAllData(){
+  const keys=['facilities','wikis','history','catFac','catFacMeta','wikiCats','members','rescues','hazards'];
+  const out={_exported:new Date().toISOString(),_version:'v8'};
+  keys.forEach(k=>{const v=DB.g(k);if(v)out[k]=v;});
+  const blob=new Blob([JSON.stringify(out,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='seoraksan_backup_'+new Date().toISOString().slice(0,10)+'.json';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+  toast('✅ 내보내기 완료 — 다운로드 파일을 보관하세요');
+}
+
+function importAllData(file){
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const data=JSON.parse(e.target.result);
+      const importable=['facilities','wikis','history','catFac','catFacMeta','wikiCats','members'];
+      const found=importable.filter(k=>data[k]!==undefined);
+      if(!found.length){toast('⚠️ 유효한 백업 파일이 아닙니다');return;}
+      if(!confirm('백업 파일에서 '+found.join(', ')+' 데이터를 복원합니다.\n현재 데이터를 덮어씁니다. 계속하시겠습니까?'))return;
+      found.forEach(k=>DB.s(k,data[k]));
+      renderAdmSys();updateSummary();
+      try{renderFacList();renderInspectMap();}catch(ex){}
+      try{renderWikiList('');}catch(ex){}
+      toast('✅ 복원 완료 — '+found.length+'개 항목');
+    }catch(ex){toast('⚠️ 파일 읽기 오류: '+ex.message);}
+  };
+  reader.readAsText(file);
+}
+
+function forceSyncFirestore(){
+  if(!_fdb){toast('⚠️ Firebase 미연결 — 인터넷 연결 확인');return;}
+  const keys=['facilities','wikis','history','catFac','catFacMeta','wikiCats'];
+  let cnt=0;
+  keys.forEach(k=>{
+    const v=_fs[k];
+    if(v!==undefined&&v!==null){
+      _fdb.collection('appData').doc(k).set({d:JSON.stringify(v)}).catch(()=>{});
+      cnt++;
+    }
+  });
+  toast('🔄 Firebase에 '+cnt+'개 항목 동기화 중...');
+  setTimeout(()=>toast('✅ 동기화 완료'),1500);
+}
 
 // ══════════════════════════════════════════
 // 내 설정 (일반직원용)
