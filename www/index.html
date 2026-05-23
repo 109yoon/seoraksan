@@ -1564,6 +1564,22 @@ function chkIllegal(sel){
   document.getElementById('fineWrap').style.display=sel.value.includes('비법정')?'block':'none';
   const pw=document.getElementById('permitWrap');
   if(pw) pw.style.display=(sel.value==='암벽'||sel.value==='빙벽')?'block':'none';
+  const clw=document.getElementById('climbLocWrap');
+  if(clw){
+    const isClimb=sel.value==='암벽'||sel.value==='빙벽';
+    clw.style.display=isClimb?'block':'none';
+    if(isClimb){
+      const locs=sel.value==='암벽'?_ROCK_LOCS:_ICE_LOCS;
+      const curVal=(document.getElementById('r_loc')?.value||'').trim();
+      clw.innerHTML=`<span class="fl">📍 ${sel.value} 위치 선택</span><div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;" id="climbLocBtns">${locs.map(l=>`<button class="tog-btn${curVal===l?' on':''}" onclick="selClimbLoc('${l.replace(/'/g,"\\'")}',this)">${l}</button>`).join('')}</div>`;
+    }
+  }
+}
+function selClimbLoc(loc,btn){
+  const inp=document.getElementById('r_loc');
+  if(inp){inp.value=loc;autoGenTitle();}
+  document.querySelectorAll('#climbLocBtns .tog-btn').forEach(b=>b.classList.remove('on'));
+  if(btn)btn.classList.add('on');
 }
 function chkPermit(sel){document.getElementById('permitNote').style.display=sel.value==='허가자 있음'?'block':'none';}
 function chkReporter(sel){document.getElementById('reporterWrap').style.display=sel.value==='y'?'block':'none';}
@@ -1952,6 +1968,8 @@ function closeChangelog(){
 
 // 추가팀 복수 지원
 let _extraTeams=[]; // [{teamName, members:[]}]
+const _ROCK_LOCS=['천화대','흑범길','염라길','석주길','적벽','장군봉','삼형제길','유선대','울산암벽','하나되는길','돌잔치길','나들이길','소토왕골암장','한편의시를위한길','솜다리의추억','경원대길','4인의우정길','별을따는소년들','미륵장군봉','몽유도원도','아갈바위','칠형제봉'];
+const _ICE_LOCS=['토왕성폭포','두줄폭포','형제폭포','50m/100m폭포','건폭포','소승폭포','실폭포'];
 let _extraTeamCollapsed=[];
 let _extraTeamOtherOpen=[];
 let _extraTeamOtherFilter=[];
@@ -3834,6 +3852,9 @@ function render1BoForm(prefill=null){
         </div>
         <div id="permitNote" style="display:${p.permit&&p.permit==='허가자 있음'?'block':'none'};" class="fg">
           <input type="text" id="r_permitNote" class="fi" placeholder="허가번호, 소속 등" value="${p.permitNote||''}">
+        </div>
+        <div id="climbLocWrap" style="display:${(p.loctype==='암벽'||p.loctype==='빙벽')?'block':'none'};" class="fg">
+          ${(p.loctype==='암벽'||p.loctype==='빙벽')?`<span class="fl">📍 ${p.loctype} 위치 선택</span><div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;" id="climbLocBtns">${(p.loctype==='암벽'?_ROCK_LOCS:_ICE_LOCS).map(l=>`<button class="tog-btn${(p.location||'')===(l)?'  on':''}" onclick="selClimbLoc('${l.replace(/'/g,"\\'")}',this)">${l}</button>`).join('')}</div>`:''}
         </div>
       </div>
       <div class="rsec"><div class="rsec-t">🌤️ 기상 정보</div>
