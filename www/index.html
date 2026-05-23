@@ -554,6 +554,14 @@ body.hi-contrast .ni-t{color:rgba(255,255,255,.55)!important;}
 body.hi-contrast .fac-name,body.hi-contrast .fac-loc{color:rgba(255,255,255,.85)!important;}
 body.hi-contrast .adm-name,body.hi-contrast .adm-meta{color:rgba(255,255,255,.8)!important;}
 body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
+/* ── 32번(상황 추가) · 34번(위험 보고) 터치 영역 최적화 ── */
+#modalAddPhase .fi,#modalAddPhase .fsel,#modalHazard .fi,#modalHazard .fsel{
+  min-height:48px!important;padding:12px 14px!important;
+  font-size:16px!important; /* iOS focus 시 자동 확대 방지 */
+}
+#modalAddPhase .btn-submit,#modalHazard .btn-submit{
+  min-height:52px!important;font-size:15px!important;
+}
 </style>
 
 <div id="loadingScreen" style="position:fixed;inset:0;background:#060d1a;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:auto;">
@@ -6819,6 +6827,18 @@ window.onload=function(){
     // 서브뷰: 위키 페이지
     if(document.getElementById('wikiPageWrap').style.display==='block'){
       showWikiList();history.replaceState({view:'wiki'},'','');return;
+    }
+    // v-report(구조 타임라인) → 13번(구조 목록)으로 복귀
+    if(document.getElementById('v-report').classList.contains('on')){
+      _hideRepFooter();
+      showV('v-rescue-list');renderResList();
+      document.getElementById('appHdr').style.display='block';
+      document.getElementById('topTitle').textContent='재난/구조 관리';
+      var _bn=document.getElementById('bnav');_bn.style.display='flex';
+      [1,2,3].forEach(function(i){document.getElementById('nv'+i).classList.remove('on');});
+      document.getElementById('nv2').classList.add('on');
+      history.replaceState({view:'rescue'},'','');
+      return;
     }
     var homeActive=document.getElementById('v-home').classList.contains('on');
     if(!homeActive){
