@@ -1394,7 +1394,11 @@ const _FB_CFG={
   appId:"1:457414135264:web:4103268ba0702a95a12f85"
 };
 // 기기 간 공유할 키 목록
-const _SHARED=['rescues','hazards','history','wikis','facilities','staff','catFac','catFacMeta','wikiCats','pendingUsers','approvedUsers','deletedKakaoIds'];
+// _SHARED_COLL: 항목마다 개별 Firestore 문서 (Race Condition 방지)
+const _SHARED_COLL=['rescues','hazards'];
+// _SHARED_DOC: 단일 문서에 JSON 배열 저장 (관리자 전용, 동시 쓰기 없음)
+const _SHARED_DOC=['history','wikis','facilities','staff','catFac','catFacMeta','wikiCats','pendingUsers','approvedUsers','deletedKakaoIds'];
+const _SHARED=[..._SHARED_COLL,..._SHARED_DOC]; // 하위 호환용
 const _fs={};   // Firestore 인메모리 캐시
 let _fdb=null;
 
@@ -1404,52 +1408,104 @@ const DB={
     try{return JSON.parse(localStorage.getItem('v7_'+k)||'null');}catch{return null;}
   },
   s(k,v){
-    if(_SHARED.includes(k)){
+    if(_SHARED_COLL.includes(k)){
+      const prev=_fs[k]||[];
+      _fs[k]=v||[];
+      if(_fdb){
+        const newMap=new Map((v||[]).map(r=>[String(r.id),r]));
+        const prevMap=new Map(prev.map(r=>[String(r.id),r]));
+        // 새로 추가되거나 변경된 항목만 개별 문서에 저장
+        newMap.forEach((r,id)=>{
+          const p=prevMap.get(id);
+          if(!p||JSON.stringify(p)!==JSON.stringify(r)){
+            _fdb.collection(k).doc(id).set(r).catch(()=>{});
+          }
+        });
+        // 삭제된 항목 제거
+        prevMap.forEach((_,id)=>{
+          if(!newMap.has(id)) _fdb.collection(k).doc(id).delete().catch(()=>{});
+        });
+      }
+    }else if(_SHARED_DOC.includes(k)){
       _fs[k]=v;
       if(_fdb) _fdb.collection('appData').doc(k).set({d:JSON.stringify(v)}).catch(()=>{});
-    } else {
+    }else{
       try{localStorage.setItem('v7_'+k,JSON.stringify(v));}catch{}
     }
   },
   d(k){
-    if(_SHARED.includes(k)){
+    if(_SHARED_COLL.includes(k)){
+      const prev=_fs[k]||[];
+      _fs[k]=[];
+      if(_fdb) prev.forEach(r=>_fdb.collection(k).doc(String(r.id)).delete().catch(()=>{}));
+    }else if(_SHARED_DOC.includes(k)){
       _fs[k]=null;
       if(_fdb) _fdb.collection('appData').doc(k).delete().catch(()=>{});
-    } else {
+    }else{
       localStorage.removeItem('v7_'+k);
     }
-  }
+  },
+  sync(){} // no-op (이전 코드 호환)
 };
 
 function initFirebase(onReady){
   try{
     if(!firebase.apps.length) firebase.initializeApp(_FB_CFG);
     _fdb=firebase.firestore();
-    _fdb.enablePersistence().catch(()=>{}); // 오프라인 캐시
+    _fdb.enablePersistence().catch(()=>{});
+    const totalKeys=_SHARED.length;
     const loaded=new Set();
-    _SHARED.forEach(k=>{
+    function _checkReady(){if(loaded.size===totalKeys){onReady&&onReady();onReady=null;}}
+    function _onRemoteUpdate(){
+      _checkDeletedUser();updateSummary();
+      if(window.curApp==='rescue'){renderResList();try{renderRescueMap();}catch(e){}}
+      else if(window.curApp==='inspect'){renderFacList();renderInspectMap();}
+      else if(window.curApp==='wiki')renderWikiList('');
+      else if(window.curApp==='stats')renderFullStats();
+    }
+    // ── 컬렉션 리스너: 항목마다 개별 문서 (rescues, hazards) ──
+    _SHARED_COLL.forEach(k=>{
+      _fdb.collection(k).onSnapshot(snap=>{
+        _fs[k]=snap.docs.map(d=>d.data());
+        try{_fs[k].sort((a,b)=>(Number(b.id)||0)-(Number(a.id)||0));}catch{}
+        if(!loaded.has(k)){loaded.add(k);_checkReady();}
+        else{_onRemoteUpdate();}
+      },()=>{if(!loaded.has(k)){loaded.add(k);_checkReady();}});
+    });
+    // ── 단일 문서 리스너: appData/{key} ──
+    _SHARED_DOC.forEach(k=>{
       _fdb.collection('appData').doc(k).onSnapshot(snap=>{
         _fs[k]=snap.exists?(()=>{try{return JSON.parse(snap.data().d);}catch{return null;}})():null;
-        if(!loaded.has(k)){
-          loaded.add(k);
-          if(loaded.size===_SHARED.length){ onReady&&onReady(); onReady=null; }
-        } else {
-          // 다른 기기에서 변경 시 UI 갱신
-          _checkDeletedUser();
-          updateSummary();
-          if(window.curApp==='rescue'){renderResList();try{renderRescueMap();}catch(e){}}
-          else if(window.curApp==='inspect'){renderFacList();renderInspectMap();}
-          else if(window.curApp==='wiki') renderWikiList('');
-          else if(window.curApp==='stats') renderFullStats();
-        }
-      },()=>{ // 오류 시 로컬 전용으로 폴백
-        if(!loaded.has(k)){ loaded.add(k); if(loaded.size===_SHARED.length){onReady&&onReady();onReady=null;} }
-      });
+        if(!loaded.has(k)){loaded.add(k);_checkReady();}
+        else{_onRemoteUpdate();}
+      },()=>{if(!loaded.has(k)){loaded.add(k);_checkReady();}});
     });
-    // 10초 안에 안 되면 강제 시작
+    // ── 구버전 단일 문서 → 개별 문서 마이그레이션 ──
+    _migrateLegacyCollections();
     setTimeout(()=>{if(onReady){onReady();onReady=null;}},10000);
-  }catch(e){
-    onReady&&onReady();
+  }catch(e){onReady&&onReady();}
+}
+
+async function _migrateLegacyCollections(){
+  if(!_fdb)return;
+  for(const k of _SHARED_COLL){
+    try{
+      const oldDoc=await _fdb.collection('appData').doc(k).get();
+      if(!oldDoc.exists)continue;
+      const oldData=JSON.parse(oldDoc.data().d||'[]');
+      if(!Array.isArray(oldData)||!oldData.length){
+        await _fdb.collection('appData').doc(k).delete();continue;
+      }
+      // 이미 새 구조에 데이터 있으면 구버전 문서만 삭제
+      const existing=await _fdb.collection(k).limit(1).get();
+      if(!existing.empty){await _fdb.collection('appData').doc(k).delete();continue;}
+      // 배치 마이그레이션 (최대 500건)
+      const batch=_fdb.batch();
+      oldData.slice(0,500).forEach(r=>batch.set(_fdb.collection(k).doc(String(r.id)),r));
+      await batch.commit();
+      await _fdb.collection('appData').doc(k).delete();
+      console.log(`[마이그레이션] ${k} ${oldData.length}건 개별 문서 이전 완료`);
+    }catch(e){console.warn('[마이그레이션 오류]',k,e);}
   }
 }
 
