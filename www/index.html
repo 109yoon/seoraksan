@@ -808,6 +808,7 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
       <button class="dbclose" onclick="closeDB()">×</button><div class="dbhandle"></div>
       <div class="dbtitle" id="resPopTitle">핀을 탭하여 조회</div>
       <div class="dbmeta" id="resPopMeta"></div>
+      <div id="resPopRoutes" style="display:none;margin-bottom:6px;padding:0 2px;"></div>
       <div class="dbbtns" style="display:flex;flex-direction:row;gap:8px;">
         <button class="btn btn-ghost" id="btnViewRep" onclick="viewReport()" style="display:none;flex:1;">📄 보고서</button>
         <button class="btn btn-blue" id="btnViewTl" onclick="viewTimeline()" style="display:none;flex:1;">📍 타임라인</button>
@@ -2246,6 +2247,107 @@ function _updateZoneBadge(lat,lng,elId){
   if(zid){var z=SEORAK_ZONES[zid];el.textContent='Zone '+zid+' · '+z.name;el.style.display='block';}
   else el.style.display='none';
 }
+
+// ── 거점(기지) 좌표 ─────────────────────────────────────────
+const SEORAK_BASES = {
+  '소공원':   {name:'소공원탐방지원센터',      lat:38.1724, lng:128.4794},
+  '백담':     {name:'백담탐방지원센터',        lat:38.1501, lng:128.3897},
+  '남설악':   {name:'남설악탐방지원센터',      lat:38.0242, lng:128.5124},
+  '용소':     {name:'용소탐방지원센터',        lat:38.0430, lng:128.5295},
+  '흘림골':   {name:'흘림골탐방지원센터',      lat:38.0477, lng:128.5824},
+  '약수터':   {name:'오색약수탐방지원센터',    lat:38.0310, lng:128.5215},
+  '한계령':   {name:'한계령탐방지원센터',      lat:38.0703, lng:128.3143},
+  '한계산성': {name:'한계산성분소',            lat:38.0929, lng:128.3157},
+  '남교리':   {name:'남교리탐방지원센터',      lat:38.1037, lng:128.3587},
+  '점봉산':   {name:'점봉산탐방지원센터',      lat:38.0913, lng:128.5621},
+  '공단':     {name:'설악산국립공원사무소',    lat:38.2064, lng:128.4638},
+  '대청':     {name:'대청봉대피소',           lat:38.1195, lng:128.4649},
+};
+const _SOKCHO_HOSP = {name:'속초의료원', lat:38.2080, lng:128.5866};
+
+// 과/분소 → 출발 허브
+const DEPT_HUBS = {
+  '행정과':       '공단',
+  '재난안전과':   '공단',
+  '탐방시설과':   '공단',
+  '자원보전과':   '공단',
+  '특수산악구조대':'소공원',
+  '대청분소':     '대청',
+  '백담분소':     '백담',
+  '오색분소':     '남설악',
+  '한계산성분소': '한계산성',
+  '점봉산분소':   '점봉산',
+};
+
+// ZZ-NN → 적정 거점 (primary 필수, alt 선택)
+function getBestBase(zz, nn) {
+  const z=parseInt(zz)||0, n=parseInt(nn)||0;
+  switch(z) {
+    case 1:  return {primary:'소공원'};
+    case 2:  return (n && n>7) ? {primary:'백담'} : {primary:'소공원'};
+    case 3:  return n===1 ? {primary:'소공원'} : {primary:'소공원', alt:'백담'};
+    case 4:  return {primary:'소공원'};
+    case 5:  return {primary:'소공원'};
+    case 6:  return {primary:'남설악'};
+    case 7:  return (n && n<=3) ? {primary:'약수터'} : {primary:'용소'};
+    case 8:  return (n && n<=3) ? {primary:'용소'}   : {primary:'흘림골'};
+    case 9:  return {primary:'백담'};
+    case 10: return {primary:'백담'};
+    case 11: return (n && n<=10) ? {primary:'한계산성'} : {primary:'남교리'};
+    case 12: return (n && n<=8)  ? {primary:'한계산성'} : {primary:'백담'};
+    case 13: return (n && n<=4)  ? {primary:'소공원'}   : {primary:'백담'};
+    case 14: return {primary:'점봉산'};
+    default: return {primary:'소공원'};
+  }
+}
+
+// 현재 사용자의 허브 좌표 반환
+function getMyHub() {
+  const u=DB.g('currentUser')||{};
+  const key=DEPT_HUBS[u.dept||'']||'공단';
+  return SEORAK_BASES[key]||SEORAK_BASES['공단'];
+}
+
+// 카카오맵 네이티브 앱 → 구글맵 웹 폴백
+function _openKakaoRoute(fromLat,fromLng,toLat,toLng,mode){
+  const by=mode==='walk'?'WALK':'CAR';
+  window.location.href='kakaomap://route?sp='+fromLat+','+fromLng+'&ep='+toLat+','+toLng+'&by='+by;
+  setTimeout(function(){
+    window.open('https://www.google.com/maps/dir/?api=1&origin='+fromLat+','+fromLng+'&destination='+toLat+','+toLng+'&travelmode='+(mode==='walk'?'walking':'driving'),'_blank');
+  },1200);
+}
+
+function _showHeliInfo(lat,lng){
+  const coords=lat.toFixed(5)+', '+lng.toFixed(5);
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(coords).then(function(){toast('🚁 헬기 좌표 복사: '+coords);}).catch(function(){toast('🚁 GPS: '+coords);});
+  } else { toast('🚁 GPS: '+coords); }
+}
+
+// 구조 팝업용 출동/하산/대피/헬기 버튼 HTML 생성
+function _buildResRouteHtml(data){
+  const locStr=(data.location||data.title||'');
+  const m=locStr.match(/(\d{2})-(\d{2,3})/);
+  let zz=null,nn=null,zoneId=null;
+  if(m){zz=parseInt(m[1]);nn=parseInt(m[2]);zoneId=String(zz).padStart(2,'0');}
+  else if(data.lat&&data.lng){zoneId=getZoneId(data.lat,data.lng);if(zoneId)zz=parseInt(zoneId);}
+  const baseInfo=zz?getBestBase(zz,nn):null;
+  const pb=baseInfo?SEORAK_BASES[baseInfo.primary]:null;
+  const ab=baseInfo&&baseInfo.alt?SEORAK_BASES[baseInfo.alt]:null;
+  const hub=getMyHub();
+  const hasGPS=!!(data.lat&&data.lng);
+  const bs='flex:1;min-width:0;padding:9px 5px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;border:none;min-height:42px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;';
+  const sn=s=>s?s.replace('탐방지원센터','').replace('설악산국립공원사무소','사무소').replace('분소','분소').slice(0,7):'';
+  const dispatch=hub&&pb?`<button onclick="_openKakaoRoute(${hub.lat},${hub.lng},${pb.lat},${pb.lng},'car')" style="${bs}background:rgba(79,168,208,.18);color:#4fa8d0;border:1px solid rgba(79,168,208,.35);">🚗 출동<span style="font-size:9px;font-weight:400;opacity:.7;">${sn(pb.name)}</span></button>`:'';
+  const descent=hasGPS&&pb?`<button onclick="_openKakaoRoute(${data.lat},${data.lng},${pb.lat},${pb.lng},'walk')" style="${bs}background:rgba(39,174,96,.12);color:#5dbf8a;border:1px solid rgba(39,174,96,.25);">🥾 하산<span style="font-size:9px;font-weight:400;opacity:.7;">${sn(pb.name)}</span></button>`:'';
+  const evac=pb?`<button onclick="_openKakaoRoute(${pb.lat},${pb.lng},${_SOKCHO_HOSP.lat},${_SOKCHO_HOSP.lng},'car')" style="${bs}background:rgba(230,126,34,.12);color:#e67e22;border:1px solid rgba(230,126,34,.25);">🚑 대피<span style="font-size:9px;font-weight:400;opacity:.7;">속초의료원</span></button>`:'';
+  const heli=hasGPS?`<button onclick="_showHeliInfo(${data.lat},${data.lng})" style="${bs}background:rgba(108,79,168,.15);color:#b89af0;border:1px solid rgba(108,79,168,.3);">🚁 헬기<span style="font-size:9px;font-weight:400;opacity:.7;">좌표복사</span></button>`:'';
+  const zoneLabel=zoneId&&SEORAK_ZONES[zoneId]?`<div style="font-size:10px;color:#3a6a8a;margin-bottom:5px;padding:0 2px;">📍 Zone ${zoneId} · ${SEORAK_ZONES[zoneId].name}${ab?` <span style="color:#e0a840;font-size:9px;">· ${sn(ab.name)} 경유 가능</span>`:''}</div>`:'';
+  const btns=[dispatch,descent,evac,heli].filter(Boolean);
+  if(!btns.length&&!zoneLabel)return'';
+  return zoneLabel+(btns.length?`<div style="display:flex;gap:5px;">${btns.join('')}</div>`:'');
+}
+
 let _extraTeamCollapsed=[];
 let _extraTeamOtherOpen=[];
 let _extraTeamOtherFilter=[];
@@ -3245,6 +3347,8 @@ function openResPopup(id,type='rescue'){
       ${rows||'<div style="color:#4a7090;font-size:11px;">상세 정보 없음</div>'}`;
     document.getElementById('btnViewRep').style.display='block';
     document.getElementById('btnViewTl').style.display=type==='rescue'?'block':'none';
+    const rEl=document.getElementById('resPopRoutes');
+    if(rEl){const rh=_buildResRouteHtml(data);rEl.innerHTML=rh;rEl.style.display=rh?'block':'none';}
   } else {
     document.getElementById('resPopTitle').textContent='⚠️ '+data.hazType+' 위험상황';
     const _skip=v=>{if(!v)return true;const s=String(v).trim();return !s||s==='-'||['미상','없음','알수없음','미정'].includes(s);};
@@ -3258,6 +3362,7 @@ function openResPopup(id,type='rescue'){
     ].filter(Boolean).join('')||'<div style="color:#4a7090;font-size:11px;">상세 정보 없음</div>';
     document.getElementById('btnViewRep').style.display='none';
     document.getElementById('btnViewTl').style.display='none';
+    const rEl2=document.getElementById('resPopRoutes');if(rEl2)rEl2.style.display='none';
   }
   document.getElementById('facPopup').classList.remove('on');
   document.getElementById('resPopup').classList.add('on');
