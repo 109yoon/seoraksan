@@ -2203,24 +2203,31 @@ function initFormMiniMap(lat,lng){
 }
 function gpsToFormMap(){
   if(!navigator.geolocation){toast('⚠️ GPS 미지원');return;}
+  const btn=document.querySelector('#r_minimap').parentElement?.querySelector('button[onclick="gpsToFormMap()"]');
+  if(btn)btn.textContent='📡';
   navigator.geolocation.getCurrentPosition(pos=>{
-    const lat=pos.coords.latitude,lng=pos.coords.longitude;
+    const lat=pos.coords.latitude,lng=pos.coords.longitude,acc=pos.coords.accuracy;
     if(_mapFormMini){
       const latlng=new kakao.maps.LatLng(lat,lng);
       _mapFormMini.setCenter(latlng);
-      if(_mapFormMiniMarker) _mapFormMiniMarker.setMap(null);
+      if(_mapFormMiniMarker)_mapFormMiniMarker.setMap(null);
       _mapFormMiniMarker=new kakao.maps.CustomOverlay({
         position:latlng,
-        content:'<div style="width:10px;height:10px;border-radius:50%;background:#4fa8d0;border:2px solid #fff;box-shadow:0 0 0 3px rgba(79,168,208,.35);"></div>',
+        content:`<div style="position:relative;"><div style="width:${Math.min(acc/2,40)}px;height:${Math.min(acc/2,40)}px;border-radius:50%;background:rgba(79,168,208,.18);border:1.5px solid rgba(79,168,208,.45);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);"></div><div style="width:10px;height:10px;border-radius:50%;background:#4fa8d0;border:2px solid #fff;box-shadow:0 0 0 3px rgba(79,168,208,.35);position:relative;"></div></div>`,
         zIndex:7
       });
       _mapFormMiniMarker.setMap(_mapFormMini);
     }
     const v=lat.toFixed(5)+', '+lng.toFixed(5);
     const gpsEl=document.getElementById('r_gps');if(gpsEl)gpsEl.value=v;
+    const cd=document.getElementById('r_minimap_coords');if(cd)cd.textContent=v+(acc<50?' ±'+Math.round(acc)+'m':'');
+    if(btn)btn.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>';
     _autoFillLoc(lat,lng);
-    toast('📍 현재 위치');
-  },()=>toast('⚠️ GPS 실패'));
+    toast('📍 현재 위치'+(acc<50?' (±'+Math.round(acc)+'m)':''));
+  },err=>{
+    if(btn)btn.innerHTML='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4zm8.94 3A8.994 8.994 0 0 0 13 3.06V1h-2v2.06A8.994 8.994 0 0 0 3.06 11H1v2h2.06A8.994 8.994 0 0 0 11 20.94V23h2v-2.06A8.994 8.994 0 0 0 20.94 13H23v-2h-2.06zM12 19c-3.87 0-7-3.13-7-7s3.13-7 7-7 7 3.13 7 7-3.13 7-7 7z"/></svg>';
+    toast(err.code===1?'⚠️ 위치 권한 거부됨':'⚠️ GPS 신호 없음 — 지도를 직접 이동하세요');
+  },{enableHighAccuracy:true,timeout:10000,maximumAge:0});
 }
 function syncFormMapFromInput(){
   const v=(document.getElementById('r_gps')?.value||'').split(',');
@@ -2233,9 +2240,20 @@ function syncFormMapFromInput(){
   }
 }
 function _autoFillLoc(lat,lng){
-  var s=_nearestSign(lat,lng);
   var el=document.getElementById('r_loc');
-  if(el&&s){el.value=s;autoGenTitle();}
+  if(!el||el.value.trim())return;
+  var s=_nearestSign(lat,lng);
+  if(s){el.value=s;autoGenTitle();return;}
+  // 폴백: 카카오 역지오코딩으로 행정구역명 입력
+  try{
+    var gc=new kakao.maps.services.Geocoder();
+    gc.coord2RegionCode(lng,lat,function(res,st){
+      if(st===kakao.maps.services.Status.OK&&el&&!el.value.trim()){
+        var r=(res||[]).find(function(x){return x.region_type==='H';})||res[0];
+        if(r){el.value=r.address_name||'';autoGenTitle();}
+      }
+    });
+  }catch(e){}
 }
 
 // 장소구분 토글
@@ -3854,7 +3872,7 @@ function render1BoForm(prefill=null){
           <input type="text" id="r_permitNote" class="fi" placeholder="허가번호, 소속 등" value="${p.permitNote||''}">
         </div>
         <div id="climbLocWrap" style="display:${(p.loctype==='암벽'||p.loctype==='빙벽')?'block':'none'};" class="fg">
-          ${(p.loctype==='암벽'||p.loctype==='빙벽')?`<span class="fl">📍 ${p.loctype} 위치 선택</span><div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;" id="climbLocBtns">${(p.loctype==='암벽'?_ROCK_LOCS:_ICE_LOCS).map(l=>`<button class="tog-btn${(p.location||'')===(l)?'  on':''}" onclick="selClimbLoc('${l.replace(/'/g,"\\'")}',this)">${l}</button>`).join('')}</div>`:''}
+          ${(p.loctype==='암벽'||p.loctype==='빙벽')?`<span class="fl">📍 ${p.loctype} 위치 선택</span><div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;" id="climbLocBtns">${(p.loctype==='암벽'?_ROCK_LOCS:_ICE_LOCS).map(l=>`<button class="tog-btn${(p.location||'')===(l)?' on':''}" onclick="selClimbLoc('${l.replace(/'/g,"\\'")}',this)">${l}</button>`).join('')}</div>`:''}
         </div>
       </div>
       <div class="rsec"><div class="rsec-t">🌤️ 기상 정보</div>
@@ -4044,6 +4062,8 @@ function render1BoForm(prefill=null){
   initInjuries(p);
   initFireAgencies(p);
   initFormMiniMap(p.lat,p.lng);
+  // GPS 자동 실행 (lat/lng 없을 때)
+  if(!p.lat&&!p.lng)setTimeout(()=>gpsToFormMap(),800);
 }
 
 function _renderFormTl(){
