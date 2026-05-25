@@ -1456,6 +1456,7 @@ const DB={
     try{return JSON.parse(localStorage.getItem('v7_'+k)||'null');}catch{return null;}
   },
   s(k,v){
+    if(k==='facilities')_invalidateSignCache();
     if(_SHARED_COLL.includes(k)){
       const prev=_fs[k]||[];
       _fs[k]=v||[];
@@ -1941,13 +1942,17 @@ function _haversine(lat1,lng1,lat2,lng2){
   var a=Math.sin(dL/2)*Math.sin(dL/2)+Math.cos(lat1*r)*Math.cos(lat2*r)*Math.sin(dG/2)*Math.sin(dG/2);
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
+var _cachedRescueSigns=null,_cachedFullSigns=null;
+function _invalidateSignCache(){_cachedRescueSigns=null;_cachedFullSigns=null;}
 function _nearestSign(lat,lng){
-  var _m=DB.g('catFacMeta')||{};
-  var signs=(DB.g('facilities')||[]).filter(function(f){
-    return f.lat&&f.lng&&f.type&&(_m[f.type]||{}).rescue;
-  });
+  if(!_cachedRescueSigns){
+    var _m=DB.g('catFacMeta')||{};
+    _cachedRescueSigns=(DB.g('facilities')||[]).filter(function(f){
+      return f.lat&&f.lng&&f.type&&(_m[f.type]||{}).rescue;
+    });
+  }
   var best=null,bestD=Infinity;
-  signs.forEach(function(f){var d=_haversine(lat,lng,f.lat,f.lng);if(d<bestD){bestD=d;best=f;}});
+  _cachedRescueSigns.forEach(function(f){var d=_haversine(lat,lng,f.lat,f.lng);if(d<bestD){bestD=d;best=f;}});
   if(!best||bestD>3000)return null;
   var label=best.type.includes('다목적위치표지판')
     ?(best.name.match(/\d[\d\-]*\d|\d/)||[best.name.slice(0,6)])[0]
@@ -1964,23 +1969,28 @@ function initMaps(){
     mapR.setMapTypeId(kakao.maps.MapTypeId.HYBRID);
     kakao.maps.event.addListener(mapI,'click',closeDB);
     kakao.maps.event.addListener(mapR,'click',closeDB);
+    var _saveMapCenterTimer=null;
     function saveMapCenter(){
       try{
+        var lat,lng;
         const mapEl=document.getElementById('mapRescue');
         const h=mapEl.offsetHeight||mapEl.clientHeight;
         if(h>0){
           const coord=mapR.getProjection().coordsFromContainerPoint(new kakao.maps.Point(mapEl.offsetWidth/2,h/2));
-          window._lastCrosshairCoord={lat:coord.getLat(),lng:coord.getLng()};
-          const cd=document.getElementById('rescueCoords');
-          if(cd){var _s=_nearestSign(coord.getLat(),coord.getLng());cd.innerHTML=coord.getLat().toFixed(5)+', '+coord.getLng().toFixed(5)+(_s?'<br><span style="color:#f0c040;font-size:9.5px;">📍 '+_s+'</span>':'');}
-          _updateZoneBadge(coord.getLat(),coord.getLng(),'rescueZoneBadge');
-          return;
+          lat=coord.getLat();lng=coord.getLng();
+        }else{
+          const c=mapR.getCenter();lat=c.getLat();lng=c.getLng();
         }
+        window._lastCrosshairCoord={lat,lng};
+        const cd=document.getElementById('rescueCoords');
+        if(cd)cd.innerHTML=lat.toFixed(5)+', '+lng.toFixed(5);
+        clearTimeout(_saveMapCenterTimer);
+        _saveMapCenterTimer=setTimeout(function(){
+          const _s=_nearestSign(lat,lng);
+          if(cd)cd.innerHTML=lat.toFixed(5)+', '+lng.toFixed(5)+(_s?'<br><span style="color:#f0c040;font-size:9.5px;">📍 '+_s+'</span>':'');
+          _updateZoneBadge(lat,lng,'rescueZoneBadge');
+        },300);
       }catch(e){}
-      const c=mapR.getCenter();window._lastCrosshairCoord={lat:c.getLat(),lng:c.getLng()};
-      const cd=document.getElementById('rescueCoords');
-      if(cd){var _s=_nearestSign(c.getLat(),c.getLng());cd.innerHTML=c.getLat().toFixed(5)+', '+c.getLng().toFixed(5)+(_s?'<br><span style="color:#f0c040;font-size:9.5px;">📍 '+_s+'</span>':'');}
-      _updateZoneBadge(c.getLat(),c.getLng(),'rescueZoneBadge');
     }
     kakao.maps.event.addListener(mapR,'center_changed',saveMapCenter);
     saveMapCenter();
@@ -2253,11 +2263,13 @@ function getBaseForSign(signCode){
 
 // GPS → 가장 가까운 표지판 전체 정보 반환
 function _nearestSignFull(lat,lng){
-  var signs=(DB.g('facilities')||[]).filter(function(f){
-    return f.lat&&f.lng&&f.name&&f.type&&f.type.indexOf('다목적위치표지판')>=0;
-  });
+  if(!_cachedFullSigns){
+    _cachedFullSigns=(DB.g('facilities')||[]).filter(function(f){
+      return f.lat&&f.lng&&f.name&&f.type&&f.type.indexOf('다목적위치표지판')>=0;
+    });
+  }
   var best=null,bestD=Infinity;
-  signs.forEach(function(f){var d=_haversine(lat,lng,f.lat,f.lng);if(d<bestD){bestD=d;best=f;}});
+  _cachedFullSigns.forEach(function(f){var d=_haversine(lat,lng,f.lat,f.lng);if(d<bestD){bestD=d;best=f;}});
   if(!best||bestD>5000)return null;
   var code=(best.name.match(/^\d{2}-\d{2,3}/)||[best.name.slice(0,6)])[0];
   var zm=code.match(/^(\d{2})-/);
@@ -7018,11 +7030,13 @@ function openMapPicker(){
         center:new kakao.maps.LatLng(initLat,initLng), level:5
       });
       mapPicker.setMapTypeId(kakao.maps.MapTypeId.HYBRID);
+      var _pickerTimer=null;
       kakao.maps.event.addListener(mapPicker,'center_changed',function(){
         const c=mapPicker.getCenter();
         const coordEl=document.getElementById('pickerCoords');
         if(coordEl) coordEl.textContent=c.getLat().toFixed(5)+', '+c.getLng().toFixed(5);
-        _updateZoneBadge(c.getLat(),c.getLng(),'pickerZoneBadge');
+        clearTimeout(_pickerTimer);
+        _pickerTimer=setTimeout(function(){_updateZoneBadge(c.getLat(),c.getLng(),'pickerZoneBadge');},300);
       });
     } else {
       mapPicker.relayout();
