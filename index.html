@@ -1914,18 +1914,16 @@ function clearNotis(){DB.s('notis',[]);updateBell();closeNoti();toast('🗑️ �
 let mapI,mapR,iOvs=[],rOvs=[],iEls=[],rEls=[],myOv=null,mapIType='hybrid',mapRType='hybrid';
 function _pinSz(level,off){
   const o=off||0;
-  if(level<=3) return {sz:30+o,fs:13,bw:2,  numFs:10,numPad:'2px 4px'};
-  if(level<=4) return {sz:26+o,fs:11,bw:2,  numFs:9, numPad:'2px 3px'};
-  if(level<=5) return {sz:22+o,fs:9, bw:1.5,numFs:8, numPad:'1px 3px'};
-  if(level<=6) return {sz:18+o,fs:8, bw:1.5,numFs:6, numPad:'1px 2px'};
-  if(level<=7) return {sz:14+o,fs:6, bw:1,  numFs:5, numPad:'1px 2px'};
-  if(level<=8) return {sz:11+o,fs:5, bw:1,  numFs:4, numPad:'0px 2px'};
-  if(level<=9) return {sz:8+o, fs:3, bw:0.5,numFs:3, numPad:'0px 1px'};
-  if(level<=10)return {sz:7+o, fs:3, bw:0.5,numFs:3, numPad:'0px 1px'};
-  if(level<=11)return {sz:6+o, fs:2, bw:0.5,numFs:2, numPad:'0px 1px'};
-  if(level<=12)return {sz:5+o, fs:2, bw:0.5,numFs:2, numPad:'0px 1px'};
-  if(level<=13)return {sz:3+o, fs:1, bw:0.5,numFs:1, numPad:'0px 1px'};
-  return              {sz:2+o, fs:1, bw:0.5,numFs:1, numPad:'0px 1px'};
+  if(level<=3) return {sz:30+o,fs:13,bw:2,  numFs:11,numPad:'2px 5px'};
+  if(level<=4) return {sz:26+o,fs:11,bw:2,  numFs:10,numPad:'2px 4px'};
+  if(level<=5) return {sz:22+o,fs:9, bw:1.5,numFs:9, numPad:'2px 3px'};
+  if(level<=6) return {sz:18+o,fs:8, bw:1.5,numFs:8, numPad:'1px 3px'};
+  if(level<=7) return {sz:14+o,fs:6, bw:1,  numFs:7, numPad:'1px 2px'};
+  if(level<=8) return {sz:11+o,fs:5, bw:1,  numFs:6, numPad:'1px 2px'};
+  if(level<=9) return {sz:8+o, fs:3, bw:0.5,numFs:6, numPad:'1px 2px'};
+  if(level<=10)return {sz:7+o, fs:3, bw:0.5,numFs:5, numPad:'0px 2px'};
+  if(level<=11)return {sz:6+o, fs:2, bw:0.5,numFs:0, numPad:'0px 1px'};
+  return              {sz:5+o, fs:2, bw:0.5,numFs:0, numPad:'0px 1px'};
 }
 function _scaleOvs(els,level,off){
   const s=_pinSz(level,off);
@@ -1935,7 +1933,8 @@ function _scaleOvs(els,level,off){
       el.style.width=s.sz+'px';el.style.height=s.sz+'px';
       el.style.fontSize=s.fs+'px';el.style.borderWidth=s.bw+'px';
     } else if(el.classList.contains('mpin-num')){
-      el.style.fontSize=s.numFs+'px';el.style.padding=s.numPad;
+      if(s.numFs===0){el.style.display='none';}
+      else{el.style.display='';el.style.fontSize=s.numFs+'px';el.style.padding=s.numPad;}
     }
   });
 }
