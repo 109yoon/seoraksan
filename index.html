@@ -4042,33 +4042,64 @@ function _tlTeamFullHtml(team,idx){
   const isSel=idx===_tlSelTeam&&!team.collapsed;
   const si=_teamStageIdx(team);
   const typeIco=team.type==='heli'?'🚁':team.type==='vehicle'?'🚐':'🥾';
-  const sc=si>=2?'#27ae60':si>=1?'#4fa8d0':'rgba(255,255,255,.38)';
-  const dots=_TL_STAGES.map((s,di)=>{
-    const done=di<si,act=di===si;
-    const dc=done?'#27ae60':act?'#4fa8d0':'rgba(255,255,255,.12)';
-    const tc=done?'#5dbf8a':act?'#4fa8d0':'rgba(255,255,255,.22)';
-    const dotContent=done?'✓':act?typeIco:'';
-    return (di>0?`<div style="flex:1;height:2px;background:${done?'#27ae60':act?'rgba(79,168,208,.3)':'rgba(255,255,255,.07)'};margin:0 1px;align-self:center;"></div>`:'')
-      +`<div style="text-align:center;flex-shrink:0;"><div style="width:20px;height:20px;border-radius:50%;background:${done?'rgba(39,174,96,.2)':act?'rgba(79,168,208,.18)':'rgba(255,255,255,.04)'};border:1.5px solid ${dc};display:flex;align-items:center;justify-content:center;font-size:${act?'11':'9'}px;color:${dc};margin:0 auto;${act?'animation:wpPulse 1.6s ease-in-out infinite;':''}">${dotContent}</div><div style="font-size:8px;color:${tc};margin-top:2px;white-space:nowrap;">${s}</div></div>`;
-  }).join('');
+  // Stage palette
+  const stagePalette=[
+    {c:'rgba(255,255,255,.35)',bg:'rgba(255,255,255,.04)',br:'rgba(255,255,255,.1)',label:'출발'},
+    {c:'#4fa8d0',bg:'rgba(79,168,208,.15)',br:'rgba(79,168,208,.35)',label:'이동중'},
+    {c:'#f0a500',bg:'rgba(240,165,0,.15)',br:'rgba(240,165,0,.35)',label:'환자조우'},
+    {c:'#27ae60',bg:'rgba(39,174,96,.15)',br:'rgba(39,174,96,.35)',label:'하산'},
+  ];
+  const pal=stagePalette[si]||stagePalette[3];
   const isCollapsed=!!team.collapsed;
-  const atEnd=team.wpIdx>=team.wps.length-1;
-  const canSkip=team.wpIdx<team.wps.length-2;
   const routeInner=team.wps.length>1
     ?_compactRouteHtml(team,idx)
-    :`<div style="text-align:center;font-size:11px;color:rgba(255,255,255,.25);padding:10px 0;">경로 데이터 없음</div>`;
-  return `<div id="tlTeamCard_${idx}" style="background:${isSel?'rgba(79,168,208,.07)':'rgba(255,255,255,.02)'};border:1px solid ${isSel?'rgba(79,168,208,.3)':'rgba(255,255,255,.07)'};border-radius:10px;margin-bottom:7px;overflow:hidden;">
-    <div onclick="toggleTlTeamRoute(${idx})" style="padding:10px 12px;cursor:pointer;user-select:none;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;">
-        <span style="font-size:11px;font-weight:700;color:${isSel?'#4fa8d0':'#b8d4e8'};">${typeIco} ${team.name}</span>
+    :`<div style="text-align:center;font-size:11px;color:rgba(255,255,255,.25);padding:16px 0;">경로 데이터 없음</div>`;
+
+  // 4-dot progress bar
+  const dots=_TL_STAGES.map((s,di)=>{
+    const done=di<si,act=di===si;
+    const p=stagePalette[di];
+    return (di>0?`<div style="flex:1;height:2px;align-self:center;border-radius:1px;background:${done?stagePalette[di-1].c:'rgba(255,255,255,.07)'};transition:background .3s;margin:0 2px;"></div>`:'')
+      +`<div style="text-align:center;flex-shrink:0;">
+          <div style="width:${act?26:20}px;height:${act?26:20}px;border-radius:50%;
+            background:${done?p.bg:act?p.bg:'rgba(255,255,255,.03)'};
+            border:2px solid ${done?p.c:act?p.c:'rgba(255,255,255,.1)'};
+            display:flex;align-items:center;justify-content:center;
+            font-size:${act?12:9}px;color:${done?p.c:act?p.c:'rgba(255,255,255,.2)'};
+            margin:0 auto;transition:all .3s;
+            ${act?'animation:wpPulse 1.6s ease-in-out infinite;':''}">
+            ${done?'✓':act?typeIco:''}
+          </div>
+          <div style="font-size:9px;margin-top:3px;white-space:nowrap;font-weight:${act?700:400};
+            color:${done?p.c:act?p.c:'rgba(255,255,255,.2)'};">
+            ${s}
+          </div>
+        </div>`;
+  }).join('');
+
+  return `<div id="tlTeamCard_${idx}"
+    style="background:${isSel?pal.bg:'rgba(255,255,255,.02)'};
+    border:1.5px solid ${isSel?pal.br:'rgba(255,255,255,.07)'};
+    border-radius:16px;margin-bottom:10px;overflow:hidden;transition:border-color .25s,background .25s;">
+
+    <div onclick="toggleTlTeamRoute(${idx})" style="padding:14px 15px;cursor:pointer;user-select:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span style="font-size:14px;font-weight:900;color:${isSel?'#e0edf8':'#b8d4e8'};">${typeIco} ${team.name}</span>
+        </div>
         <div style="display:flex;align-items:center;gap:7px;">
-          <span style="font-size:9px;font-weight:600;color:${sc};">${_TL_STAGES[si]}</span>
-          <span style="font-size:10px;color:rgba(255,255,255,.3);font-weight:600;">${isCollapsed?'▼ 경로':'▲'}</span>
+          <span style="font-size:11px;font-weight:700;color:${pal.c};
+            background:${pal.bg};border:1px solid ${pal.br};
+            padding:3px 10px;border-radius:20px;letter-spacing:.2px;">
+            ${pal.label}
+          </span>
+          <span style="font-size:11px;color:rgba(255,255,255,.2);">${isCollapsed?'▼':'▲'}</span>
         </div>
       </div>
-      <div style="display:flex;align-items:flex-start;">${dots}</div>
+      <div style="display:flex;align-items:flex-start;padding:0 2px;">${dots}</div>
     </div>
-    <div id="tlTeamRoute_${idx}" style="display:${isCollapsed?'none':'block'};padding:0 12px 12px;border-top:.5px solid rgba(255,255,255,.05);">
+
+    <div id="tlTeamRoute_${idx}" style="display:${isCollapsed?'none':'block'};padding:0 12px 14px;border-top:1px solid rgba(255,255,255,.04);">
       ${routeInner}
     </div>
   </div>`;
