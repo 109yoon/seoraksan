@@ -3520,9 +3520,36 @@ function _renderFocusPanel(resId){
         <span style="font-size:10px;color:rgba(255,255,255,.4);">📍 ${curName||'-'} · ${team.wpIdx}/${total}</span>
         ${!atEnd?`<button onclick="_focusPassTeam(${resId},${ti})" style="background:rgba(79,168,208,.15);border:1px solid rgba(79,168,208,.35);color:#4fa8d0;border-radius:7px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;">▶ 통과</button>`:`<span style="font-size:10px;color:#27ae60;font-weight:700;">✓ 완료</span>`}
       </div>
+      ${(()=>{
+        // 카카오맵 길찾기 버튼: 차량(기지→들머리) + 도보(들머리→사고지점)
+        const baseWp=team.wps.find(w=>w.isBase);
+        const baseC=baseWp?_getBaseByName(baseWp.name):null;
+        const tps=team.wps.filter(w=>!w.isBase&&w.lat&&w.lng);
+        if(!tps.length)return'';
+        const tp0=tps[0],tpEnd=tps[tps.length-1];
+        const btns=[];
+        if(baseC)btns.push(`<button onclick="openKakaoRoute(${baseC.lat},${baseC.lng},'${(baseWp.name||'기지').replace(/'/g,'')}',${tp0.lat},${tp0.lng},'${(tp0.code||'들머리').replace(/'/g,'')}','CAR')" style="flex:1;background:rgba(240,192,64,.1);border:1px solid rgba(240,192,64,.35);color:#f0c040;border-radius:7px;padding:5px 4px;font-size:10px;font-weight:700;cursor:pointer;">🚗 차량 길찾기</button>`);
+        if(tps.length>1)btns.push(`<button onclick="openKakaoRoute(${tp0.lat},${tp0.lng},'${(tp0.code||'들머리').replace(/'/g,'')}',${tpEnd.lat},${tpEnd.lng},'${(tpEnd.code||'사고지점').replace(/'/g,'')}','FOOT')" style="flex:1;background:rgba(39,174,96,.1);border:1px solid rgba(39,174,96,.35);color:#27ae60;border-radius:7px;padding:5px 4px;font-size:10px;font-weight:700;cursor:pointer;">🚶 도보 길찾기</button>`);
+        return btns.length?`<div style="display:flex;gap:6px;margin-top:7px;">${btns.join('')}</div>`:'';
+      })()}
     </div>`;
   }).join('');
   panel.classList.add('on');
+}
+
+// 카카오맵 길찾기 열기: 모바일은 앱 스킴(차량/도보 모드 지정), 데스크탑은 웹
+function openKakaoRoute(sLat,sLng,sName,eLat,eLng,eName,by){
+  const isMobile=/Android|iPhone|iPad/i.test(navigator.userAgent);
+  if(isMobile){
+    // 카카오맵 앱: by=CAR|FOOT 모드 지정 가능
+    location.href='kakaomap://route?sp='+sLat+','+sLng+'&ep='+eLat+','+eLng+'&by='+by;
+    // 앱 미설치 시 1.5초 후 웹 폴백
+    setTimeout(()=>{
+      if(!document.hidden)window.open('https://map.kakao.com/link/from/'+encodeURIComponent(sName)+','+sLat+','+sLng+'/to/'+encodeURIComponent(eName)+','+eLat+','+eLng,'_blank');
+    },1500);
+  }else{
+    window.open('https://map.kakao.com/link/from/'+encodeURIComponent(sName)+','+sLat+','+sLng+'/to/'+encodeURIComponent(eName)+','+eLat+','+eLng,'_blank');
+  }
 }
 
 function enterFocusMode(resId){
