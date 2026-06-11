@@ -7603,16 +7603,16 @@ window.onload=function(){
   window.addEventListener('popstate', function(e){
     // 열린 모달이 있으면 닫기
     var openModal=document.querySelector('.modal.on,.modal-bottom.on');
-    if(openModal){openModal.classList.remove('on');history.replaceState(e.state||{view:'home'},'','');return;}
+    if(openModal){openModal.classList.remove('on');history.pushState({view:'home'},'','');return;}
     // 서브뷰: 유형 세부통계
     if(document.getElementById('v-type-detail').classList.contains('on')){
-      showV('v-rescue-stats');renderRescueStats();history.replaceState({view:'rescue-stats'},'','');return;
+      showV('v-rescue-stats');renderRescueStats();history.pushState({view:'rescue-stats'},'','');return;
     }
     // 서브뷰: 위키 페이지
     if(document.getElementById('wikiPageWrap').style.display==='block'){
-      showWikiList();history.replaceState({view:'wiki'},'','');return;
+      showWikiList();history.pushState({view:'wiki'},'','');return;
     }
-    // v-report(구조 타임라인) → 13번(구조 목록)으로 복귀
+    // v-report(구조 타임라인) → 목록으로 복귀
     if(document.getElementById('v-report').classList.contains('on')){
       _hideRepFooter();
       showV('v-rescue-list');renderResList();
@@ -7621,7 +7621,7 @@ window.onload=function(){
       var _bn=document.getElementById('bnav');_bn.style.display='flex';
       [1,2,3].forEach(function(i){document.getElementById('nv'+i).classList.remove('on');});
       document.getElementById('nv2').classList.add('on');
-      history.replaceState({view:'rescue'},'','');
+      history.pushState({view:'rescue'},'','');
       return;
     }
     var homeActive=document.getElementById('v-home').classList.contains('on');
@@ -7631,21 +7631,25 @@ window.onload=function(){
       document.getElementById('appHdr').style.display='none';
       document.getElementById('bnav').style.display='none';
       closeDB();updateSummary();
-      history.replaceState({view:'home'},'','');
+      history.pushState({view:'home'},'','');
     } else {
-      // 홈 화면: 두 번 누르면 종료
+      // 홈 화면: 항상 home 상태를 다시 push해서 앱 밖으로 절대 못 나가게
+      history.pushState({view:'home'},'','');
+      var isPWA=window.matchMedia('(display-mode: standalone)').matches||!!window.navigator.standalone;
       if(_backExitReady){
-        clearTimeout(_backExitTimer);
-        history.go(-1); // PWA/브라우저가 앱 이전 페이지로 이동 = 종료 효과
+        clearTimeout(_backExitTimer);_backExitReady=false;
+        if(isPWA){window.close();}
+        else{toast('브라우저 탭을 닫아 종료하세요');}
       } else {
         _backExitReady=true;
-        toast('한 번 더 누르면 종료됩니다');
+        toast(isPWA?'한 번 더 누르면 종료됩니다':'종료하려면 탭을 닫으세요');
         _backExitTimer=setTimeout(function(){_backExitReady=false;},2000);
-        history.replaceState({view:'home'},'','');
       }
     }
   });
-  history.replaceState({view:'home'},'','');
+  // 앱 시작: guard + home 두 개 push → 뒤로가기가 앱 밖으로 절대 이탈 안 함
+  history.pushState({view:'_guard_'},'','');
+  history.pushState({view:'home'},'','');
 
   // ── 권한 배너 ──────────────────────────────────
   function _permBanner(type,state){
