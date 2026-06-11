@@ -2059,11 +2059,20 @@ function gpsTo(mode){
   navigator.geolocation.getCurrentPosition(p=>{
     const ll=new kakao.maps.LatLng(p.coords.latitude,p.coords.longitude);
     const m=mode==='inspect'?mapI:mapR;
-    m.setCenter(ll);m.setLevel(4);
-    // 하단 탭바 높이만큼 보정: GPS 점이 십자선 위치에 오도록 아래로 pan
+    // 줌→중심을 한 번에 설정 후 탭바 오프셋을 투영 계산으로 단번에 적용 (2-step 깜빡임 제거)
+    m.setLevel(4);
+    m.setCenter(ll);
     const bnavEl=document.getElementById('bnav');
     const bnavH=(bnavEl&&bnavEl.style.display!=='none')?bnavEl.offsetHeight:0;
-    if(bnavH>0){setTimeout(()=>{try{m.panBy(0,Math.round(bnavH/2));}catch(e){}},50);}
+    if(bnavH>0){
+      try{
+        const mapEl=document.getElementById(mode==='rescue'?'mapRescue':'mapInspect');
+        const proj=m.getProjection();
+        const adj=proj.coordsFromContainerPoint(
+          new kakao.maps.Point(mapEl.offsetWidth/2, mapEl.offsetHeight/2+Math.round(bnavH/2)));
+        m.setCenter(adj);
+      }catch(e){}
+    }
     if(myOv)myOv.setMap(null);
     const el=document.createElement('div');
     el.style.cssText='width:18px;height:18px;border-radius:50%;background:#4fa8d0;border:3px solid #fff;box-shadow:0 0 10px rgba(79,168,208,.8),0 2px 6px rgba(0,0,0,.5);';
@@ -3287,41 +3296,100 @@ function renderResList(){
   const _showHaz=(_resListTab==='all'||_resListTab==='haz')&&(resTypeF.size===0||resTypeF.has('⚠️위험상황'));
   const _stOkRes=s=>resStatusF.size===0||(resStatusF.has('진행중')&&s==='ongoing')||(resStatusF.has('종료')&&s==='done');
   const _stOkHaz=s=>{const active=!s||s==='미조치'||s==='조치중';return resStatusF.size===0||(resStatusF.has('진행중')&&active)||(resStatusF.has('종료')&&!active);};
-  const _dateOkL=d=>_resDateOk(d);
-  let html='';
-  if(_showRes){
-    html+=(res.filter(r=>_stOkRes(r.status)&&_dateOkL(r.date))).slice().reverse().map(r=>{
-      const isOg=r.status==='ongoing';const ti=RES_TYPES[r.type]||RES_TYPES['기타'];
-      const totalPh=(r.reports||[]).length+1;
-      const hasCoord=!!(r.lat&&r.lng);
-      return `<div class="lcard" onclick="openResListDetail(${r.id})" style="position:relative;">
-        <div class="lico" style="background:${isOg?ti.color:'#1a3a1a'};border:none;color:#fff;">${ti.ico}</div>
-        <div class="linfo"><div class="lname">🚨 ${r.title}</div>
-          <div class="lmeta">${r.type} · ${r.date}</div>
-          <div class="lmeta">작성: ${r.author||'-'} · ${totalPh}보 기록 · 사고자: ${r.vName||'미상'}</div>
-          ${hasCoord?`<button onclick="event.stopPropagation();viewOnMap(${r.lat},${r.lng})" style="margin-top:5px;padding:4px 10px;background:rgba(79,168,208,.12);border:1px solid rgba(79,168,208,.35);color:#4fa8d0;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;">🗺️ 지도보기</button>`:''}
-        </div>
-        <span class="lbadge" style="background:${isOg?'rgba(192,57,43,.15)':'rgba(39,174,96,.15)'};color:${isOg?'#c0392b':'#27ae60'};align-self:flex-start;flex-shrink:0;">${isOg?'진행중':'종료'}</span>
-      </div>`;
-    }).join('');
+  const todayStr=today();
+
+  // 필터된 항목 수집 후 날짜 내림차순 정렬
+  let allItems=[];
+  if(_showRes){res.filter(r=>_stOkRes(r.status)&&_resDateOk(r.date)).forEach(r=>allItems.push({_k:'rescue',data:r,isOg:r.status==='ongoing',ds:r.date||''}));}
+  if(_showHaz){haz.filter(h=>_stOkHaz(h.hazStatus)&&_resDateOk(h.date)).forEach(h=>{const a=!h.hazStatus||h.hazStatus==='미조치'||h.hazStatus==='조치중';allItems.push({_k:'haz',data:h,isOg:a,ds:h.date||''});});}
+  allItems.sort((a,b)=>b.ds>a.ds?1:b.ds<a.ds?-1:0);
+
+  // 그룹 분류
+  const ongoing=allItems.filter(x=>x.isOg);
+  const todayDone=allItems.filter(x=>!x.isOg&&x.ds.startsWith(todayStr));
+  const older=allItems.filter(x=>!x.isOg&&!x.ds.startsWith(todayStr));
+
+  // 섹션 헤더
+  function secHdr(ico,label,count,col,bg,br){
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 3px 5px;">
+      <span style="font-size:11px;font-weight:800;color:${col};letter-spacing:.2px;">${ico} ${label}</span>
+      ${count>0?`<span style="font-size:10px;font-weight:700;color:${col};background:${bg};border:1px solid ${br};padding:2px 9px;border-radius:20px;">${count}건</span>`:''}
+    </div>`;
   }
-  if(_showHaz){
-    html+=(haz.filter(h=>_stOkHaz(h.hazStatus)&&_dateOkL(h.date))).slice().reverse().map(h=>{
-      const done=h.hazStatus&&h.hazStatus!=='미조치'&&h.hazStatus!=='조치중';
-      const hasCoord=!!(h.lat&&h.lng);
-      return `<div class="haz-card ${done?'haz-removed':''}" onclick="openHazDetail(${h.id})">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="font-size:22px;">${h.hazType?.split(' ')[0]||'⚠️'}</div>
+
+  // 구조 카드
+  function resCard(r,compact){
+    const isOg=r.status==='ongoing';
+    const ti=RES_TYPES[r.type]||RES_TYPES['기타'];
+    const totalPh=(r.reports||[]).length+1;
+    const hasCoord=!!(r.lat&&r.lng);
+    const dateLabel=r.date?(r.date.startsWith(todayStr)?'오늘 '+r.date.slice(11,16):r.date.slice(5)):'-';
+    return `<div onclick="openResListDetail(${r.id})"
+      style="background:${isOg?'rgba(15,26,44,1)':'#0b1c30'};border-radius:11px;margin-bottom:6px;overflow:hidden;cursor:pointer;
+      border-left:3px solid ${isOg?'#c0392b':'rgba(255,255,255,.07)'};
+      border-top:.5px solid ${isOg?'rgba(192,57,43,.18)':'rgba(255,255,255,.06)'};
+      border-right:.5px solid rgba(255,255,255,.04);border-bottom:.5px solid rgba(255,255,255,.04);
+      transition:background .12s;">
+      <div style="padding:11px 12px;">
+        <div style="display:flex;align-items:flex-start;gap:10px;">
+          <div style="width:36px;height:36px;border-radius:9px;background:${isOg?ti.color:'rgba(255,255,255,.06)'};display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;">${ti.ico}</div>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:13px;color:#e0edf8;font-weight:600;">${h.hazType||'위험상황'} · ${h.loc||'-'}</div>
-            <div style="font-size:10px;color:rgba(255,255,255,.32);margin-top:2px;">${h.dt||'-'} · ${h.danger||'-'} · ${h.author||'-'}</div>
-            <div style="font-size:11px;color:#7a9cb8;margin-top:2px;">${(h.desc||'').slice(0,40)}${(h.desc||'').length>40?'...':''}</div>
-            ${hasCoord?`<button onclick="event.stopPropagation();viewOnMap(${h.lat},${h.lng})" style="margin-top:5px;padding:4px 10px;background:rgba(230,126,34,.12);border:1px solid rgba(230,126,34,.35);color:#e67e22;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;">🗺️ 지도보기</button>`:''}
+            <div style="font-size:${compact?12:13}px;font-weight:${isOg?800:700};color:${isOg?'#fff':'#b8d0e8'};line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${r.title}</div>
+            ${isOg?`<div style="font-size:11px;color:#e05050;font-weight:700;margin-top:2px;">🔴 진행중 · ${r.time||dateLabel}</div>`:''}
+            <div style="font-size:${compact?10:11}px;color:#5a7f98;margin-top:${isOg?1:3}px;">${r.type}${r.location?' · '+r.location.slice(0,18):''}${!isOg?' · '+dateLabel:''}</div>
+            ${r.vName&&!compact?`<div style="font-size:10px;color:rgba(255,255,255,.28);margin-top:2px;">사고자: ${r.vName} · ${totalPh}보</div>`:''}
           </div>
-          <span class="lbadge ${done?'haz-badge-done':'haz-badge-active'}" style="align-self:flex-start;flex-shrink:0;">${h.hazStatus||'미조치'}</span>
         </div>
-      </div>`;
-    }).join('');
+        ${hasCoord&&!compact?`<button onclick="event.stopPropagation();viewOnMap(${r.lat},${r.lng})"
+          style="margin-top:8px;width:100%;padding:6px;background:rgba(79,168,208,.07);border:1px solid rgba(79,168,208,.18);color:#4fa8d0;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;">🗺️ 지도보기</button>`:''}
+      </div>
+    </div>`;
+  }
+
+  // 위험상황 카드
+  function hazCard(h,compact){
+    const active=!h.hazStatus||h.hazStatus==='미조치'||h.hazStatus==='조치중';
+    const hasCoord=!!(h.lat&&h.lng);
+    const ico=h.hazType?.split(' ')[0]||'⚠️';
+    const dateLabel=h.date?(h.date.startsWith(todayStr)?'오늘 '+h.date.slice(11,16):h.date.slice(5)):'-';
+    return `<div onclick="openHazDetail(${h.id})"
+      style="background:${active?'rgba(15,26,44,1)':'#0b1c30'};border-radius:11px;margin-bottom:6px;overflow:hidden;cursor:pointer;
+      border-left:3px solid ${active?'#e67e22':'rgba(255,255,255,.07)'};
+      border-top:.5px solid ${active?'rgba(230,126,34,.18)':'rgba(255,255,255,.06)'};
+      border-right:.5px solid rgba(255,255,255,.04);border-bottom:.5px solid rgba(255,255,255,.04);">
+      <div style="padding:11px 12px;">
+        <div style="display:flex;align-items:flex-start;gap:10px;">
+          <div style="width:36px;height:36px;border-radius:9px;background:${active?'rgba(230,126,34,.15)':'rgba(255,255,255,.06)'};display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0;">${ico}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:${compact?12:13}px;font-weight:${active?800:700};color:${active?'#fff':'#b8d0e8'};line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${h.hazType||'위험상황'} · ${h.loc||'-'}</div>
+            ${active?`<div style="font-size:11px;color:#e67e22;font-weight:700;margin-top:2px;">⚠️ ${h.hazStatus||'미조치'} · ${dateLabel}</div>`:''}
+            <div style="font-size:${compact?10:11}px;color:#5a7f98;margin-top:${active?1:3}px;">${h.danger||''}${!active?' · '+dateLabel:''}</div>
+            ${h.desc&&!compact?`<div style="font-size:10px;color:rgba(255,255,255,.28);margin-top:2px;">${(h.desc||'').slice(0,32)}${(h.desc||'').length>32?'…':''}</div>`:''}
+          </div>
+        </div>
+        ${hasCoord&&!compact?`<button onclick="event.stopPropagation();viewOnMap(${h.lat},${h.lng})"
+          style="margin-top:8px;width:100%;padding:6px;background:rgba(230,126,34,.07);border:1px solid rgba(230,126,34,.18);color:#e67e22;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;">🗺️ 지도보기</button>`:''}
+      </div>
+    </div>`;
+  }
+
+  function renderItem(x,compact){return x._k==='rescue'?resCard(x.data,compact):hazCard(x.data,compact);}
+
+  let html='';
+  if(ongoing.length){
+    html+=secHdr('🔴','진행 중',ongoing.length,'#e05050','rgba(192,57,43,.15)','rgba(192,57,43,.3)');
+    html+=ongoing.map(x=>renderItem(x,false)).join('');
+  }
+  if(todayDone.length){
+    html+=secHdr('📅','오늘 종료',todayDone.length,'#7dd3fa','rgba(79,168,208,.1)','rgba(79,168,208,.25)');
+    html+=todayDone.map(x=>renderItem(x,false)).join('');
+  }
+  if(older.length){
+    html+=`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 3px 5px;">
+      <span style="font-size:11px;font-weight:700;color:rgba(255,255,255,.25);">📁 이전</span>
+      <span style="font-size:10px;color:rgba(255,255,255,.15);">${older.length}건</span>
+    </div>`;
+    html+=older.map(x=>renderItem(x,true)).join('');
   }
   document.getElementById('resListWrap').innerHTML=html||'<div class="empty"><div class="empty-ico">📋</div><div class="empty-txt">해당 항목 없음</div></div>';
 }
