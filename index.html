@@ -199,7 +199,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 @keyframes blink{0%,100%{box-shadow:0 0 4px 2px rgba(192,57,43,.5);}50%{transform:scale(1.2);box-shadow:0 0 16px 6px rgba(192,57,43,.85);}}
 .blink{animation:blink .95s infinite;}
 .team-chip{display:inline-flex;align-items:center;gap:4px;background:rgba(8,20,45,.93);border:1.5px solid rgba(79,168,208,.5);border-radius:11px;padding:3px 8px 3px 6px;font-size:11px;font-weight:700;color:#7dd3fa;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.75);white-space:nowrap;user-select:none;-webkit-user-select:none;transition:opacity .2s;}
-#focusModePanel{position:absolute;bottom:-340px;left:0;right:0;z-index:16;background:#09172a;border-radius:14px 14px 0 0;border-top:1.5px solid rgba(79,168,208,.22);box-shadow:0 -5px 28px rgba(0,0,0,.85);transition:bottom .3s cubic-bezier(.4,0,.2,1);max-height:55vh;overflow:hidden;display:flex;flex-direction:column;}
+#focusModePanel{position:absolute;bottom:-60vh;left:0;right:0;z-index:16;background:#09172a;border-radius:14px 14px 0 0;border-top:1.5px solid rgba(79,168,208,.22);box-shadow:0 -5px 28px rgba(0,0,0,.85);transition:bottom .3s cubic-bezier(.4,0,.2,1);max-height:56vh;overflow:hidden;display:flex;flex-direction:column;}
 #focusModePanel.on{bottom:62px;}
 .dbcard{position:absolute;bottom:-420px;left:9px;right:9px;background:#0b1c30;border-radius:14px;padding:13px;border:1px solid rgba(79,168,208,.14);box-shadow:0 -4px 20px rgba(0,0,0,.7);transition:bottom .25s cubic-bezier(.4,0,.2,1);z-index:15;max-height:60vh;overflow-y:auto;}
 .dbcard.on{bottom:62px;}
@@ -811,12 +811,12 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
     </div>
     <!-- 포커스 모드 패널: 팀 진행 현황 + 통과 버튼 -->
     <div id="focusModePanel">
-      <div style="width:28px;height:3px;background:rgba(255,255,255,.15);border-radius:2px;margin:8px auto 4px;flex-shrink:0;"></div>
-      <div style="padding:3px 14px 8px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.06);">
-        <div id="focusPanelTitle" style="font-size:13px;font-weight:800;color:#e0edf8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;margin-right:8px;"></div>
-        <button onclick="exitFocusMode()" style="flex-shrink:0;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.45);border-radius:8px;padding:4px 10px;font-size:11px;cursor:pointer;">✕ 종료</button>
+      <div style="width:32px;height:4px;background:rgba(255,255,255,.18);border-radius:2px;margin:10px auto 6px;flex-shrink:0;"></div>
+      <div style="padding:0 12px 8px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.07);">
+        <div id="focusPanelTitle" style="font-size:13px;font-weight:800;color:#e0edf8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;margin-right:10px;"></div>
+        <button onclick="exitFocusMode()" style="flex-shrink:0;background:rgba(192,57,43,.15);border:1px solid rgba(192,57,43,.4);color:#e05050;border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">✕ 종료</button>
       </div>
-      <div id="focusPanelTeams" style="overflow-y:auto;padding:8px 12px 16px;"></div>
+      <div id="focusPanelTeams" style="overflow-y:auto;padding:10px 12px 18px;"></div>
     </div>
     <div class="dbcard" id="resPopup">
       <button class="dbclose" onclick="closeDB()">×</button><div class="dbhandle"></div>
@@ -3317,26 +3317,54 @@ function _drawFocusRoutes(resId){
       });
     }
 
-    // Walk segment: solid colored polyline through trail waypoints
+    // Walk segment: 흰 점선(경로 윤곽) + 팀 색상 실선 (시인성 향상)
     if(trailPts.length>=2){
       const walkPath=trailPts.map(w=>new kakao.maps.LatLng(w.lat,w.lng));
+      // 흰 점선 밑 레이어 — 배경 대비용
+      const whiteLine=new kakao.maps.Polyline({
+        path:walkPath,strokeWeight:7,strokeColor:'#ffffff',strokeOpacity:.22,strokeStyle:'solid',map:mapR
+      });
+      _rFocusPolylines.push(whiteLine);
+      // 팀 색상 실선 위 레이어
       const walkLine=new kakao.maps.Polyline({
-        path:walkPath,strokeWeight:4,strokeColor:col,strokeOpacity:.85,strokeStyle:'solid',map:mapR
+        path:walkPath,strokeWeight:4,strokeColor:col,strokeOpacity:.92,strokeStyle:'solid',map:mapR
       });
       _rFocusPolylines.push(walkLine);
       walkPath.forEach(p=>bounds.extend(p));
+
+      // 각 표지판 위치에 흰 점 마커 + 코드 라벨
+      const curWpIdx=team.wpIdx>=0?team.wpIdx:0;
+      trailPts.forEach((w,pi)=>{
+        const isCur=wps.indexOf(w)===curWpIdx||wps.findIndex(x=>x.code===w.code&&!x.isBase)===curWpIdx;
+        const isPassed=pi<trailPts.findIndex(x=>wps.indexOf(x)===curWpIdx);
+        const dotEl=document.createElement('div');
+        if(isCur){
+          dotEl.style.cssText=`width:14px;height:14px;border-radius:50%;background:${col};border:2.5px solid #fff;box-shadow:0 0 0 3px ${col}55,0 0 12px ${col}99;animation:wpPulse 1.4s ease-in-out infinite;pointer-events:none;`;
+        }else{
+          dotEl.style.cssText=`width:9px;height:9px;border-radius:50%;background:${isPassed?col+'99':'rgba(255,255,255,.55)'};border:1.5px solid ${isPassed?col:'rgba(255,255,255,.7)'};pointer-events:none;`;
+        }
+        const dotOv=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(w.lat,w.lng),content:dotEl,zIndex:6});
+        dotOv.setMap(mapR);_rFocusPolylines.push(dotOv);
+        // 코드 라벨 (현재 위치 또는 사고지점만)
+        if((isCur||w.isTarget)&&w.code){
+          const lbl=document.createElement('div');
+          lbl.style.cssText=`background:rgba(8,18,36,.93);border:1.5px solid ${isCur?col:'#e05050'};border-radius:7px;padding:2px 6px;font-size:10px;font-weight:700;color:${isCur?col:'#e05050'};white-space:nowrap;pointer-events:none;margin-bottom:4px;`;
+          lbl.textContent=w.code+(w.name&&w.name!==w.code?' '+w.name.slice(0,6):'');
+          const lblOv=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(w.lat,w.lng),content:lbl,yAnchor:1.9,zIndex:7});
+          lblOv.setMap(mapR);_rFocusPolylines.push(lblOv);
+        }
+      });
     }else if(trailPts.length===1){
       bounds.extend(new kakao.maps.LatLng(trailPts[0].lat,trailPts[0].lng));
     }
 
-    // Team current position label
-    const cur=wps[team.wpIdx>=0?team.wpIdx:0];
-    if(cur&&cur.lat&&cur.lng){
+    // 팀 현재 위치 라벨 (팀 이름 칩)
+    const curWpData=wps[team.wpIdx>=0?team.wpIdx:0];
+    if(curWpData&&curWpData.lat&&curWpData.lng){
       const posLbl=document.createElement('div');
-      posLbl.style.cssText=`background:rgba(10,20,40,.9);border:1.5px solid ${col};border-radius:8px;padding:2px 7px;font-size:10px;font-weight:700;color:${col};white-space:nowrap;pointer-events:none;`;
-      const typeIco=_teamIco(team);
-      posLbl.textContent=typeIco+' '+team.name;
-      const posOv=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(cur.lat,cur.lng),content:posLbl,yAnchor:1.5,zIndex:5});
+      posLbl.style.cssText=`background:rgba(10,20,40,.92);border:2px solid ${col};border-radius:9px;padding:3px 9px;font-size:10px;font-weight:800;color:${col};white-space:nowrap;pointer-events:none;box-shadow:0 2px 10px ${col}55;`;
+      posLbl.textContent=_teamIco(team)+' '+team.name;
+      const posOv=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(curWpData.lat,curWpData.lng),content:posLbl,yAnchor:2.4,zIndex:8});
       posOv.setMap(mapR);_rFocusPolylines.push(posOv);
     }
   });
@@ -4868,7 +4896,7 @@ function _renderFormTl(){
   const wrap=document.getElementById('formTlWrap');
   if(!wrap)return;
   wrap.innerHTML=`
-    ${_tlTeams.length?`<div id="tlTeamCards" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">${_tlTeams.map(_tlTeamCardHtml).join('')}</div>`:''}
+    ${_tlTeams.length?`<div id="tlTeamCards" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;">${_tlTeams.map((t,i)=>_tlTeamFullHtml(t,i)).join('')}</div>`:''}
     <div style="background:#0b1c30;border-radius:10px;padding:12px;border:.5px solid rgba(79,168,208,.2);margin-bottom:10px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;">
         <div style="font-size:11px;color:#4fa8d0;font-weight:700;">📍 <span id="tlSelTeamLabel">${selTeamName} 경로</span></div>
