@@ -1044,7 +1044,7 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
   <div style="width:100%;max-width:320px;display:flex;flex-direction:column;gap:10px;">
     <input id="adminLoginPw" type="password" class="fi" placeholder="비밀번호" autocomplete="off" style="font-size:14px;padding:12px 14px;" onkeydown="if(event.key==='Enter')doAdminLogin()">
     <button onclick="doAdminLogin()" style="background:#c0392b;color:#fff;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;margin-top:4px;">로그인</button>
-    <button onclick="history.back()" style="background:transparent;color:#3a6a8a;border:none;font-size:12px;cursor:pointer;padding:6px;">← 뒤로</button>
+    <button onclick="document.getElementById('adminLoginOverlay').style.display='none'" style="background:transparent;color:#3a6a8a;border:none;font-size:12px;cursor:pointer;padding:6px;">← 뒤로</button>
   </div>
 </div>
 
@@ -1462,7 +1462,7 @@ window.addEventListener('error',e=>{_logErr((e.message||'오류')+' @'+(e.filena
 window.addEventListener('unhandledrejection',e=>{_logErr('Promise: '+((e.reason&&e.reason.message)||e.reason||'거부'));});
 
 // ── 앱 버전 (배포 시 갱신) ──
-const APP_VER='v9.11 (2026.06.12)';
+const APP_VER='v9.12 (2026.06.12)';
 try{document.getElementById('appVerLabel').textContent='설악산 현장관리 '+APP_VER;}catch(e){}
 // ══════════════════════════════════════════
 // DB
@@ -7983,6 +7983,12 @@ window.onload=function(){
   // 웹/PWA 뒤로가기 처리
   var _backExitReady=false,_backExitTimer=null;
   window.addEventListener('popstate', function(e){
+    // 관리자 로그인 오버레이가 떠 있으면 그것부터 닫기 (전체 화면을 덮고 있어 안 닫으면 먹통처럼 보임)
+    var adminOv=document.getElementById('adminLoginOverlay');
+    if(adminOv&&adminOv.style.display==='flex'){adminOv.style.display='none';history.pushState({view:'home'},'','');return;}
+    // 사진 전체보기 닫기
+    var lb=document.getElementById('photoLightbox');
+    if(lb&&lb.style.display==='flex'){lb.style.display='none';history.pushState({view:'home'},'','');return;}
     // 열린 모달이 있으면 닫기
     var openModal=document.querySelector('.modal.on,.modal-bottom.on');
     if(openModal){openModal.classList.remove('on');history.pushState({view:'home'},'','');return;}
