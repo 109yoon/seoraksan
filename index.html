@@ -3269,9 +3269,10 @@ function _drawFocusRoutes(resId){
     const trailPts=wps.filter(w=>!w.isBase&&w.lat&&w.lng);
     if(!trailPts.length)return;
 
-    // Walk distance: sum haversine × trail factor
+    // Walk distance: 상행 구간만 합산 (하산은 역순 중복이므로 제외) × 등산로 보정계수
+    const ascPts=trailPts.filter(w=>!w.descent);
     let walkKm=0;
-    for(let i=1;i<trailPts.length;i++)walkKm+=_haversineKm(trailPts[i-1].lat,trailPts[i-1].lng,trailPts[i].lat,trailPts[i].lng);
+    for(let i=1;i<ascPts.length;i++)walkKm+=_haversineKm(ascPts[i-1].lat,ascPts[i-1].lng,ascPts[i].lat,ascPts[i].lng);
     walkKm=+(walkKm*1.45).toFixed(1);
     const walkMin=Math.round(walkKm/2.5*60);
     _rRouteInfo[resId][ti]={carMin:null,carKm:null,walkMin,walkKm,fallback:true};
@@ -3332,25 +3333,36 @@ function _drawFocusRoutes(resId){
       _rFocusPolylines.push(walkLine);
       walkPath.forEach(p=>bounds.extend(p));
 
-      // 각 표지판 위치에 흰 점 마커 + 코드 라벨
+      // 각 표지판 위치에 점 마커 + 번호 라벨 (하산 중복 좌표는 1회만)
       const curWpIdx=team.wpIdx>=0?team.wpIdx:0;
-      trailPts.forEach((w,pi)=>{
-        const isCur=wps.indexOf(w)===curWpIdx||wps.findIndex(x=>x.code===w.code&&!x.isBase)===curWpIdx;
-        const isPassed=pi<trailPts.findIndex(x=>wps.indexOf(x)===curWpIdx);
+      const seenPos=new Set();
+      wps.forEach((w,wi)=>{
+        if(w.isBase||!w.lat||!w.lng)return;
+        const isCur=wi===curWpIdx;
+        const key=w.lat.toFixed(6)+','+w.lng.toFixed(6);
+        if(seenPos.has(key)&&!isCur)return;
+        seenPos.add(key);
+        const isPassed=wi<curWpIdx;
         const dotEl=document.createElement('div');
         if(isCur){
           dotEl.style.cssText=`width:14px;height:14px;border-radius:50%;background:${col};border:2.5px solid #fff;box-shadow:0 0 0 3px ${col}55,0 0 12px ${col}99;animation:wpPulse 1.4s ease-in-out infinite;pointer-events:none;`;
         }else{
-          dotEl.style.cssText=`width:9px;height:9px;border-radius:50%;background:${isPassed?col+'99':'rgba(255,255,255,.55)'};border:1.5px solid ${isPassed?col:'rgba(255,255,255,.7)'};pointer-events:none;`;
+          dotEl.style.cssText=`width:9px;height:9px;border-radius:50%;background:${isPassed?col+'99':'rgba(255,255,255,.6)'};border:1.5px solid ${isPassed?col:'rgba(255,255,255,.85)'};pointer-events:none;`;
         }
-        const dotOv=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(w.lat,w.lng),content:dotEl,zIndex:6});
+        const dotOv=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(w.lat,w.lng),content:dotEl,zIndex:isCur?7:6});
         dotOv.setMap(mapR);_rFocusPolylines.push(dotOv);
-        // 코드 라벨 (현재 위치 또는 사고지점만)
-        if((isCur||w.isTarget)&&w.code){
+        // 표지판 번호 라벨: 전체 표시 (현재·사고지점은 강조, 나머지는 작게)
+        if(w.code||w.isTarget||w.isHosp){
           const lbl=document.createElement('div');
-          lbl.style.cssText=`background:rgba(8,18,36,.93);border:1.5px solid ${isCur?col:'#e05050'};border-radius:7px;padding:2px 6px;font-size:10px;font-weight:700;color:${isCur?col:'#e05050'};white-space:nowrap;pointer-events:none;margin-bottom:4px;`;
-          lbl.textContent=w.code+(w.name&&w.name!==w.code?' '+w.name.slice(0,6):'');
-          const lblOv=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(w.lat,w.lng),content:lbl,yAnchor:1.9,zIndex:7});
+          const txt=w.isHosp?'🏥 '+w.name:(w.code||'')+((isCur||w.isTarget)&&w.name&&w.name!==w.code?' '+(w.name||'').slice(0,6):'');
+          if(isCur||w.isTarget||w.isHosp){
+            const bc=isCur?col:w.isHosp?'#27ae60':'#e05050';
+            lbl.style.cssText=`background:rgba(8,18,36,.93);border:1.5px solid ${bc};border-radius:7px;padding:2px 6px;font-size:10px;font-weight:700;color:${bc};white-space:nowrap;pointer-events:none;`;
+          }else{
+            lbl.style.cssText='background:rgba(8,18,36,.78);border:1px solid rgba(255,255,255,.25);border-radius:5px;padding:1px 4px;font-size:9px;font-weight:600;color:rgba(255,255,255,.82);white-space:nowrap;pointer-events:none;font-family:monospace;';
+          }
+          lbl.textContent=txt;
+          const lblOv=new kakao.maps.CustomOverlay({position:new kakao.maps.LatLng(w.lat,w.lng),content:lbl,yAnchor:1.9,zIndex:isCur?8:5});
           lblOv.setMap(mapR);_rFocusPolylines.push(lblOv);
         }
       });
@@ -3419,9 +3431,17 @@ function _renderFocusPanel(resId){
       <div style="height:5px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden;margin-bottom:6px;">
         <div style="height:100%;width:${pct}%;background:${col};border-radius:3px;transition:width .4s;"></div>
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <span style="font-size:10px;color:rgba(255,255,255,.4);">📍 ${curName||'-'} · ${team.wpIdx}/${total}</span>
-        ${!atEnd?`<button onclick="_focusPassTeam(${resId},${ti})" style="background:rgba(79,168,208,.15);border:1px solid rgba(79,168,208,.35);color:#4fa8d0;border-radius:7px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;">▶ 통과</button>`:`<span style="font-size:10px;color:#27ae60;font-weight:700;">✓ 완료</span>`}
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+        <span style="font-size:10px;color:rgba(255,255,255,.4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">📍 ${curName||'-'} · ${team.wpIdx}/${total}</span>
+        <span style="display:flex;gap:5px;flex-shrink:0;">
+        ${(()=>{
+          const hasDescent=team.wps.some(w=>w.descent);
+          if(atEnd&&curWp.isTarget&&!hasDescent)return`<button onclick="_focusDescentTeam(${resId},${ti})" style="background:rgba(39,174,96,.15);border:1px solid rgba(39,174,96,.4);color:#27ae60;border-radius:7px;padding:4px 11px;font-size:11px;font-weight:700;cursor:pointer;">${team.type==='heli'?'🏥 이송':'🔽 하산'}</button>`;
+          if(atEnd)return`<span style="font-size:10px;color:#27ae60;font-weight:700;">✓ ${hasDescent?(team.type==='heli'?'이송 완료':'하산 완료'):'완료'}</span>`;
+          const canReturn=!hasDescent&&team.wpIdx>0&&!curWp.isTarget;
+          return`${canReturn?`<button onclick="_focusReturnTeam(${resId},${ti})" style="background:rgba(230,126,34,.1);border:1px solid rgba(230,126,34,.3);color:#e67e22;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">↩️</button>`:''}<button onclick="_focusPassTeam(${resId},${ti})" style="background:rgba(79,168,208,.15);border:1px solid rgba(79,168,208,.35);color:#4fa8d0;border-radius:7px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;">▶ 통과</button>`;
+        })()}
+        </span>
       </div>
       ${routeStr}
     </div>`;
@@ -3476,6 +3496,44 @@ function _focusPassTeam(resId,teamIdx){
   try{_clearFocusPolylines();_drawFocusRoutes(resId);}catch(e){}
   _rebuildTeamChips();
   _applyFocusDim();
+}
+
+// 포커스 패널: 팀 데이터 변경 공통 처리 (DB 저장 + 타임라인 동기화 + 재렌더)
+function _focusMutateTeam(resId,teamIdx,mutate){
+  const _res=DB.g('rescues')||[];const _ri=_res.findIndex(x=>x.id===resId);
+  if(_ri<0)return;
+  const team=(_res[_ri].teams||[])[teamIdx];
+  if(!team)return;
+  if(!mutate(team))return;
+  DB.s('rescues',_res);
+  if(_tlWpResId===resId&&_tlTeams[teamIdx]){
+    _tlTeams[teamIdx]=Object.assign({},team,{collapsed:_tlTeams[teamIdx].collapsed});
+    if(_tlSelTeam===teamIdx){_tlWps=_tlTeams[teamIdx].wps;_tlWpIdx=_tlTeams[teamIdx].wpIdx;}
+  }
+  _renderFocusPanel(resId);
+  try{_clearFocusPolylines();_drawFocusRoutes(resId);}catch(e){}
+  _rebuildTeamChips();
+  _applyFocusDim();
+}
+
+function _focusDescentTeam(resId,teamIdx){
+  _focusMutateTeam(resId,teamIdx,team=>{
+    if(!_appendDescentWps(team)){toast('⚠️ 환자 조우 후 가능');return false;}
+    toast(team.type==='heli'?'🏥 '+team.name+': 병원 이송 시작':'🔽 '+team.name+': 하산 시작');
+    return true;
+  });
+}
+
+function _focusReturnTeam(resId,teamIdx){
+  const _res=DB.g('rescues')||[];const _ri=_res.findIndex(x=>x.id===resId);
+  const team=_ri>=0?(_res[_ri].teams||[])[teamIdx]:null;
+  if(!team)return;
+  if(!confirm(team.name+' 복귀(하산)시킬까요? 남은 상행 구간은 취소됩니다.'))return;
+  _focusMutateTeam(resId,teamIdx,t=>{
+    if(!_appendReturnWps(t)){toast('⚠️ 복귀 불가 상태');return false;}
+    toast('↩️ '+t.name+': 복귀 경로 생성');
+    return true;
+  });
 }
 
 // ══════════════════════════════════════════
@@ -4068,7 +4126,7 @@ function confirmTlBuild(){
     const name=(nameEl&&nameEl.value.trim())||_tlBuildAgencyType+'팀';
     const type=_tlBuildAgencyType==='헬기'?'heli':_tlBuildAgencyType==='소방'||_tlBuildAgencyType==='경찰'?'vehicle':'foot';
     const route=type==='heli'
-      ?[{code:'',name:'헬기 기지',isBase:true,status:'active'},{code:'',name:r.location||'사고지점',isTarget:true,status:'pending'}]
+      ?[{code:'',name:'헬기 기지',isBase:true,status:'active'},{code:'',name:r.location||'사고지점',lat:r.lat||null,lng:r.lng||null,isTarget:true,status:'pending'}]
       :_buildRoute(r,facs).map(w=>({...w,status:w.isBase?'active':'pending'}));
     _tlTeams.push({id:'agency_'+Date.now(),name,type,wpIdx:0,wps:route,collapsed:false});
   }
@@ -4208,11 +4266,54 @@ function _saveTeamState(){
 
 const _TL_STAGES=['출발','이동중','환자조우','하산'];
 function _teamStageIdx(team){
-  if(!team.wps.length||team.wpIdx===0)return 0;           // 출발
-  if(team.wpIdx>=team.wps.length-1)return 3;              // 하산 (완료)
+  if(!team.wps.length||team.wpIdx===0)return 0;            // 출발
+  const cur=team.wps[team.wpIdx]||{};
+  if(cur.descent)return 3;                                  // 하산/이송 중
   const targetIdx=team.wps.findIndex(w=>w.isTarget);
-  if(targetIdx>=0&&team.wpIdx>=targetIdx)return 2;         // 환자조우
-  return 1;                                                // 이동중
+  if(targetIdx>=0&&team.wpIdx>=targetIdx)return 2;          // 환자조우
+  if(team.wpIdx>=team.wps.length-1)return 3;                // 경로 끝 (목표 없는 경로)
+  return 1;                                                 // 이동중
+}
+// 팀이 하산/이송을 모두 마쳤는지
+function _teamDone(team){
+  return team.wps.some(w=>w.descent)&&team.wpIdx>=team.wps.length-1;
+}
+// 환자 조우 후 하산(도보·차량)/병원 이송(헬기) 경로를 뒤에 붙임. true=추가됨
+function _appendDescentWps(team){
+  const tIdx=team.wps.findIndex(w=>w.isTarget);
+  if(tIdx<0||team.wpIdx<tIdx||team.wps.some(w=>w.descent))return false;
+  if(team.type==='heli'){
+    team.wps.push({code:'',name:'속초의료원 이송',lat:_SOKCHO_HOSP.lat,lng:_SOKCHO_HOSP.lng,descent:true,isHosp:true,status:'pending'});
+  }else{
+    const back=team.wps.slice(0,tIdx).reverse().map(w=>({code:w.code,name:w.name,lat:w.lat,lng:w.lng,isBase:w.isBase,descent:true,status:'pending'}));
+    team.wps.push(...back);
+  }
+  return true;
+}
+// 조우 전 팀 복귀: 남은 상행 구간을 버리고 지나온 길을 역순으로 붙임. true=변경됨
+function _appendReturnWps(team){
+  if(team.wps.some(w=>w.descent)||team.wpIdx<=0)return false;
+  const cur=team.wpIdx;
+  const back=team.wps.slice(0,cur).reverse().map(w=>({code:w.code,name:w.name,lat:w.lat,lng:w.lng,isBase:w.isBase,descent:true,status:'pending'}));
+  team.wps=team.wps.slice(0,cur+1).concat(back);
+  return true;
+}
+// 타임라인: 하산 시작 버튼
+function tlDescentTeam(idx){
+  const team=_tlTeams[idx];if(!team)return;
+  if(!_appendDescentWps(team)){toast('⚠️ 환자 조우 후 가능');return;}
+  _saveTeamState();_tlSelTeam=idx;_tlWps=team.wps;_tlWpIdx=team.wpIdx;
+  _persistTeams();_rerenderTlFull();
+  toast(team.type==='heli'?'🏥 '+team.name+': 병원 이송 시작':'🔽 '+team.name+': 하산 경로 생성');
+}
+// 타임라인: 복귀 버튼 (다른 팀 회수)
+function tlReturnTeam(idx){
+  const team=_tlTeams[idx];if(!team)return;
+  if(!confirm(team.name+' 복귀(하산)시킬까요? 남은 상행 구간은 취소됩니다.'))return;
+  if(!_appendReturnWps(team)){toast('⚠️ 복귀 불가 상태');return;}
+  _saveTeamState();_tlSelTeam=idx;_tlWps=team.wps;_tlWpIdx=team.wpIdx;
+  _persistTeams();_rerenderTlFull();
+  toast('↩️ '+team.name+': 복귀 경로 생성');
 }
 
 function _wpItemHtmlTeam(w,i,team,teamIdx){
@@ -4235,7 +4336,8 @@ function _wpItemHtmlTeam(w,i,team,teamIdx){
   }else if(isBase){
     dbg='rgba(39,174,96,.15)';dbd='rgba(39,174,96,.4)';dtxt='🏠';nc='rgba(255,255,255,.5)';
   }else{
-    dbg='rgba(79,168,208,.08)';dbd='rgba(79,168,208,.25)';dtxt=w.code||'·';nc='rgba(255,255,255,.35)';
+    dbg='rgba(79,168,208,.08)';dbd='rgba(79,168,208,.25)';dtxt=w.isHosp?'🏥':(w.code||'·');nc='rgba(255,255,255,.35)';
+    if(w.descent)badge='<span style="background:rgba(39,174,96,.08);color:rgba(93,191,138,.7);border:1px solid rgba(39,174,96,.18);border-radius:5px;font-size:9px;padding:1px 6px;">🔽 하산</span>';
   }
   const click=(!isBase&&!isActive)?`onclick="event.stopPropagation();tlWarpToTeam(${teamIdx},${i})"`:'' ;
   return `<div id="tlWp_${teamIdx}_${i}" class="tl-wp${isActive?' tl-wp-active':''}${isLast?' last':''}" ${click} style="${!isBase&&!isActive?'cursor:pointer;':''}">
@@ -4284,11 +4386,28 @@ function _compactRouteHtml(team,idx){
         <div style="font-size:10px;color:#4a7090;font-weight:600;margin-bottom:3px;">다음 ${typeIco}</div>
         <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,.6);">${nextCode}${next.name}</div>
       </div>
-    </div>`:`<div style="padding:2px 13px 9px;font-size:11px;color:#27ae60;font-weight:700;">✅ 하산 완료 (전 구간 통과)</div>`}
-    <div style="display:flex;gap:6px;margin-bottom:8px;">
-      <button id="tlPassBtn_${idx}" onclick="event.stopPropagation();tlPassTeam(${idx})" ${atEnd?'disabled':''} style="flex:2;padding:11px;border-radius:8px;border:1px solid rgba(79,168,208,.4);background:rgba(79,168,208,.15);color:#4fa8d0;font-size:13px;font-weight:800;cursor:pointer;opacity:${atEnd?.3:1};">통과 →</button>
-      <button id="tlSkipBtn_${idx}" onclick="event.stopPropagation();tlSkipTeam(${idx})" ${!canSkip?'disabled':''} style="flex:1;padding:11px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:transparent;color:rgba(255,255,255,.38);font-size:12px;font-weight:600;cursor:pointer;opacity:${canSkip?1:.3};">건너뛰기</button>
-    </div>
+    </div>`:(()=>{
+      // 경로 끝: 환자조우 시점이면 하산/이송 유도, 하산까지 끝났으면 완료
+      const _hasDescent=team.wps.some(w=>w.descent);
+      if(_hasDescent)return`<div style="padding:2px 13px 9px;font-size:11px;color:#27ae60;font-weight:700;">✅ ${team.type==='heli'?'병원 이송':'하산'} 완료</div>`;
+      if(cur.isTarget)return'';
+      return`<div style="padding:2px 13px 9px;font-size:11px;color:#27ae60;font-weight:700;">✅ 전 구간 통과</div>`;
+    })()}
+    ${(()=>{
+      const _hasDescent=team.wps.some(w=>w.descent);
+      if(atEnd&&cur.isTarget&&!_hasDescent){
+        // 환자 조우 → 하산(도보·차량)/병원 이송(헬기) 시작
+        return`<div style="display:flex;gap:6px;margin-bottom:8px;">
+          <button onclick="event.stopPropagation();tlDescentTeam(${idx})" style="flex:1;padding:11px;border-radius:8px;border:1px solid rgba(39,174,96,.45);background:rgba(39,174,96,.15);color:#27ae60;font-size:13px;font-weight:800;cursor:pointer;">${team.type==='heli'?'🏥 병원 이송 시작':'🔽 하산 시작'}</button>
+        </div>`;
+      }
+      const _canReturn=!atEnd&&!_hasDescent&&team.wpIdx>0&&!cur.isTarget;
+      return`<div style="display:flex;gap:6px;margin-bottom:8px;">
+        <button id="tlPassBtn_${idx}" onclick="event.stopPropagation();tlPassTeam(${idx})" ${atEnd?'disabled':''} style="flex:2;padding:11px;border-radius:8px;border:1px solid rgba(79,168,208,.4);background:rgba(79,168,208,.15);color:#4fa8d0;font-size:13px;font-weight:800;cursor:pointer;opacity:${atEnd?.3:1};">통과 →</button>
+        <button id="tlSkipBtn_${idx}" onclick="event.stopPropagation();tlSkipTeam(${idx})" ${!canSkip?'disabled':''} style="flex:1;padding:11px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:transparent;color:rgba(255,255,255,.38);font-size:12px;font-weight:600;cursor:pointer;opacity:${canSkip?1:.3};">건너뛰기</button>
+        ${_canReturn?`<button onclick="event.stopPropagation();tlReturnTeam(${idx})" style="flex:1;padding:11px;border-radius:8px;border:1px solid rgba(230,126,34,.35);background:rgba(230,126,34,.1);color:#e67e22;font-size:12px;font-weight:600;cursor:pointer;">↩️ 복귀</button>`:''}
+      </div>`;
+    })()}
     ${showFull?`<div id="tlWpList_${idx}" style="max-height:230px;overflow-y:auto;border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:6px 8px;margin-bottom:7px;">${team.wps.map((w,i)=>_wpItemHtmlTeam(w,i,team,idx)).join('')}</div>`:''}
     <button onclick="event.stopPropagation();_toggleTlFull(${idx})" style="width:100%;padding:6px;border-radius:7px;border:1px solid rgba(255,255,255,.08);background:transparent;color:rgba(255,255,255,.28);font-size:11px;cursor:pointer;">${showFull?'▲ 경로 접기':'▾ 전체 경로 ('+team.wps.length+'개)'}</button>`;
   return compact;
