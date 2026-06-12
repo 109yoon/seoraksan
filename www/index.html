@@ -39,7 +39,7 @@ html,body{height:100%;height:100dvh;max-height:100%;background:#060d1a;font-fami
 button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 /* iOS notch 대응 */
 #app{padding-top:env(safe-area-inset-top);padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right);}
-#app{max-width:430px;margin:0 auto;height:100dvh;height:100vh;display:flex;flex-direction:column;background:#08111f;overflow:hidden;position:relative;}
+#app{max-width:430px;margin:0 auto;height:100vh;height:100dvh;display:flex;flex-direction:column;background:#08111f;overflow:hidden;position:relative;}
 
 /* ─── 상태바·헤더 ─── */
 .ahdr{background:#040a16;padding:9px 14px 10px;flex-shrink:0;display:none;border-bottom:1px solid rgba(255,255,255,.05);}
@@ -447,7 +447,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 /* ─── 모달 ─── */
 .modal{position:absolute;inset:0;background:rgba(0,0,0,.88);z-index:50;display:none;flex-direction:column;justify-content:flex-end;}
 .modal.on{display:flex;}
-.mbox{background:#0b1c30;border-radius:18px 18px 0 0;padding:15px 14px 32px;max-height:90vh;overflow-y:auto;}
+.mbox{background:#0b1c30;border-radius:18px 18px 0 0;padding:15px 14px 32px;max-height:90vh;max-height:90dvh;overflow-y:auto;}
 .mhdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px;}
 .mtitle{font-size:14px;font-weight:700;color:#e0edf8;}
 .mclose{background:none;border:none;color:rgba(255,255,255,.55);font-size:22px;cursor:pointer;min-width:42px;min-height:42px;display:flex;align-items:center;justify-content:center;}
@@ -1292,7 +1292,7 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
 
 <!-- ══ 모달: 지도에서 위치 선택 ══ -->
 <div id="modalMapPicker" class="modal" style="background:rgba(0,0,0,.95);">
-  <div style="background:#0b1c30;border-radius:18px 18px 0 0;height:90vh;display:flex;flex-direction:column;">
+  <div style="background:#0b1c30;border-radius:18px 18px 0 0;height:90vh;height:90dvh;display:flex;flex-direction:column;">
     <div style="padding:12px 15px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.07);">
       <div>
         <div style="font-size:13px;font-weight:700;color:#e0edf8;">📍 위치 선택</div>
@@ -1463,7 +1463,7 @@ window.addEventListener('error',e=>{_logErr((e.message||'오류')+' @'+(e.filena
 window.addEventListener('unhandledrejection',e=>{_logErr('Promise: '+((e.reason&&e.reason.message)||e.reason||'거부'));});
 
 // ── 앱 버전 (배포 시 갱신) ──
-const APP_VER='v9.9 (2026.06.12)';
+const APP_VER='v9.10 (2026.06.12)';
 try{document.getElementById('appVerLabel').textContent='설악산 현장관리 '+APP_VER;}catch(e){}
 // ══════════════════════════════════════════
 // DB
@@ -5074,7 +5074,7 @@ function showPrevHistModal(id){
       ${body?`<div style="font-size:11px;color:#b8d4e8;line-height:1.5;">${body}</div>`:''}
     </div>`;
   }).join('');
-  ov.innerHTML=`<div style="background:#040a16;border-radius:14px 14px 0 0;width:100%;max-height:70vh;overflow:hidden;display:flex;flex-direction:column;border-top:.5px solid rgba(79,168,208,.25);">
+  ov.innerHTML=`<div style="background:#040a16;border-radius:14px 14px 0 0;width:100%;max-height:70vh;max-height:70dvh;overflow:hidden;display:flex;flex-direction:column;border-top:.5px solid rgba(79,168,208,.25);">
     <div style="padding:14px 16px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:.5px solid rgba(255,255,255,.07);flex-shrink:0;">
       <span style="font-size:13px;font-weight:700;color:#e0edf8;">📋 이전 이력 (${all.length-1}건)</span>
       <button onclick="document.getElementById('prevHistOv').style.display='none'" style="background:none;border:none;color:rgba(255,255,255,.5);font-size:20px;cursor:pointer;padding:0 4px;line-height:1;">×</button>
