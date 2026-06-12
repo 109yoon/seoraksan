@@ -1451,8 +1451,19 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
 
 <script>
 'use strict';
+// ── 전역 오류 기록: 현장에서 "삐걱거림" 원인 추적용 (관리자 → 시스템 탭) ──
+function _logErr(msg){
+  try{
+    const log=JSON.parse(localStorage.getItem('_errLog')||'[]');
+    log.unshift({t:new Date().toISOString().slice(5,16).replace('T',' '),m:String(msg).slice(0,180)});
+    localStorage.setItem('_errLog',JSON.stringify(log.slice(0,30)));
+  }catch(e){}
+}
+window.addEventListener('error',e=>{_logErr((e.message||'오류')+' @'+(e.filename||'').split('/').pop()+':'+(e.lineno||''));});
+window.addEventListener('unhandledrejection',e=>{_logErr('Promise: '+((e.reason&&e.reason.message)||e.reason||'거부'));});
+
 // ── 앱 버전 (배포 시 갱신) ──
-const APP_VER='v9.7 (2026.06.12)';
+const APP_VER='v9.8 (2026.06.12)';
 try{document.getElementById('appVerLabel').textContent='설악산 현장관리 '+APP_VER;}catch(e){}
 // ══════════════════════════════════════════
 // DB
@@ -1609,6 +1620,7 @@ function initFirebase(onReady){
     _fst=firebase.storage();
     try{_fmsg=firebase.messaging();}catch(e){}
     setTimeout(_flushSyncQueue,3000); // 부팅 직후 대기 큐 재전송
+    setTimeout(_processPhotoQueue,5000); // 이전 세션 오프라인 사진 이어서 업로드
     const totalKeys=_SHARED.length;
     const loaded=new Set();
     function _checkReady(){if(loaded.size===totalKeys){onReady&&onReady();onReady=null;}}
@@ -1797,21 +1809,71 @@ document.querySelectorAll('.modal').forEach(m=>{
   if(m.id==='modalUser')return; // 필수입력 검증 때문에 별도처리
   m.addEventListener('click',function(e){if(e.target===this)closeM(this.id);});
 });
-// ── 오프라인 사진 업로드 큐 ──────────────────────
+// ── 오프라인 사진 업로드 큐 (IndexedDB 영속 — 앱 재시작에도 유지) ──
 const _offlinePhotoQueue=[];
-window.addEventListener('online',async()=>{
+function _photoIDB(){
+  return new Promise((ok,no)=>{
+    const rq=indexedDB.open('seorak_photoQ',1);
+    rq.onupgradeneeded=()=>{rq.result.createObjectStore('q',{keyPath:'id'});};
+    rq.onsuccess=()=>ok(rq.result);rq.onerror=()=>no(rq.error);
+  });
+}
+async function _photoQPut(item){
+  try{const db=await _photoIDB();const tx=db.transaction('q','readwrite');tx.objectStore('q').put(item);}catch(e){}
+}
+async function _photoQDel(id){
+  try{const db=await _photoIDB();const tx=db.transaction('q','readwrite');tx.objectStore('q').delete(id);}catch(e){}
+}
+async function _photoQAll(){
+  try{
+    const db=await _photoIDB();
+    return await new Promise((ok)=>{
+      const rq=db.transaction('q','readonly').objectStore('q').getAll();
+      rq.onsuccess=()=>ok(rq.result||[]);rq.onerror=()=>ok([]);
+    });
+  }catch(e){return[];}
+}
+// 제출 시 호출: 업로드 대기 중(pending)인 미리보기 사진을 저장된 레코드에 연결
+function _registerPendingPhoto(pid,dest){
+  const it=_offlinePhotoQueue.find(x=>x.pid===pid&&!x.dest);
+  if(!it)return;
+  it.dest=dest;
+  _photoQPut({id:it.id,pid:it.pid,file:it.file,dest});
+}
+// 업로드 완료된 URL을 레코드 필드에 반영
+function _applyPhotoDest(dest,url){
+  if(!dest)return;
+  const arr=DB.g(dest.key)||[];const i=arr.findIndex(x=>x.id===dest.id);
+  if(i<0)return;
+  if(dest.append){
+    if(!arr[i][dest.field])arr[i][dest.field]=[];
+    arr[i][dest.field].push({url,time:now(),by:dest.by||''});
+  }else{
+    arr[i][dest.field]=url;
+  }
+  DB.s(dest.key,arr);
+}
+async function _processPhotoQueue(){
+  if(!navigator.onLine||!_fst)return;
+  // 메모리 큐 + IDB 복원분 합치기 (재시작 후에도 이어서 업로드)
+  const idb=await _photoQAll();
+  idb.forEach(d=>{if(!_offlinePhotoQueue.some(x=>x.id===d.id))_offlinePhotoQueue.push(d);});
   if(!_offlinePhotoQueue.length)return;
-  toast('🌐 연결됨 — 대기 중인 사진 '+_offlinePhotoQueue.length+'장 업로드 중...');
+  toast('🌐 대기 중인 사진 '+_offlinePhotoQueue.length+'장 업로드 중...');
   const items=_offlinePhotoQueue.splice(0);
+  let ok=0;
   for(const item of items){
     try{
-      const url=await uploadImageToStorage(item.file,'photos/'+item.pid);
-      const prev=document.getElementById(item.pid);
+      const url=await uploadImageToStorage(item.file,'photos/'+(item.pid||'queued'));
+      if(item.dest)_applyPhotoDest(item.dest,url);
+      const prev=item.pid?document.getElementById(item.pid):null;
       if(prev){prev.dataset.url=url;const img=prev.querySelector('img');if(img)img.src=url;prev.querySelector('.up-badge')?.remove();}
-    }catch(e){}
+      _photoQDel(item.id);ok++;
+    }catch(e){_offlinePhotoQueue.push(item);} // 실패 → 큐 유지
   }
-  toast('✅ 사진 업로드 완료');
-});
+  if(ok)toast('✅ 사진 '+ok+'장 업로드 완료');
+}
+window.addEventListener('online',()=>setTimeout(_processPhotoQueue,2000));
 // ── 이미지 압축 (긴 축 1200px, 82% JPEG) ─────────
 async function _compressImage(file,maxPx=1200,quality=0.82){
   if(file.size<300*1024)return file; // 300KB 이하 압축 생략
@@ -1850,7 +1912,9 @@ async function prevImg(inp,pid){
   if(!navigator.onLine){
     prev.innerHTML=`<img src="${objUrl}"><div class="up-badge" style="font-size:10px;color:#e67e22;background:rgba(0,0,0,.75);padding:2px 6px;border-radius:4px;margin-top:3px;text-align:center;">📵 연결 시 자동 업로드</div>`;
     prev.dataset.url='pending';
-    _offlinePhotoQueue.push({file:compressed,pid});
+    const qItem={id:Date.now()+'_'+pid,file:compressed,pid};
+    _offlinePhotoQueue.push(qItem);
+    _photoQPut(qItem); // 제출 전이라도 보존 (제출 시 dest 연결됨)
     return;
   }
   prev.innerHTML=`<img src="${objUrl}" style="opacity:.6"><div class="up-badge" style="font-size:10px;color:#4fa8d0;background:rgba(0,0,0,.75);padding:2px 6px;border-radius:4px;margin-top:3px;text-align:center;">업로드 중...</div>`;
@@ -5034,7 +5098,16 @@ function addScenePhotos(resId){
   inp.onchange=async()=>{
     const files=[...(inp.files||[])];
     if(!files.length)return;
-    if(!navigator.onLine){toast('📵 오프라인 — 연결 후 다시 시도하세요');return;}
+    const u0=DB.g('currentUser')||{};
+    if(!navigator.onLine){
+      for(const f of files){
+        const c=await _compressImage(f);
+        const qItem={id:Date.now()+'_sc'+Math.random().toString(36).slice(2,6),file:c,pid:'',dest:{key:'rescues',id:resId,field:'photos',append:true,by:u0.name||''}};
+        _offlinePhotoQueue.push(qItem);_photoQPut(qItem);
+      }
+      toast('📵 오프라인 — 사진 '+files.length+'장 대기, 연결되면 자동 업로드');
+      return;
+    }
     toast('⬆️ 사진 '+files.length+'장 업로드 중...');
     const u=DB.g('currentUser')||{};
     let ok=0;
@@ -5521,6 +5594,9 @@ function submit1Bo(){
   const res=DB.g('rescues')||[];
   res.push(r);
   DB.s('rescues',res);
+  // 오프라인 대기 사진을 이 레코드에 연결 (연결 복구 시 자동 반영)
+  _registerPendingPhoto('prevInj',{key:'rescues',id:r.id,field:'injuryPhoto'});
+  _registerPendingPhoto('prevTrans',{key:'rescues',id:r.id,field:'transPhoto'});
   pushNoti('🚨 구조 1보: '+title+' ('+r.type+')',RES_TYPES[r.type]?.ico||'🚨',r.type,{app:'rescue',tab:2,id:r.id});
   syncToSheets('rescue',{id:r.id,title,type:r.type,date:r.date,author:r.author});
   toast('🚨 1보 등록 완료');
@@ -5608,6 +5684,7 @@ function submitHazard(){
     fireTL:type.includes('산불')?[..._hazFireTL]:[],
   };
   const haz=DB.g('hazards')||[];haz.push(h);DB.s('hazards',haz);
+  _registerPendingPhoto('prevHaz',{key:'hazards',id:h.id,field:'photo'});
   pushNoti(`⚠️ 위험상황: ${type} · ${h.loc||'-'}`,'⚠️','낙석',{app:'rescue',tab:2});
   closeM('modalHazard');try{renderRescueMap();}catch(e){}toast('⚠️ 위험상황 등록');updateSummary();
 }
@@ -6346,6 +6423,38 @@ function renderAdmSheets(){
     </div>`;
 }
 function saveSheetsUrl(){const url=document.getElementById('sheetsUrlIn')?.value?.trim();if(!url){toast('⚠️ URL 입력');return;}DB.s('sheetsUrl',url);toast('✅ URL 저장');renderAdmSheets();}
+// ── 전체 데이터 백업/복원 (JSON) ──
+const _BACKUP_KEYS=['rescues','hazards','facilities','history','wikis','catFac','catFacMeta','wikiCats','pendingUsers','approvedUsers','deletedKakaoIds'];
+function exportAllData(){
+  const data={};
+  _BACKUP_KEYS.forEach(k=>{data[k]=DB.g(k);});
+  const out={app:'seoraksan',ver:APP_VER,exportedAt:now(),data};
+  const blob=new Blob(['\uFEFF'+JSON.stringify(out,null,1)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='설악산백업_'+today()+'.json';
+  a.click();setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+  toast('⬇️ 백업 파일 다운로드');
+}
+function importAllData(inp){
+  const f=inp.files&&inp.files[0];inp.value='';
+  if(!f)return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const out=JSON.parse(String(rd.result).replace(/^\uFEFF/,''));
+      if(!out||out.app!=='seoraksan'||!out.data){toast('⚠️ 올바른 백업 파일이 아닙니다');return;}
+      const counts=_BACKUP_KEYS.map(k=>{const v=out.data[k];return v&&v.length?k+' '+v.length+'건':null;}).filter(Boolean).join(', ');
+      if(!confirm('백업 시점: '+(out.exportedAt||'?')+'\n'+counts+'\n\n현재 데이터를 이 백업으로 덮어씁니다. 계속할까요?'))return;
+      if(!confirm('⚠️ 마지막 확인 — 복원 후 되돌릴 수 없습니다.'))return;
+      _BACKUP_KEYS.forEach(k=>{if(out.data[k]!==undefined&&out.data[k]!==null)DB.s(k,out.data[k]);});
+      toast('✅ 복원 완료');
+      renderAdmCtrl();try{renderRescueMap();}catch(e){}updateSummary();
+    }catch(e){toast('⚠️ 파일을 읽을 수 없습니다');}
+  };
+  rd.readAsText(f);
+}
+
 function renderAdmSys(){
   const unseenCnt=_getUnseenCount();
   document.getElementById('admSysWrap').innerHTML=`
@@ -6353,6 +6462,19 @@ function renderAdmSys(){
       <div class="stitle">🔐 관리자 비밀번호</div>
       <div style="font-size:11px;color:#7a9cb8;margin-bottom:8px;">비밀번호는 암호화되어 서버에 저장됩니다</div>
       <button onclick="_showAdminChangePw()" style="width:100%;background:rgba(192,57,43,.1);color:#e07060;border:1px solid rgba(192,57,43,.28);padding:9px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">비밀번호 변경</button>
+    </div>
+    <div class="scard" style="margin-bottom:8px;">
+      <div class="stitle">💾 데이터 백업 / 복원</div>
+      <div style="font-size:11px;color:#7a9cb8;margin-bottom:8px;">전체 데이터를 파일로 내려받아 보관하세요 (사진 원본은 서버에 별도 저장)</div>
+      <div style="display:flex;gap:6px;">
+        <button onclick="exportAllData()" style="flex:1;background:rgba(39,174,96,.1);color:#27ae60;border:1px solid rgba(39,174,96,.3);padding:9px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">⬇️ 전체 백업</button>
+        <button onclick="document.getElementById('restoreFileInp').click()" style="flex:1;background:rgba(230,126,34,.08);color:#e67e22;border:1px solid rgba(230,126,34,.28);padding:9px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">⬆️ 복원</button>
+        <input type="file" id="restoreFileInp" accept=".json" style="display:none;" onchange="importAllData(this)">
+      </div>
+    </div>
+    <div class="scard" style="margin-bottom:8px;">
+      <div class="stitle">🐞 최근 오류 기록 <button onclick="localStorage.removeItem('_errLog');renderAdmSys();" style="float:right;background:none;border:none;color:rgba(255,255,255,.3);font-size:10px;cursor:pointer;">비우기</button></div>
+      ${(()=>{try{const log=JSON.parse(localStorage.getItem('_errLog')||'[]');return log.length?log.slice(0,10).map(e=>`<div style="font-size:10px;color:#b8856a;font-family:monospace;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.04);">${e.t} ${_esc(e.m)}</div>`).join(''):'<div style="font-size:11px;color:rgba(255,255,255,.25);">기록된 오류 없음 ✅</div>';}catch(e){return'';}})()}
     </div>
     <div class="scard" style="margin-bottom:8px;">
       <div class="stitle">🔑 승인 코드</div>
