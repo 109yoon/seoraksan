@@ -1439,7 +1439,7 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
 <script>
 'use strict';
 // ── 앱 버전 (배포 시 갱신) ──
-const APP_VER='v9.0 (2026.06.12)';
+const APP_VER='v9.1 (2026.06.12)';
 try{document.getElementById('appVerLabel').textContent='설악산 현장관리 '+APP_VER;}catch(e){}
 // ══════════════════════════════════════════
 // DB
@@ -1526,6 +1526,14 @@ window.addEventListener('online',()=>setTimeout(_flushSyncQueue,1500));
 setInterval(_flushSyncQueue,45000);
 _updateSyncBadge(); // 이전 세션에서 남은 대기 건 표시
 
+// 사용자 입력에서 태그 주입 차단: 공유 데이터 저장 시 <,>를 전각 문자로 치환
+function _stripTags(v){
+  if(typeof v==='string')return v.replace(/</g,'\uFF1C').replace(/>/g,'\uFF1E');
+  if(Array.isArray(v))return v.map(_stripTags);
+  if(v&&typeof v==='object'){const o={};for(const k in v)o[k]=_stripTags(v[k]);return o;}
+  return v;
+}
+const _SANITIZE_KEYS=['rescues','hazards','pendingUsers','wikis'];
 const DB={
   g(k){
     if(_SHARED.includes(k)) return (_fs[k]!==undefined)?_fs[k]:null;
@@ -1533,6 +1541,7 @@ const DB={
   },
   s(k,v){
     if(k==='facilities')_invalidateSignCache();
+    if(_SANITIZE_KEYS.includes(k))v=_stripTags(v);
     if(_SHARED_COLL.includes(k)){
       _fs[k]=v||[];
       const prevJson=_fsSync[k]||new Map();
@@ -1751,6 +1760,16 @@ function initDB(){
 // ══════════════════════════════════════════
 const pad=n=>String(n).padStart(2,'0');
 function now(){const d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes());}
+// '2026-06-12 14:30' → '2시간 13분 경과' (골든타임 표시용)
+function _elapsedStr(dateStr){
+  try{
+    const t=new Date(String(dateStr).replace(' ','T'));
+    let m=Math.floor((Date.now()-t.getTime())/60000);
+    if(isNaN(m)||m<0)return'';
+    const d=Math.floor(m/1440);m-=d*1440;const h=Math.floor(m/60);m-=h*60;
+    return(d?d+'일 ':'')+(h?h+'시간 ':'')+m+'분 경과';
+  }catch(e){return'';}
+}
 function today(){return now().slice(0,10);}
 function nowDT(){
   const d=new Date();
@@ -3455,7 +3474,8 @@ function _renderFocusPanel(resId){
   if(!panel||!titleEl||!teamsEl)return;
   const rescue=(DB.g('rescues')||[]).find(r=>r.id===resId);
   if(!rescue){exitFocusMode();return;}
-  titleEl.textContent='🔴 '+rescue.title;
+  const _elp=_elapsedStr(rescue.date);
+  titleEl.innerHTML='🔴 '+_esc(rescue.title)+(_elp?` <span style="color:#f0a500;font-size:10px;font-weight:700;">⏱ ${_elp}</span>`:'');
   const teams=rescue.teams||[];
   if(!teams.length){
     teamsEl.innerHTML='<div style="font-size:11px;color:rgba(255,255,255,.35);text-align:center;padding:12px 0;">팀 없음 — 타임라인에서 팀 생성</div>';
@@ -3556,6 +3576,7 @@ function _focusPassTeam(resId,teamIdx){
   const curWp=team.wps[next]||{};
   const wpLabel=(curWp.code?curWp.code+' ':'')+(curWp.name||'').slice(0,12);
   toast('✅ '+team.name+': '+(wpLabel||'통과'));
+  if(next>=team.wps.length-1&&team.wps[next]&&team.wps[next].descent)_promptHandover(resId,team);
   _renderFocusPanel(resId);
   try{_clearFocusPolylines();_drawFocusRoutes(resId);}catch(e){}
   _rebuildTeamChips();
@@ -4363,6 +4384,20 @@ function _appendReturnWps(team){
   return true;
 }
 // 타임라인: 하산 시작 버튼
+// 하산/이송 완료 직후 환자 인계 기록 입력 (선택)
+function _promptHandover(resId,team){
+  setTimeout(()=>{
+    const to=prompt((team&&team.type==='heli'?'🏥 이송':'🔽 하산')+' 완료 — 환자 인계 대상을 입력하세요\n(예: 119구급대, 속초의료원 응급실, 보호자 / 건너뛰려면 취소)');
+    if(!to||!to.trim())return;
+    const res=DB.g('rescues')||[];const ri=res.findIndex(x=>x.id===resId);
+    if(ri<0)return;
+    const u=DB.g('currentUser')||{};
+    res[ri].handover={to:to.trim(),by:u.name||'',time:now(),team:(team&&team.name)||''};
+    DB.s('rescues',res);
+    toast('🤝 인계 기록 저장: '+to.trim());
+    try{_rerenderTlFull();}catch(e){}
+  },350);
+}
 function tlDescentTeam(idx){
   const team=_tlTeams[idx];if(!team)return;
   if(!_appendDescentWps(team)){toast('⚠️ 환자 조우 후 가능');return;}
@@ -4549,6 +4584,8 @@ function tlPass(){
     _tlWps[_tlWpIdx].passedAt=now();_tlWps[_tlWpIdx].status='passed';_tlWps[next].status='active';
     _tlWpIdx=next;_saveTeamState();_tlAnimating=false;_rerenderTlFull();
     if(_tlWps[next].isTarget)toast('🎯 환자 조우!');
+    // 하산/이송 종착 도달 → 인계 기록 입력 제안
+    if(next>=_tlWps.length-1&&_tlWps[next].descent)_promptHandover(_tlWpResId,_tlTeams[_tlSelTeam]);
     // 통과 기록 + 팀 상태 저장
     _persistTeams();
     if(_tlWpResId){
@@ -4591,7 +4628,12 @@ function renderTimeline(r,viewMode){
   const w=document.getElementById('repContent');
 
   function renderComments(resId){
-    const cmts=DB.g('comments_'+resId)||[];
+    // 구조 레코드 내장 댓글(동기화됨) + 구버전 로컬 댓글 병합
+    const rec=getRes(resId);
+    const seen=new Set();
+    const cmts=[...(rec.comments||[]),...(DB.g('comments_'+resId)||[])]
+      .filter(c=>{if(seen.has(c.id))return false;seen.add(c.id);return true;})
+      .sort((a,b)=>(a.id||0)-(b.id||0));
     if(!cmts.length)return '<div style="font-size:11px;color:rgba(255,255,255,.25);padding:4px 0;">댓글 없음</div>';
     return cmts.map(cm=>`<div style="background:#060d1a;border-radius:7px;padding:8px 10px;margin-bottom:5px;">
       <div style="font-size:11px;color:#4fa8d0;font-weight:600;">${_esc(cm.author||'익명')} · ${cm.time}</div>
@@ -4601,7 +4643,7 @@ function renderTimeline(r,viewMode){
 
   const tabHdr=`<div style="background:#0b1c30;border-radius:10px;padding:11px 12px;border:.5px solid rgba(255,255,255,.07);margin-bottom:10px;">
     <div style="font-size:14px;font-weight:700;color:#e0edf8;">${r.title}</div>
-    <div style="font-size:11px;color:#3a6a8a;margin-top:3px;">${r.type} · ${r.status==='ongoing'?'<span style="color:#c0392b;font-weight:700;">진행중</span>':'<span style="color:#27ae60;font-weight:700;">종료</span>'} · ${r.date}</div>
+    <div style="font-size:11px;color:#3a6a8a;margin-top:3px;">${r.type} · ${r.status==='ongoing'?'<span style="color:#c0392b;font-weight:700;">진행중</span>':'<span style="color:#27ae60;font-weight:700;">종료</span>'} · ${r.date}${r.status==='ongoing'&&_elapsedStr(r.date)?` · <span style="color:#f0a500;font-weight:700;">⏱ ${_elapsedStr(r.date)}</span>`:''}</div>
     <div style="display:flex;gap:5px;margin-top:9px;">
       <button onclick="renderTimeline(getRes(${r.id}),'advanced')" style="flex:1;padding:6px;border-radius:7px;border:1px solid;font-size:11px;font-weight:600;cursor:pointer;background:${'advanced'===mode?'rgba(79,168,208,.15)':'transparent'};color:${'advanced'===mode?'#4fa8d0':'rgba(255,255,255,.35)'};border-color:${'advanced'===mode?'rgba(79,168,208,.5)':'rgba(255,255,255,.1)'};">📍 고도화 타임라인</button>
       <button onclick="renderTimeline(getRes(${r.id}),'write')" style="flex:1;padding:6px;border-radius:7px;border:1px solid;font-size:11px;font-weight:600;cursor:pointer;background:${'write'===mode?'rgba(79,168,208,.15)':'transparent'};color:${'write'===mode?'#4fa8d0':'rgba(255,255,255,.35)'};border-color:${'write'===mode?'rgba(79,168,208,.5)':'rgba(255,255,255,.1)'};">📄 보고서</button>
@@ -4648,6 +4690,7 @@ function renderTimeline(r,viewMode){
     if(_ok(r.alcohol)&&r.alcohol!=='알수없음')rows.push(_row('음주',r.alcohol));
     if(_ok(r.situation))rows.push(_row('경위',r.situation));
     if(_ok(r.hospital)&&r.hospital!=='미정')rows.push(_row('이송',r.hospital));
+    if(r.handover&&r.handover.to)rows.push(_row('인계',r.handover.to+(r.handover.time?' · '+r.handover.time.slice(11):'')+(r.handover.by?' ('+r.handover.by+')':'')));
     if(_ok(r.extra))rows.push(_row('특이',r.extra));
     const updates=(r.reports||[]).filter(p=>p.update||(p.victimChange&&p.victimChange!=='변화없음')||p.addMem||p.extra);
     const updHtml=updates.length?`<div style="margin-top:7px;padding-top:7px;border-top:.5px solid rgba(255,255,255,.08);">${updates.map(p=>{const pts=[];if(p.update)pts.push(p.update);if(p.victimChange&&p.victimChange!=='변화없음')pts.push('부상자 '+p.victimChange);if(p.addMem)pts.push('추가대원 '+p.addMem);if(p.extra)pts.push(p.extra);return `<div style="padding:5px 0;border-bottom:.5px solid rgba(255,255,255,.04);"><span style="font-size:10px;color:#4a7090;font-weight:600;">${p.repTime||''} · ${p.author||''}</span><br><span style="font-size:11px;color:#b8d4e8;line-height:1.5;">${pts.join(' / ')}</span></div>`;}).join('')}</div>`:'';
@@ -4741,10 +4784,19 @@ function getRes(id){return (DB.g('rescues')||[]).find(r=>r.id===id)||{};}
 function submitComment(resId){
   const inp=document.getElementById('cmtInput_'+resId);if(!inp)return;
   const text=inp.value.trim();if(!text){toast('⚠️ 댓글을 입력하세요');return;}
-  const cmts=DB.g('comments_'+resId)||[];
+  const res=DB.g('rescues')||[];const ri=res.findIndex(x=>x.id===resId);
+  if(ri<0){toast('⚠️ 구조 정보 없음');return;}
+  if(!res[ri].comments)res[ri].comments=[];
+  // 구버전(이 기기에만 저장된) 댓글을 레코드로 1회 이관
+  (DB.g('comments_'+resId)||[]).forEach(c=>{
+    if(!res[ri].comments.some(x=>x.id===c.id))res[ri].comments.push(c);
+  });
+  try{localStorage.removeItem('v7_comments_'+resId);}catch(e){}
   const u=DB.g('currentUser')||{};
-  cmts.push({id:Date.now(),author:u.name||'익명',time:now(),text});
-  DB.s('comments_'+resId,cmts);
+  res[ri].comments.push({id:Date.now(),author:u.name||'익명',time:now(),text});
+  res[ri].comments.sort((a,b)=>(a.id||0)-(b.id||0));
+  DB.s('rescues',res);
+  const cmts=res[ri].comments;
   inp.value='';
   // 댓글 목록만 갱신
   const listEl=document.getElementById('commentList_'+resId);
@@ -5893,7 +5945,19 @@ function renderAdmCtrl(){
 function admChangeFacSt(id){const facs=DB.g('facilities')||[];const idx=facs.findIndex(x=>x.id===id);if(idx===-1)return;const ns=prompt(`상태 (ok/warn/bad)\n현재: ${facs[idx].status}`);if(!['ok','warn','bad'].includes(ns)){toast('⚠️ ok, warn, bad 중 입력');return;}facs[idx].status=ns;DB.s('facilities',facs);renderAdmCtrl();try{renderInspectMap();}catch(e){}toast('✅ 변경');updateSummary();}
 function admDelFac(id){if(!confirm('삭제?'))return;DB.s('facilities',(DB.g('facilities')||[]).filter(f=>f.id!==id));DB.s('history',(DB.g('history')||[]).filter(h=>h.facId!==id));renderAdmCtrl();try{renderInspectMap();}catch(e){}toast('🗑️ 삭제');updateSummary();}
 function admEndRes(id){const res=DB.g('rescues')||[];const i=res.findIndex(x=>x.id===id);if(i===-1)return;res[i].status='done';DB.s('rescues',res);renderAdmCtrl();try{renderRescueMap();}catch(e){}toast('✅ 종료');}
-function admDelRes(id){if(!confirm('삭제?'))return;DB.s('rescues',(DB.g('rescues')||[]).filter(r=>r.id!==id));renderAdmCtrl();try{renderRescueMap();}catch(e){}toast('🗑️ 삭제');updateSummary();}
+function admDelRes(id){
+  if(!confirm('삭제?'))return;
+  const res=DB.g('rescues')||[];const r=res.find(x=>x.id===id);
+  // Storage 사진 동반 삭제 (고아 파일 방지)
+  if(r&&_fst){
+    [r.injuryPhoto,r.transPhoto,...(r.reports||[]).map(p=>p.photo)]
+      .filter(u=>u&&String(u).startsWith('http'))
+      .forEach(u=>{try{_fst.refFromURL(u).delete().catch(()=>{});}catch(e){}});
+  }
+  try{localStorage.removeItem('v7_comments_'+id);}catch(e){}
+  DB.s('rescues',res.filter(x=>x.id!==id));
+  renderAdmCtrl();try{renderRescueMap();}catch(e){}toast('🗑️ 삭제');updateSummary();
+}
 function renderAdmMembers(){
   const pending=DB.g('pendingUsers')||[];
   const usedDepts=DEPTS.filter(d=>pending.some(p=>p.dept===d));
