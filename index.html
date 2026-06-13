@@ -370,6 +370,15 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .view.on{animation:viewFadeIn .2s var(--qt) both;}
 @keyframes viewFadeIn{from{opacity:0;transform:translateY(5px);}to{opacity:1;transform:translateY(0);}}
 
+/* ── 본부 상황판: 모니터 전체 화면 사용 (430px 제약 탈출) ── */
+#v-board.on{position:fixed;inset:0;width:100vw;height:100vh;max-width:none;z-index:60;}
+.board-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(440px,1fr));gap:16px;align-items:start;}
+@media(min-width:1000px){
+  #boardBody{max-width:1700px;margin:0 auto;padding:24px 36px 48px;}
+  #v-board .board-title{font-size:26px;}
+  #v-board .board-clock{font-size:20px;}
+}
+
 /* ─── 위키 ─── */
 .wiki-search{background:#0b1c30;border:1px solid rgba(79,168,208,.22);color:#e0edf8;padding:10px 13px;border-radius:9px;width:100%;font-size:13px;outline:none;}
 .wiki-search:focus{border-color:rgba(79,168,208,.5);}
@@ -980,8 +989,8 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
 <div id="v-board" class="view" style="background:#040a14;padding:0;overflow-y:auto;">
   <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid rgba(79,168,208,.18);position:sticky;top:0;background:#040a14;z-index:5;">
     <div style="display:flex;align-items:baseline;gap:12px;">
-      <span style="font-size:19px;font-weight:900;color:#e0edf8;">🏔️ 설악산 구조 상황판</span>
-      <span id="boardClock" style="font-size:15px;font-weight:700;color:#4fa8d0;font-family:monospace;"></span>
+      <span class="board-title" style="font-size:19px;font-weight:900;color:#e0edf8;">🏔️ 설악산 구조 상황판</span>
+      <span id="boardClock" class="board-clock" style="font-size:15px;font-weight:700;color:#4fa8d0;font-family:monospace;"></span>
     </div>
     <button onclick="closeBoard()" style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.5);border-radius:9px;padding:7px 14px;font-size:13px;cursor:pointer;">✕ 닫기</button>
   </div>
@@ -1462,7 +1471,7 @@ window.addEventListener('error',e=>{_logErr((e.message||'오류')+' @'+(e.filena
 window.addEventListener('unhandledrejection',e=>{_logErr('Promise: '+((e.reason&&e.reason.message)||e.reason||'거부'));});
 
 // ── 앱 버전 (배포 시 갱신) ──
-const APP_VER='v9.16 (2026.06.13)';
+const APP_VER='v9.17 (2026.06.13)';
 try{document.getElementById('appVerLabel').textContent='설악산 현장관리 '+APP_VER;}catch(e){}
 // ══════════════════════════════════════════
 // DB
@@ -2300,11 +2309,12 @@ function renderBoard(){
   if(!ongoing.length){
     html+=`<div style="text-align:center;padding:50px 0 30px;font-size:17px;color:rgba(255,255,255,.3);">✅ 진행중인 구조 상황 없음</div>`;
   }
+  if(ongoing.length)html+=`<div class="board-grid">`;
   ongoing.forEach(r=>{
     const elp=_elapsedStr(r.date);
     const ti=RES_TYPES[r.type]||RES_TYPES['기타'];
     const lastLog=(r.wpLog||[]).slice(-1)[0];
-    html+=`<div style="background:#0a1626;border:1.5px solid rgba(192,57,43,.35);border-radius:14px;padding:16px 18px;margin-bottom:14px;">
+    html+=`<div style="background:#0a1626;border:1.5px solid rgba(192,57,43,.35);border-radius:14px;padding:16px 18px;">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px;margin-bottom:4px;">
         <div style="font-size:18px;font-weight:800;color:#e0edf8;">${ti.ico} ${r.title}</div>
         ${elp?`<div style="font-size:16px;font-weight:800;color:#f0a500;font-family:monospace;">⏱ ${elp}</div>`:''}
@@ -2332,6 +2342,7 @@ function renderBoard(){
       ${(r.teams&&r.teams.length>0&&r.teams.every(t=>_teamDone(t)))?`<div style="background:rgba(39,174,96,.12);border:1px solid rgba(39,174,96,.35);border-radius:8px;padding:8px 12px;margin-top:8px;text-align:center;font-size:13px;font-weight:800;color:#27ae60;">🏁 전 팀 완료 — 상황 종료 대기중</div>`:''}
     </div>`;
   });
+  if(ongoing.length)html+=`</div>`;
   if(recentDone.length){
     html+=`<div style="margin-top:20px;font-size:12px;color:rgba(255,255,255,.35);font-weight:700;margin-bottom:6px;">최근 종료</div>`;
     recentDone.forEach(r=>{
