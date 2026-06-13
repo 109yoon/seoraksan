@@ -1462,7 +1462,7 @@ window.addEventListener('error',e=>{_logErr((e.message||'오류')+' @'+(e.filena
 window.addEventListener('unhandledrejection',e=>{_logErr('Promise: '+((e.reason&&e.reason.message)||e.reason||'거부'));});
 
 // ── 앱 버전 (배포 시 갱신) ──
-const APP_VER='v9.13 (2026.06.12)';
+const APP_VER='v9.14 (2026.06.13)';
 try{document.getElementById('appVerLabel').textContent='설악산 현장관리 '+APP_VER;}catch(e){}
 // ══════════════════════════════════════════
 // DB
@@ -2329,6 +2329,7 @@ function renderBoard(){
         <span>${lastLog?`최근: ${lastLog.time} ${lastLog.teamName} ${lastLog.code||''} 통과`:''}</span>
         <span>${r.handover&&r.handover.to?`🤝 인계: ${r.handover.to}`:''}</span>
       </div>
+      ${(r.teams&&r.teams.length>0&&r.teams.every(t=>_teamDone(t)))?`<div style="background:rgba(39,174,96,.12);border:1px solid rgba(39,174,96,.35);border-radius:8px;padding:8px 12px;margin-top:8px;text-align:center;font-size:13px;font-weight:800;color:#27ae60;">🏁 전 팀 완료 — 상황 종료 대기중</div>`:''}
     </div>`;
   });
   if(recentDone.length){
@@ -3626,6 +3627,14 @@ function _renderFocusPanel(resId){
       ${routeStr}
     </div>`;
   }).join('');
+  // 전 팀 완료 배너
+  if(teams.length>0&&teams.every(t=>_teamDone(t))){
+    teamsEl.innerHTML+=`<div style="background:rgba(39,174,96,.12);border:1.5px solid rgba(39,174,96,.45);border-radius:12px;padding:14px 16px;margin-top:4px;text-align:center;">
+      <div style="font-size:13px;font-weight:800;color:#27ae60;margin-bottom:6px;">🏁 전 팀 하산/이송 완료</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.45);margin-bottom:10px;">상황을 종료하시겠습니까?</div>
+      <button onclick="selResId=${resId};curResId=${resId};endSit();" style="background:rgba(39,174,96,.2);border:1px solid rgba(39,174,96,.55);color:#27ae60;border-radius:8px;padding:8px 0;font-size:12px;font-weight:700;cursor:pointer;width:100%;">✅ 상황 종료</button>
+    </div>`;
+  }
   panel.classList.add('on');
 }
 
@@ -3674,6 +3683,7 @@ function _focusPassTeam(resId,teamIdx){
   toast('✅ '+team.name+': '+(wpLabel||'통과'));
   if(next>=team.wps.length-1&&team.wps[next]&&team.wps[next].descent)_promptHandover(resId,team);
   _renderFocusPanel(resId);
+  _checkAllTeamsDone(resId);
   try{_clearFocusPolylines();_drawFocusRoutes(resId);}catch(e){}
   _rebuildTeamChips();
   _applyFocusDim();
@@ -4523,6 +4533,19 @@ function _teamStageIdx(team){
 function _teamDone(team){
   return team.wps.some(w=>w.descent)&&team.wpIdx>=team.wps.length-1;
 }
+// 모든 팀 완료 여부 확인 → 최초 감지 시 토스트
+function _checkAllTeamsDone(resId){
+  if(!resId)return;
+  const rescue=(DB.g('rescues')||[]).find(r=>r.id===resId);
+  if(!rescue||rescue.status!=='ongoing')return;
+  const teams=rescue.teams||[];
+  if(!teams.length||!teams.every(t=>_teamDone(t)))return;
+  const key='allDoneToast_'+resId;
+  if(!sessionStorage.getItem(key)){
+    sessionStorage.setItem(key,'1');
+    toast('🏁 '+_esc(rescue.title)+' — 전 팀 완료! 상황 종료를 확인하세요');
+  }
+}
 // 환자 조우 후 하산(도보·차량)/병원 이송(헬기) 경로를 뒤에 붙임. true=추가됨
 function _appendDescentWps(team){
   const tIdx=team.wps.findIndex(w=>w.isTarget);
@@ -4764,6 +4787,9 @@ function _rerenderTlFull(){
   const el=document.getElementById('tlAllTeams');
   if(el)el.innerHTML=_tlTeams.map((t,i)=>_tlTeamFullHtml(t,i)).join('');
   if(!_tlBuilding){const ba=document.getElementById('tlBuildArea');if(ba)ba.innerHTML=_renderCreateBtnsHtml();}
+  const allDone=_tlTeams.length>0&&_tlTeams.every(t=>_teamDone(t));
+  const bel=document.getElementById('tlAllDoneBanner');
+  if(bel)bel.style.display=allDone?'':'none';
 }
 
 
@@ -4799,6 +4825,7 @@ function tlPass(){
         DB.s('rescues',_res);
       }
     }
+    _checkAllTeamsDone(_tlWpResId);
   },dur);
 }
 
@@ -4866,6 +4893,12 @@ function renderTimeline(r,viewMode){
       <!-- 팀별 경로 카드 -->
       <div id="tlAllTeams">
         ${_tlTeams.map((t,i)=>_tlTeamFullHtml(t,i)).join('')}
+      </div>
+      <!-- 전 팀 완료 배너 -->
+      <div id="tlAllDoneBanner" style="display:${(_tlTeams.length>0&&_tlTeams.every(t=>_teamDone(t)))?'':'none'};background:rgba(39,174,96,.12);border:1.5px solid rgba(39,174,96,.45);border-radius:12px;padding:14px 16px;margin-bottom:10px;text-align:center;">
+        <div style="font-size:13px;font-weight:800;color:#27ae60;margin-bottom:6px;">🏁 전 팀 하산/이송 완료</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.45);margin-bottom:10px;">상황을 종료하시겠습니까?</div>
+        <button onclick="selResId=${r.id};curResId=${r.id};endSit();" style="background:rgba(39,174,96,.2);border:1px solid rgba(39,174,96,.55);color:#27ae60;border-radius:8px;padding:8px 0;font-size:12px;font-weight:700;cursor:pointer;width:100%;">✅ 상황 종료</button>
       </div>
       <!-- 팀 생성 영역 -->
       <div id="tlBuildArea">
