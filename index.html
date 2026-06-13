@@ -1462,7 +1462,7 @@ window.addEventListener('error',e=>{_logErr((e.message||'오류')+' @'+(e.filena
 window.addEventListener('unhandledrejection',e=>{_logErr('Promise: '+((e.reason&&e.reason.message)||e.reason||'거부'));});
 
 // ── 앱 버전 (배포 시 갱신) ──
-const APP_VER='v9.14 (2026.06.13)';
+const APP_VER='v9.15 (2026.06.13)';
 try{document.getElementById('appVerLabel').textContent='설악산 현장관리 '+APP_VER;}catch(e){}
 // ══════════════════════════════════════════
 // DB
@@ -2480,7 +2480,7 @@ const SIGN_BASE_TABLE = {
   '06': [[99, '남설악']],
   '07': [[3,  '약수터'], [99, '용소']],
   '08': [[3,  '용소'],   [99, '흘림골']],
-  '09': [[99, '백담']],
+  '09': [[99, '한계령']],
   '10': [[99, '백담']],
   '11': [[10, '한계산성'], [99, '남교리']],
   '12': [[8,  '한계산성'], [99, '백담']],
@@ -2492,7 +2492,7 @@ const SIGN_BASE_TABLE = {
 const ZONE_NAMES = {
   '01':'천불동계곡','02':'천불동→대청봉','03':'공룡능선',
   '04':'소공원 서측','05':'신흥사·비선대','06':'오색',
-  '07':'주전골','08':'흘림골','09':'수렴동',
+  '07':'주전골','08':'흘림골','09':'한계령 방면',
   '10':'백담계곡','11':'장수대·한계령','12':'한계산성·백담 분기',
   '13':'귀때기청봉','14':'점봉산',
 };
@@ -2583,28 +2583,6 @@ const DEPT_HUBS = {
   '한계산성분소': '한계산성',
   '점봉산분소':   '점봉산',
 };
-
-// ZZ-NN → 적정 거점 (primary 필수, alt 선택)
-function getBestBase(zz, nn) {
-  const z=parseInt(zz)||0, n=parseInt(nn)||0;
-  switch(z) {
-    case 1:  return {primary:'소공원'};
-    case 2:  return (n && n>7) ? {primary:'백담'} : {primary:'소공원'};
-    case 3:  return n===1 ? {primary:'소공원'} : {primary:'소공원', alt:'백담'};
-    case 4:  return {primary:'소공원'};
-    case 5:  return {primary:'소공원'};
-    case 6:  return {primary:'남설악'};
-    case 7:  return (n && n<=3) ? {primary:'약수터'} : {primary:'용소'};
-    case 8:  return (n && n<=3) ? {primary:'용소'}   : {primary:'흘림골'};
-    case 9:  return {primary:'백담'};
-    case 10: return {primary:'백담'};
-    case 11: return (n && n<=10) ? {primary:'한계산성'} : {primary:'남교리'};
-    case 12: return (n && n<=8)  ? {primary:'한계산성'} : {primary:'백담'};
-    case 13: return (n && n<=4)  ? {primary:'소공원'}   : {primary:'백담'};
-    case 14: return {primary:'점봉산'};
-    default: return {primary:'소공원'};
-  }
-}
 
 // 현재 사용자의 허브 좌표 반환
 function getMyHub() {
