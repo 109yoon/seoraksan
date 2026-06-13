@@ -1462,7 +1462,7 @@ window.addEventListener('error',e=>{_logErr((e.message||'오류')+' @'+(e.filena
 window.addEventListener('unhandledrejection',e=>{_logErr('Promise: '+((e.reason&&e.reason.message)||e.reason||'거부'));});
 
 // ── 앱 버전 (배포 시 갱신) ──
-const APP_VER='v9.15 (2026.06.13)';
+const APP_VER='v9.16 (2026.06.13)';
 try{document.getElementById('appVerLabel').textContent='설악산 현장관리 '+APP_VER;}catch(e){}
 // ══════════════════════════════════════════
 // DB
@@ -3542,6 +3542,9 @@ function _drawFocusRoutes(resId){
   try{if(mapR)mapR.setBounds(bounds,60);}catch(e){}
 }
 
+let _fpTeamOpen=new Set(); // 펼쳐진 팀 카드 인덱스
+function _fpToggleTeam(ti){_fpTeamOpen.has(ti)?_fpTeamOpen.delete(ti):_fpTeamOpen.add(ti);if(_rFocusResId)_renderFocusPanel(_rFocusResId);}
+
 function _renderFocusPanel(resId){
   const panel=document.getElementById('focusModePanel');
   const titleEl=document.getElementById('focusPanelTitle');
@@ -3552,8 +3555,14 @@ function _renderFocusPanel(resId){
   const _elp=_elapsedStr(rescue.date);
   titleEl.innerHTML='🔴 '+_esc(rescue.title)+(_elp?` <span style="color:#f0a500;font-size:10px;font-weight:700;">⏱ ${_elp}</span>`:'');
   const teams=rescue.teams||[];
+  // 보고서·타임라인 버튼 (상단 고정)
+  const actionBtns=`<div style="display:flex;gap:6px;margin-bottom:10px;">
+    <button onclick="selResId=${resId};curResId=${resId};viewReport();" style="flex:1;padding:7px 0;border-radius:8px;border:1px solid rgba(79,168,208,.3);background:rgba(79,168,208,.1);color:#4fa8d0;font-size:11px;font-weight:700;cursor:pointer;">📄 보고서</button>
+    <button onclick="selResId=${resId};curResId=${resId};viewTimeline();" style="flex:1;padding:7px 0;border-radius:8px;border:1px solid rgba(79,168,208,.3);background:rgba(79,168,208,.1);color:#4fa8d0;font-size:11px;font-weight:700;cursor:pointer;">📍 타임라인</button>
+    <button onclick="selResId=${resId};curResId=${resId};endSit();" style="flex:none;padding:7px 10px;border-radius:8px;border:1px solid rgba(39,174,96,.3);background:rgba(39,174,96,.08);color:#27ae60;font-size:11px;font-weight:700;cursor:pointer;">✅ 종료</button>
+  </div>`;
   if(!teams.length){
-    teamsEl.innerHTML='<div style="font-size:11px;color:rgba(255,255,255,.35);text-align:center;padding:12px 0;">팀 없음 — 타임라인에서 팀 생성</div>';
+    teamsEl.innerHTML=actionBtns+'<div style="font-size:11px;color:rgba(255,255,255,.35);text-align:center;padding:12px 0;">팀 없음 — 타임라인에서 팀 생성</div>';
     panel.classList.add('on');return;
   }
   const stagePal=[
@@ -3563,7 +3572,7 @@ function _renderFocusPanel(resId){
     {c:'#27ae60',label:'하산'},
   ];
   const rInfos=_rRouteInfo[resId]||[];
-  teamsEl.innerHTML=teams.map((team,ti)=>{
+  const teamCards=teams.map((team,ti)=>{
     const col=TEAM_COLORS[ti%TEAM_COLORS.length];
     const si=_teamStageIdx(team);
     const pal=stagePal[si]||stagePal[3];
@@ -3582,29 +3591,54 @@ function _renderFocusPanel(resId){
       const body=info?_routeInfoStr(info,tps.length>1):'🚗 계산중…'+(tps.length>1?' · 🚶 …':'');
       routeStr=`<div id="rinfo-${resId}-${ti}" style="font-size:10px;color:rgba(240,192,64,${info?'.65':'.45'});margin-top:5px;padding-top:5px;border-top:1px solid rgba(255,255,255,.05);">${body}</div>`;
     }
+    const isOpen=_fpTeamOpen.has(ti);
+    // 세부정보: 구성원 + 경유지 목록
+    let detailHtml='';
+    if(isOpen){
+      const mems=(team.members||[]);
+      const memStr=mems.length?mems.map(m=>_esc(m)).join(' · '):'<span style="opacity:.4;">구성원 미입력</span>';
+      const wpList=team.wps.map((w,wi)=>{
+        const stIco=w.status==='passed'?'✅':w.status==='active'?'▶':w.status==='skipped'?'⏭':'⬜';
+        const nm=(w.code?w.code+' ':'')+_esc(w.name||'-');
+        const timeStr=w.passedAt?` <span style="color:rgba(255,255,255,.3);font-size:9px;">${w.passedAt.slice(11,16)}</span>`:'';
+        const flag=w.isBase?'🏠':w.isTarget?'🚨':w.descent?'🔽':'';
+        return`<div style="display:flex;align-items:center;gap:5px;padding:2px 0;${wi===team.wpIdx?'background:rgba(79,168,208,.07);border-radius:4px;margin:0 -3px;padding:2px 3px;':''}"><span style="font-size:10px;flex-shrink:0;">${stIco}</span><span style="font-size:10px;color:rgba(255,255,255,.7);flex:1;">${flag?flag+' ':''} ${nm}</span>${timeStr}</div>`;
+      }).join('');
+      detailHtml=`<div style="margin-top:7px;padding-top:7px;border-top:1px solid rgba(255,255,255,.07);">
+        <div style="font-size:10px;color:#4fa8d0;font-weight:700;margin-bottom:3px;">👥 구성원</div>
+        <div style="font-size:11px;color:rgba(255,255,255,.65);margin-bottom:7px;">${memStr}</div>
+        <div style="font-size:10px;color:#4fa8d0;font-weight:700;margin-bottom:3px;">📍 경유지</div>
+        <div style="font-size:10px;line-height:1.8;">${wpList||'<span style="opacity:.4;">경유지 없음</span>'}</div>
+        ${rescue.handover&&rescue.handover.team===team.name?`<div style="margin-top:5px;font-size:10px;color:#27ae60;">🤝 인계: ${_esc(rescue.handover.to)}</div>`:''}
+      </div>`;
+    }
+    const hasDescent=team.wps.some(w=>w.descent);
+    const actionBtn=(()=>{
+      if(atEnd&&curWp.isTarget&&!hasDescent)return`<button onclick="_focusDescentTeam(${resId},${ti})" style="background:rgba(39,174,96,.15);border:1px solid rgba(39,174,96,.4);color:#27ae60;border-radius:7px;padding:4px 11px;font-size:11px;font-weight:700;cursor:pointer;">${team.type==='heli'?'🏥 이송':'🔽 하산'}</button>`;
+      if(atEnd)return`<span style="font-size:10px;color:#27ae60;font-weight:700;">✓ ${hasDescent?(team.type==='heli'?'이송 완료':'하산 완료'):'완료'}</span>`;
+      const canReturn=!hasDescent&&team.wpIdx>0&&!curWp.isTarget;
+      return`${canReturn?`<button onclick="_focusReturnTeam(${resId},${ti})" style="background:rgba(230,126,34,.1);border:1px solid rgba(230,126,34,.3);color:#e67e22;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">↩️</button>`:''}<button onclick="_focusPassTeam(${resId},${ti})" style="background:rgba(79,168,208,.15);border:1px solid rgba(79,168,208,.35);color:#4fa8d0;border-radius:7px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;">▶ 통과</button>`;
+    })();
     return `<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:10px 11px;margin-bottom:8px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+      <div onclick="_fpToggleTeam(${ti})" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;cursor:pointer;user-select:none;">
         <span style="font-size:12px;font-weight:800;color:${col};">${typeIco} ${team.name}</span>
-        <span style="font-size:10px;font-weight:700;color:${pal.c};background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);padding:2px 8px;border-radius:10px;">${pal.label}</span>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:10px;font-weight:700;color:${pal.c};background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);padding:2px 8px;border-radius:10px;">${pal.label}</span>
+          <span style="font-size:11px;color:rgba(255,255,255,.3);">${isOpen?'▾':'▸'}</span>
+        </div>
       </div>
       <div style="height:5px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden;margin-bottom:6px;">
         <div style="height:100%;width:${pct}%;background:${col};border-radius:3px;transition:width .4s;"></div>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
         <span style="font-size:10px;color:rgba(255,255,255,.4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">📍 ${curName||'-'} · ${team.wpIdx}/${total}</span>
-        <span style="display:flex;gap:5px;flex-shrink:0;">
-        ${(()=>{
-          const hasDescent=team.wps.some(w=>w.descent);
-          if(atEnd&&curWp.isTarget&&!hasDescent)return`<button onclick="_focusDescentTeam(${resId},${ti})" style="background:rgba(39,174,96,.15);border:1px solid rgba(39,174,96,.4);color:#27ae60;border-radius:7px;padding:4px 11px;font-size:11px;font-weight:700;cursor:pointer;">${team.type==='heli'?'🏥 이송':'🔽 하산'}</button>`;
-          if(atEnd)return`<span style="font-size:10px;color:#27ae60;font-weight:700;">✓ ${hasDescent?(team.type==='heli'?'이송 완료':'하산 완료'):'완료'}</span>`;
-          const canReturn=!hasDescent&&team.wpIdx>0&&!curWp.isTarget;
-          return`${canReturn?`<button onclick="_focusReturnTeam(${resId},${ti})" style="background:rgba(230,126,34,.1);border:1px solid rgba(230,126,34,.3);color:#e67e22;border-radius:7px;padding:4px 8px;font-size:11px;font-weight:600;cursor:pointer;">↩️</button>`:''}<button onclick="_focusPassTeam(${resId},${ti})" style="background:rgba(79,168,208,.15);border:1px solid rgba(79,168,208,.35);color:#4fa8d0;border-radius:7px;padding:4px 12px;font-size:11px;font-weight:700;cursor:pointer;">▶ 통과</button>`;
-        })()}
-        </span>
+        <span style="display:flex;gap:5px;flex-shrink:0;">${actionBtn}</span>
       </div>
       ${routeStr}
+      ${detailHtml}
     </div>`;
   }).join('');
+  teamsEl.innerHTML=actionBtns+teamCards;
   // 전 팀 완료 배너
   if(teams.length>0&&teams.every(t=>_teamDone(t))){
     teamsEl.innerHTML+=`<div style="background:rgba(39,174,96,.12);border:1.5px solid rgba(39,174,96,.45);border-radius:12px;padding:14px 16px;margin-top:4px;text-align:center;">
@@ -3630,6 +3664,7 @@ function enterFocusMode(resId){
 
 function exitFocusMode(){
   _rFocusResId=null;
+  _fpTeamOpen.clear();
   _clearFocusPolylines();
   _clearFocusDim();
   const panel=document.getElementById('focusModePanel');
