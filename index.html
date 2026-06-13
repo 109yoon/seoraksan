@@ -1489,7 +1489,7 @@ window.addEventListener('error',e=>{_logErr((e.message||'오류')+' @'+(e.filena
 window.addEventListener('unhandledrejection',e=>{_logErr('Promise: '+((e.reason&&e.reason.message)||e.reason||'거부'));});
 
 // ── 앱 버전 (배포 시 갱신) ──
-const APP_VER='v9.23 (2026.06.13)';
+const APP_VER='v9.24 (2026.06.13)';
 try{document.getElementById('appVerLabel').textContent='설악산 현장관리 '+APP_VER;}catch(e){}
 // ══════════════════════════════════════════
 // DB
@@ -4565,14 +4565,14 @@ function confirmTlBuild(){
     const name=(nameEl&&nameEl.value.trim())||(_dept+' '+_npsNum+'팀');
     const route=_buildRoute(r,facs);
     const wps=route.map(w=>({...w,status:w.isBase?'active':'pending'}));
-    _tlTeams.push({id:'nps_'+Date.now(),name,type:'foot',members:_tlBuildMembers.slice(),wpIdx:0,wps,collapsed:false});
+    _tlTeams.push({id:'nps_'+Date.now(),name,type:'foot',members:_tlBuildMembers.slice(),wpIdx:0,wps,collapsed:false,createdAt:new Date().toISOString()});
   }else{
     const name=(nameEl&&nameEl.value.trim())||_tlBuildAgencyType+'팀';
     const type=_tlBuildAgencyType==='헬기'?'heli':_tlBuildAgencyType==='소방'||_tlBuildAgencyType==='경찰'?'vehicle':'foot';
     const route=type==='heli'
       ?[{code:'',name:'헬기 기지',isBase:true,status:'active'},{code:'',name:r.location||'사고지점',lat:r.lat||null,lng:r.lng||null,isTarget:true,status:'pending'}]
       :_buildRoute(r,facs).map(w=>({...w,status:w.isBase?'active':'pending'}));
-    _tlTeams.push({id:'agency_'+Date.now(),name,type,wpIdx:0,wps:route,collapsed:false});
+    _tlTeams.push({id:'agency_'+Date.now(),name,type,wpIdx:0,wps:route,collapsed:false,createdAt:new Date().toISOString()});
   }
   const newIdx=_tlTeams.length-1;
   _tlSelTeam=newIdx;_tlWps=_tlTeams[newIdx].wps;_tlWpIdx=0;
@@ -4622,7 +4622,16 @@ function _initTlMiniMap(wps){
 
 // ── Zone-based trail routing ──
 function _buildRoute(r,facs){
-  if((r.loctype||'')!=='법정탐방로')return[];
+  if((r.loctype||'')!=='법정탐방로'){
+    // For non-trail types (암벽/빙벽/비법정탐방로), return minimal base→target route
+    const _u=DB.g('currentUser')||{};
+    const _hk=DEPT_HUBS[_u.dept||'']||'소공원';
+    const _hb=SEORAK_BASES[_hk]||SEORAK_BASES['소공원'];
+    const _res=[{code:'',name:_hb.name,isBase:true,status:'active'}];
+    if(r.lat&&r.lng)_res.push({code:'',name:r.location||'사고지점',lat:r.lat,lng:r.lng,isTarget:true,status:'pending'});
+    else if(r.location)_res.push({code:'',name:r.location,isTarget:true,status:'pending'});
+    return _res.length>1?_res:[];
+  }
   const lm=(r.location||'').match(/(\d+)-(\d+)/);
   if(!lm)return[];
   const zone=parseInt(lm[1]),code=parseInt(lm[2]);
@@ -4653,7 +4662,7 @@ function _buildRoute(r,facs){
   }else if(zone===8){
     if(code<=6){base='용소탐방지원센터';route=seg(8,1,code);}
     else{base='흘림골탐방지원센터';route=seg(8,7,code);}
-  }else if(zone===9){base='백담탐방지원센터';route=upto(9,code);}
+  }else if(zone===9){base='한계령탐방지원센터';route=upto(9,code);}
   else if(zone===10){base='백담탐방지원센터';route=upto(10,code);}
   else if(zone===11){
     if(code<=8){base='한계산성분소';route=seg(11,1,code);}
@@ -5136,6 +5145,16 @@ function renderTimeline(r,viewMode,outId){
     if(r.date)logEntries.push({k:_tKey(r.date),t:_tShow(r.date),ico:'🚨',label:'1보 접수',sub:r.reception||''});
     (r.timetable||[]).forEach(e=>{if(e.time)logEntries.push({k:_tKey(e.time),t:_tShow(e.time),ico:e.stage==='요구조자 조우'?'🎯':'📌',label:e.stage,sub:e.note||''});});
     (r.wpLog||[]).forEach(l=>{logEntries.push({k:_tKey(l.time),t:l.time,ico:'📍',label:(l.teamName||'팀')+' · '+(l.code||'?')+' 통과',sub:l.wpName||''});});
+    (r.teams||[]).forEach(t=>{
+      if(t.createdAt){
+        const _ico=t.type==='heli'?'🚁':t.type==='vehicle'?'🚗':'🚶';
+        const _base=t.wps&&t.wps[0]?t.wps[0].name:'';
+        const _tgt=t.wps&&t.wps.length>1?t.wps[t.wps.length-1].name:'';
+        const _routeSub=_base&&_tgt?_base+' → '+_tgt:'';
+        const _mem=t.members&&t.members.length?' ('+t.members.join(', ')+')':'';
+        logEntries.push({k:_tKey(t.createdAt),t:_tShow(t.createdAt),ico:_ico,label:t.name+' 출동'+_mem,sub:_routeSub});
+      }
+    });
     (r.reports||[]).forEach((p,pi)=>{if(p.repTime)logEntries.push({k:_tKey(p.repTime),t:_tShow(p.repTime),ico:'📋',label:(pi+2)+'보 보고'+(p.author?' ('+p.author+')':''),sub:p.update||''});});
     if(r.handover&&r.handover.to)logEntries.push({k:_tKey(r.handover.time),t:_tShow(r.handover.time),ico:'🤝',label:'환자 인계: '+r.handover.to,sub:r.handover.by||''});
     logEntries.sort((a,b)=>a.k.localeCompare(b.k));
