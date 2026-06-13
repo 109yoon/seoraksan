@@ -1481,7 +1481,7 @@ window.addEventListener('error',e=>{_logErr((e.message||'오류')+' @'+(e.filena
 window.addEventListener('unhandledrejection',e=>{_logErr('Promise: '+((e.reason&&e.reason.message)||e.reason||'거부'));});
 
 // ── 앱 버전 (배포 시 갱신) ──
-const APP_VER='v9.19 (2026.06.13)';
+const APP_VER='v9.20 (2026.06.13)';
 try{document.getElementById('appVerLabel').textContent='설악산 현장관리 '+APP_VER;}catch(e){}
 // ══════════════════════════════════════════
 // DB
@@ -2353,6 +2353,15 @@ function _boardFocus(id){
   if(!r||!_boardMap||!r.lat||!r.lng)return;
   try{_boardMap.setCenter(new kakao.maps.LatLng(r.lat,r.lng));_boardMap.setLevel(5);}catch(e){}
 }
+// 구조 위치 라벨: 장소명 > 가장 가까운 표지판 > 좌표 > 미상
+function _resLocLabel(r){
+  if(r.location&&r.location.trim())return _esc(r.location.trim());
+  if(r.lat&&r.lng){
+    try{const s=_nearestSign(r.lat,r.lng);if(s)return _esc(s);}catch(e){}
+    return (+r.lat).toFixed(4)+', '+(+r.lng).toFixed(4);
+  }
+  return '위치 미상';
+}
 function renderBoard(){
   const clock=document.getElementById('boardClock');
   if(clock){const d=new Date();clock.textContent=pad(d.getHours())+':'+pad(d.getMinutes());}
@@ -2387,7 +2396,7 @@ function renderBoard(){
         <div style="font-size:18px;font-weight:800;color:#e0edf8;">${ti.ico} ${r.title}</div>
         ${elp?`<div style="font-size:16px;font-weight:800;color:#f0a500;font-family:monospace;">⏱ ${elp}</div>`:''}
       </div>
-      <div style="font-size:13px;color:#5a85a8;margin-bottom:12px;">${r.type} · ${r.location||'위치 미상'} · ${r.date}</div>
+      <div style="font-size:13px;color:#5a85a8;margin-bottom:12px;">${r.type} · ${_resLocLabel(r)} · ${r.date}</div>
       ${(r.teams&&r.teams.length)?r.teams.map((t,ti2)=>{
         const col=TEAM_COLORS[ti2%TEAM_COLORS.length];
         const si=_teamStageIdx(t);
