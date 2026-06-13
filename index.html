@@ -1481,7 +1481,7 @@ window.addEventListener('error',e=>{_logErr((e.message||'오류')+' @'+(e.filena
 window.addEventListener('unhandledrejection',e=>{_logErr('Promise: '+((e.reason&&e.reason.message)||e.reason||'거부'));});
 
 // ── 앱 버전 (배포 시 갱신) ──
-const APP_VER='v9.18 (2026.06.13)';
+const APP_VER='v9.19 (2026.06.13)';
 try{document.getElementById('appVerLabel').textContent='설악산 현장관리 '+APP_VER;}catch(e){}
 // ══════════════════════════════════════════
 // DB
@@ -2849,13 +2849,39 @@ function getExtraTeams(){ return _extraTeams.filter(t=>t.members.length>0); }
 
 // 1보 폼 미니맵
 let _mapFormMini=null,_mapFormMiniMarker=null;
+function _updateFormMiniMap(lat,lng){
+  if(!window._KR)return;
+  const el=document.getElementById('r_loc_mini_map');
+  if(!el)return;
+  const pos=new kakao.maps.LatLng(lat,lng);
+  if(!_mapFormMini){
+    try{
+      el.style.display='block';
+      _mapFormMini=new kakao.maps.Map(el,{center:pos,level:5});
+      _mapFormMini.setMapTypeId(kakao.maps.MapTypeId.HYBRID);
+      // 십자선 핀
+      const pin=document.createElement('div');
+      pin.innerHTML=`<div style="display:flex;flex-direction:column;align-items:center;"><div style="background:#c0392b;border:2px solid #fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:11px;box-shadow:0 2px 6px rgba(0,0,0,.6);">🚨</div><div style="width:2px;height:8px;background:#c0392b;"></div></div>`;
+      _mapFormMiniMarker=new kakao.maps.CustomOverlay({position:pos,content:pin,yAnchor:1,zIndex:4});
+      _mapFormMiniMarker.setMap(_mapFormMini);
+    }catch(e){console.warn('formMini',e);}
+  }else{
+    try{
+      el.style.display='block';
+      _mapFormMini.setCenter(pos);
+      if(_mapFormMiniMarker)_mapFormMiniMarker.setPosition(pos);
+    }catch(e){}
+  }
+}
 function initFormMiniMap(lat,lng){
   _mapFormMini=null;_mapFormMiniMarker=null;
-  // 기존 좌표가 있으면 표시
+  const el=document.getElementById('r_loc_mini_map');
+  if(el)el.style.display='none';
   if(lat&&lng){
     const v=(+lat).toFixed(5)+', '+(+lng).toFixed(5);
     const cd=document.getElementById('r_minimap_coords');if(cd)cd.textContent=v;
     const st=document.getElementById('r_gps_status');if(st)st.textContent='✅ 위치 확인 — 🗺 지도에서 조정 가능';
+    setTimeout(()=>_updateFormMiniMap(+lat,+lng),200);
   }
 }
 function gpsToFormMap(){
@@ -2872,6 +2898,7 @@ function gpsToFormMap(){
     if(btn)btn.textContent='📡 GPS';
     if(st)st.textContent='✅ 현재 위치'+(acc<50?' (±'+Math.round(acc)+'m)':'')+ ' — 🗺 지도에서 조정 가능';
     _autoFillLoc(lat,lng);
+    _updateFormMiniMap(lat,lng);
     toast('📍 현재 위치'+(acc<50?' (±'+Math.round(acc)+'m)':''));
   },err=>{
     if(btn)btn.textContent='📡 GPS';
@@ -2886,6 +2913,7 @@ function syncFormMapFromInput(){
     if(!isNaN(lat)&&!isNaN(lng)){
       const cd=document.getElementById('r_minimap_coords');if(cd)cd.textContent=lat.toFixed(5)+', '+lng.toFixed(5);
       _autoFillLoc(lat,lng);
+      _updateFormMiniMap(lat,lng);
     }
   }
 }
@@ -5313,6 +5341,8 @@ function render1BoForm(prefill=null){
             </div>
             <div id="r_gps_status" style="font-size:10px;color:rgba(255,255,255,.3);line-height:1.4;">${p.lat&&p.lng?'✅ 위치 확인':'GPS 버튼을 눌러 현재 위치를 자동으로 받거나, 🗺 지도에서 직접 선택하세요'}</div>
           </div>
+          <!-- 위치 미니맵 -->
+          <div id="r_loc_mini_map" style="display:${p.lat&&p.lng?'block':'none'};height:180px;border-radius:10px;overflow:hidden;margin-bottom:8px;border:1px solid rgba(79,168,208,.2);"></div>
           <div class="gps-row">
             <input type="text" id="r_gps" class="fi" placeholder="위도, 경도 직접 입력" value="${p.lat&&p.lng?(+p.lat).toFixed(5)+', '+(+p.lng).toFixed(5):''}" oninput="syncFormMapFromInput()">
           </div>
@@ -8005,6 +8035,7 @@ function confirmMapPicker(){
   const gpsEl=document.getElementById('r_gps');
   if(gpsEl) gpsEl.value=coords;
   syncFormMapFromInput();
+  _updateFormMiniMap(lat,lng);
   // 사고 장소: 가장 가까운 표지판 번호를 최우선 자동입력
   const locEl=document.getElementById('r_loc');
   if(locEl&&!locEl.value.trim()&&!locEl.dataset.userEdited){
