@@ -1516,7 +1516,7 @@ window.addEventListener('error',e=>{_logErr((e.message||'오류')+' @'+(e.filena
 window.addEventListener('unhandledrejection',e=>{_logErr('Promise: '+((e.reason&&e.reason.message)||e.reason||'거부'));});
 
 // ── 앱 버전 (배포 시 갱신) ──
-const APP_VER='v9.37 (2026.06.14)';
+const APP_VER='v9.38 (2026.06.14)';
 try{document.getElementById('appVerLabel').textContent='설악산 현장관리 '+APP_VER;}catch(e){}
 // ══════════════════════════════════════════
 // DB
@@ -2107,6 +2107,8 @@ function toggleHiContrast(){
 }
 // VAPID 키 설정 후 FCM 토큰 등록 (Firebase Console > Project Settings > Cloud Messaging > Web Push 인증서)
 const _FCM_VAPID=''; // ← 여기에 Firebase Console에서 발급한 VAPID 키 입력
+const _FCM_PUSH_URL='https://script.google.com/macros/s/AKfycbwE10Z-bdLMaQrNJ6ZntVcrESYFHrrFdAY6Z4O_Wg7guWvbpZFGmeAZ_ILzL0uvoJNd/exec';
+const _FCM_PUSH_SECRET='설악산119';
 async function _initFCM(){
   if(!_fmsg||!_fdb||!_swReg||Notification.permission!=='granted'||!_FCM_VAPID)return;
   try{
@@ -2163,7 +2165,7 @@ function _updateFcmTokenSettings(){
 // 중요 알림을 꺼진 폰까지 발송 (Apps Script 경유). cat=알림설정 키, 'info'면 발송 안 함.
 async function _sendFcmPush(title,body,cat,link){
   if(!_fdb)return;
-  const url=(DB.g('fcmPushUrl')||'').trim();
+  const url=_FCM_PUSH_URL||(DB.g('fcmPushUrl')||'').trim();
   if(!url||!cat||cat==='info')return;
   try{
     const snap=await _fdb.collection('fcmTokens').get();
@@ -2179,7 +2181,7 @@ async function _sendFcmPush(title,body,cat,link){
       method:'POST',
       headers:{'content-type':'text/plain;charset=utf-8'}, // Apps Script preflight 회피
       body:JSON.stringify({
-        secret:(DB.g('fcmPushSecret')||''),title,body,
+        secret:_FCM_PUSH_SECRET||(DB.g('fcmPushSecret')||''),title,body,
         data:link?{app:link.app||'',tab:String(link.tab||''),id:String(link.id||'')}:{},
         tokens:targets.map(t=>t.token)
       })
@@ -3548,7 +3550,7 @@ async function _refreshFcmStatus(){
   el.innerHTML=line;
 }
 async function testFcmPush(){
-  const url=(DB.g('fcmPushUrl')||'').trim();
+  const url=_FCM_PUSH_URL||(DB.g('fcmPushUrl')||'').trim();
   if(!url){toast('⚠️ 먼저 발송 URL을 저장하세요');return;}
   toast('🔔 테스트 푸시 발송 중…');
   try{
@@ -3556,7 +3558,7 @@ async function testFcmPush(){
     const tokens=[];snap.forEach(d=>{const v=d.data()||{};if(v.token)tokens.push(v.token);});
     if(!tokens.length){toast('⚠️ 등록된 기기가 없습니다');return;}
     const res=await fetch(url,{method:'POST',headers:{'content-type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({secret:(DB.g('fcmPushSecret')||''),title:'설악산 현장관리',body:'🔔 테스트 푸시입니다',data:{},tokens})});
+      body:JSON.stringify({secret:_FCM_PUSH_SECRET||(DB.g('fcmPushSecret')||''),title:'설악산 현장관리',body:'🔔 테스트 푸시입니다',data:{},tokens})});
     const out=await res.json().catch(()=>({}));
     if(out.error){toast('❌ 발송기 오류: '+out.error);}
     else toast(`✅ ${out.sent||0}대 발송${out.invalid&&out.invalid.length?` · 무효 ${out.invalid.length}`:''}`);
