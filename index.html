@@ -551,6 +551,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{
 .ls-kakao:active{box-shadow:0 2px 8px rgba(254,229,0,.15);}
 .ls-guest{background:rgba(255,255,255,.06);color:#7a9cb8;border:1px solid rgba(255,255,255,.1)!important;}
 .ls-guest-note{font-size:10px;color:#3a6a8a;text-align:center;margin-top:4px;}
+.ls-ext{background:rgba(255,120,30,.1);color:#f08040;border:1px solid rgba(255,120,30,.28)!important;}
 
 /* ══ 게스트 배지 ══ */
 #guestBadge{display:none;background:rgba(255,165,0,.12);border:1px solid rgba(255,165,0,.3);color:#f0a500;font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;margin-left:6px;}
@@ -558,6 +559,10 @@ body.guest-mode #guestBadge{display:inline-block;}
 
 /* ══ 게스트 모드: 쓰기 요소 숨김 ══ */
 body.guest-mode .guest-hide{display:none!important;}
+/* ══ 외부기관 모드: 제한 ══ */
+body.ext-mode .ext-hide{display:none!important;}
+body.ext-mode #extLogoutBtn{display:flex!important;}
+#extLogoutBtn{display:none;}
 
 /* ── 야외 고대비 모드 (🌞 토글) ── */
 body.hi-contrast .fi,body.hi-contrast .fsel,body.hi-contrast .fta{color:#fff!important;border-color:rgba(255,255,255,.45)!important;background:#050c18!important;}
@@ -644,6 +649,20 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
   <button class="ls-btn ls-kakao" onclick="kakaoLogin()">
     💬 카카오로 로그인
   </button>
+  <!-- 외부기관 로그인 토글 -->
+  <div id="extLoginWrap" style="width:100%;max-width:320px;margin-top:4px;">
+    <button class="ls-btn ls-ext" onclick="_toggleExtLogin()">
+      🚒 외부기관 로그인
+    </button>
+    <div id="extLoginForm" style="display:none;background:rgba(255,120,30,.06);border:1px solid rgba(255,120,30,.22);border-radius:12px;padding:14px;margin-top:-4px;">
+      <div style="font-size:11px;color:#f0a060;margin-bottom:10px;text-align:center;">환동해 특수대응단 전용 코드를 입력하세요</div>
+      <div style="font-size:10px;color:#7a9cb8;margin-bottom:6px;">기관명</div>
+      <input id="extAgencyName" class="fi" value="환동해 특수대응단" style="margin-bottom:8px;font-size:13px;">
+      <div style="font-size:10px;color:#7a9cb8;margin-bottom:6px;">접속 코드</div>
+      <input id="extCodeInp" class="fi" type="password" placeholder="코드 입력" style="margin-bottom:10px;font-family:monospace;font-size:15px;letter-spacing:3px;" onkeydown="if(event.key==='Enter')doExtAgencyLogin()">
+      <button onclick="doExtAgencyLogin()" style="width:100%;background:#c04010;color:#fff;border:none;border-radius:10px;padding:12px;font-size:13px;font-weight:700;cursor:pointer;">입장</button>
+    </div>
+  </div>
   <div style="margin-top:20px;text-align:center;">
     <div onclick="openChangelog()" style="cursor:pointer;display:inline-block;padding:6px 14px;background:rgba(79,168,208,.07);border:1px solid rgba(79,168,208,.15);border-radius:20px;">
       <span style="font-size:11px;color:#4fa8d0;font-weight:700;">v1.2</span>
@@ -763,16 +782,18 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
   <!-- 4칸 메인 메뉴 -->
   <div class="home-menu" style="flex:1;min-height:0;">
     <button class="mbtn mb-red" onclick="openApp('rescue')"><div class="mbtn-ico">🚨</div><div><div class="mbtn-title">재난/구조</div><div class="mbtn-desc" id="hdR">구조보고·위험상황</div></div></button>
-    <button class="mbtn mb-teal" onclick="openApp('inspect')"><div class="mbtn-ico">🛠️</div><div><div class="mbtn-title">시설물 점검</div><div class="mbtn-desc" id="hdI">시설 관리·이력</div></div></button>
-    <button class="mbtn mb-wiki" onclick="openApp('wiki')"><div class="mbtn-ico">📚</div><div><div class="mbtn-title">설악위키</div><div class="mbtn-desc" id="hdW">현장 지식 DB</div></div></button>
-    <button class="mbtn mb-purple" onclick="openApp('stats')"><div class="mbtn-ico">📊</div><div><div class="mbtn-title">전체 통계</div><div class="mbtn-desc">현황 분석</div></div></button>
+    <button class="mbtn mb-teal ext-hide" onclick="openApp('inspect')"><div class="mbtn-ico">🛠️</div><div><div class="mbtn-title">시설물 점검</div><div class="mbtn-desc" id="hdI">시설 관리·이력</div></div></button>
+    <button class="mbtn mb-wiki ext-hide" onclick="openApp('wiki')"><div class="mbtn-ico">📚</div><div><div class="mbtn-title">설악위키</div><div class="mbtn-desc" id="hdW">현장 지식 DB</div></div></button>
+    <button class="mbtn mb-purple ext-hide" onclick="openApp('stats')"><div class="mbtn-ico">📊</div><div><div class="mbtn-title">전체 통계</div><div class="mbtn-desc">현황 분석</div></div></button>
   </div>
 
   <!-- 하단 2칸 소형 메뉴 -->
   <div class="home-menu-bottom" style="flex-shrink:0;">
-    <button class="mbtn-sm" onclick="openApp('settings')"><span class="mbtn-sm-ico">⚙️</span><div class="mbtn-sm-text"><div class="mbtn-sm-title">내 설정</div><div class="mbtn-sm-desc">알림·계정·API키</div></div></button>
-    <button class="mbtn-sm" style="background:#150e2a;border:1px solid rgba(139,92,246,.2);" onclick="openApp('admin')"><span class="mbtn-sm-ico">🔐</span><div class="mbtn-sm-text"><div class="mbtn-sm-title" style="color:#c4b5fd;">관리자 전용</div><div class="mbtn-sm-desc">관제·데이터 관리</div></div></button>
-    <button class="mbtn-sm" style="grid-column:1/-1;background:#06121f;border:1px solid rgba(79,168,208,.22);" onclick="openBoard()"><span class="mbtn-sm-ico">🖥️</span><div class="mbtn-sm-text"><div class="mbtn-sm-title" style="color:#7dd3fa;">본소 상황판</div><div class="mbtn-sm-desc">본소 모니터 거치용 관제 화면 — 지도+진행중 구조 (주소 뒤 ?board=1 북마크)</div></div></button>
+    <button class="mbtn-sm ext-hide" onclick="openApp('settings')"><span class="mbtn-sm-ico">⚙️</span><div class="mbtn-sm-text"><div class="mbtn-sm-title">내 설정</div><div class="mbtn-sm-desc">알림·계정·API키</div></div></button>
+    <button class="mbtn-sm ext-hide" style="background:#150e2a;border:1px solid rgba(139,92,246,.2);" onclick="openApp('admin')"><span class="mbtn-sm-ico">🔐</span><div class="mbtn-sm-text"><div class="mbtn-sm-title" style="color:#c4b5fd;">관리자 전용</div><div class="mbtn-sm-desc">관제·데이터 관리</div></div></button>
+    <button class="mbtn-sm ext-hide" style="grid-column:1/-1;background:#06121f;border:1px solid rgba(79,168,208,.22);" onclick="openBoard()"><span class="mbtn-sm-ico">🖥️</span><div class="mbtn-sm-text"><div class="mbtn-sm-title" style="color:#7dd3fa;">본소 상황판</div><div class="mbtn-sm-desc">본소 모니터 거치용 관제 화면 — 지도+진행중 구조 (주소 뒤 ?board=1 북마크)</div></div></button>
+    <!-- 외부기관 전용: 로그아웃 버튼 -->
+    <button id="extLogoutBtn" class="mbtn-sm" style="grid-column:1/-1;background:rgba(255,80,30,.08);border:1px solid rgba(255,80,30,.22);" onclick="extAgencyLogout()"><span class="mbtn-sm-ico">🚪</span><div class="mbtn-sm-text"><div class="mbtn-sm-title" style="color:#f08050;">로그아웃</div><div class="mbtn-sm-desc">외부기관 세션 종료</div></div></button>
   </div>
   <!-- 버전 + 동기화 상태 -->
   <div style="flex-shrink:0;text-align:center;padding:4px 0 2px;font-size:9px;color:rgba(255,255,255,.22);user-select:none;">
@@ -1494,7 +1515,7 @@ window.addEventListener('error',e=>{_logErr((e.message||'오류')+' @'+(e.filena
 window.addEventListener('unhandledrejection',e=>{_logErr('Promise: '+((e.reason&&e.reason.message)||e.reason||'거부'));});
 
 // ── 앱 버전 (배포 시 갱신) ──
-const APP_VER='v9.31 (2026.06.14)';
+const APP_VER='v9.32 (2026.06.14)';
 try{document.getElementById('appVerLabel').textContent='설악산 현장관리 '+APP_VER;}catch(e){}
 // ══════════════════════════════════════════
 // DB
@@ -2565,6 +2586,7 @@ function viewOnMap(lat,lng){
   },200);
 }
 function openApp(mode){
+  if(isExternal()&&['inspect','wiki','stats','admin','settings'].includes(mode)){toast('⚠️ 외부기관 계정은 해당 메뉴에 접근할 수 없습니다');return;}
   curApp=mode;
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
   document.getElementById('appHdr').style.display='block';
@@ -3396,6 +3418,12 @@ function setAdminCode(){
   DB.s('adminApprovalCode',code);
   toast('✅ 승인 코드 저장: '+code);
 }
+function setExtAgencyCode(){
+  const code=(document.getElementById('extAgencyCodeInp')||{}).value.trim().toUpperCase();
+  if(!code){toast('⚠️ 코드를 입력하세요');return;}
+  DB.s('extAgencyCode',code);
+  toast('✅ 외부기관 코드 저장: '+code);
+}
 
 function updateUserUI(){
   const u=DB.g('currentUser')||{};
@@ -3403,7 +3431,6 @@ function updateUserUI(){
   const se=document.getElementById('mySub');
   const av=document.getElementById('myAvatar');
   if(ne)ne.textContent=u.name||'작성자를 선택하세요';
-  // 소속·직위 또는 카카오 계정 표시
   const parts=[];if(u.dept)parts.push(u.dept);if(u.rank)parts.push(u.rank);
   const authType=DB.g('authType');
   if(se)se.textContent=parts.join(' · ')||'탭하여 설정';
@@ -3416,6 +3443,9 @@ function updateUserUI(){
       av.textContent=initial;
     }
   }
+  // 외부기관 모드: 제한된 메뉴 표시
+  const ext=authType==='external';
+  document.body.classList.toggle('ext-mode',ext);
 }
 
 // ══════════════════════════════════════════
@@ -5135,6 +5165,37 @@ function toggleTlVehicle(){
   }
 }
 
+function _buildLogHtml(r){
+  const baseDate=(r.date||'').slice(0,10);
+  const _tKey=t=>{const s=String(t||'').trim();if(/^\d{4}-\d{2}-\d{2}/.test(s))return s;return baseDate+' '+s;};
+  const _tShow=t=>{const s=String(t||'').trim();return s.length>5?s.slice(11,16)||s.slice(-5):s;};
+  const logEntries=[];
+  if(r.date)logEntries.push({k:_tKey(r.date),t:_tShow(r.date),ico:'🚨',label:'1보 접수',sub:r.reception||''});
+  (r.timetable||[]).forEach(e=>{if(e.time)logEntries.push({k:_tKey(e.time),t:_tShow(e.time),ico:e.stage==='요구조자 조우'?'🎯':'📌',label:e.stage,sub:e.note||''});});
+  (r.wpLog||[]).forEach(l=>{logEntries.push({k:_tKey(l.time),t:l.time,ico:'📍',label:(l.teamName||'팀')+' · '+(l.code||'?')+' 통과',sub:l.wpName||''});});
+  (r.teams||[]).forEach(t=>{
+    if(t.createdAt){
+      const _ico=t.type==='heli'?'🚁':t.type==='vehicle'?'🚗':'🚶';
+      const _base=t.wps&&t.wps[0]?t.wps[0].name:'';
+      const _tgt=t.wps&&t.wps.length>1?t.wps[t.wps.length-1].name:'';
+      const _routeSub=_base&&_tgt?_base+' → '+_tgt:'';
+      const _mem=t.members&&t.members.length?' ('+t.members.join(', ')+')':'';
+      logEntries.push({k:_tKey(t.createdAt),t:_tShow(t.createdAt),ico:_ico,label:t.name+' 출동'+_mem,sub:_routeSub});
+    }
+  });
+  (r.reports||[]).forEach((p,pi)=>{if(p.repTime)logEntries.push({k:_tKey(p.repTime),t:_tShow(p.repTime),ico:'📋',label:(pi+2)+'보 보고'+(p.author?' ('+p.author+')':''),sub:p.update||''});});
+  (r.npsLog||[]).forEach(nl=>{if(nl.time)logEntries.push({k:_tKey(nl.time),t:_tShow(nl.time),ico:'🏕️',label:'공단 응소'+(nl.author?' ('+nl.author+')':''),sub:nl.text||''});});
+  if(r.handover&&r.handover.to)logEntries.push({k:_tKey(r.handover.time),t:_tShow(r.handover.time),ico:'🤝',label:'환자 인계: '+r.handover.to,sub:r.handover.by||''});
+  logEntries.sort((a,b)=>a.k.localeCompare(b.k));
+  if(!logEntries.length)return '';
+  return `<div style="background:#060d1a;border-radius:9px;padding:10px 13px;margin-top:8px;border:.5px solid rgba(79,168,208,.15);">
+    <div style="font-size:11px;color:#4fa8d0;font-weight:700;margin-bottom:6px;">📜 상황 일지 (자동 통합)</div>
+    ${logEntries.map(e=>`<div style="display:flex;gap:8px;padding:3px 0;align-items:baseline;">
+      <span style="font-size:10px;color:#4a7090;font-family:monospace;flex-shrink:0;width:38px;">${e.t}</span>
+      <span style="font-size:11px;color:#b8d4e8;line-height:1.5;">${e.ico} ${e.label}${e.sub?` <span style="color:#5a7a94;">— ${e.sub}</span>`:''}</span>
+    </div>`).join('')}
+  </div>`;
+}
 function renderTimeline(r,viewMode,outId){
   const _isBoard=outId&&outId!=='repContent';
   if(!_isBoard)_hideRepFooter();
@@ -5164,7 +5225,7 @@ function renderTimeline(r,viewMode,outId){
     <div style="font-size:11px;color:#3a6a8a;margin-top:3px;">${r.type} · ${r.status==='ongoing'?'<span style="color:#c0392b;font-weight:700;">진행중</span>':'<span style="color:#27ae60;font-weight:700;">종료</span>'} · ${r.date}${r.status==='ongoing'&&_elapsedStr(r.date)?` · <span style="color:#f0a500;font-weight:700;">⏱ ${_elapsedStr(r.date)}</span>`:''}</div>
     <div style="display:flex;gap:5px;margin-top:9px;">
       <button onclick="${_isBoard?`_boardOpenDetail(${r.id},'advanced')`:`renderTimeline(getRes(${r.id}),'advanced')`}" style="flex:1;padding:6px;border-radius:7px;border:1px solid;font-size:11px;font-weight:600;cursor:pointer;background:${'advanced'===mode?'rgba(79,168,208,.15)':'transparent'};color:${'advanced'===mode?'#4fa8d0':'rgba(255,255,255,.35)'};border-color:${'advanced'===mode?'rgba(79,168,208,.5)':'rgba(255,255,255,.1)'};">📍 고도화 타임라인</button>
-      <button onclick="${_isBoard?`_boardOpenDetail(${r.id},'write')`:`renderTimeline(getRes(${r.id}),'write')`}" style="flex:1;padding:6px;border-radius:7px;border:1px solid;font-size:11px;font-weight:600;cursor:pointer;background:${'write'===mode?'rgba(79,168,208,.15)':'transparent'};color:${'write'===mode?'#4fa8d0':'rgba(255,255,255,.35)'};border-color:${'write'===mode?'rgba(79,168,208,.5)':'rgba(255,255,255,.1)'};">📄 보고서</button>
+      ${isExternal()?'':`<button onclick="${_isBoard?`_boardOpenDetail(${r.id},'write')`:`renderTimeline(getRes(${r.id}),'write')`}" style="flex:1;padding:6px;border-radius:7px;border:1px solid;font-size:11px;font-weight:600;cursor:pointer;background:${'write'===mode?'rgba(79,168,208,.15)':'transparent'};color:${'write'===mode?'#4fa8d0':'rgba(255,255,255,.35)'};border-color:${'write'===mode?'rgba(79,168,208,.5)':'rgba(255,255,255,.1)'};">📄 보고서</button>`}
     </div>
   </div>`;
 
@@ -5196,6 +5257,15 @@ function renderTimeline(r,viewMode,outId){
       </div>
       ${_scenePhotosHtml(r)}
       ${(r.wpLog&&r.wpLog.length)?`<div style="background:#060d1a;border-radius:9px;padding:10px 13px;margin-top:4px;border:.5px solid rgba(79,168,208,.15);"><div style="font-size:11px;color:#4fa8d0;font-weight:700;margin-bottom:5px;">📍 위치 통과 기록</div>${r.wpLog.map(l=>`<div style="font-size:11px;color:#b8d4e8;line-height:1.9;font-family:monospace;">${l.time} · ${l.teamName} · ${l.code||'?'}${l.wpName?' ('+l.wpName+')':''} 통과</div>`).join('')}</div>`:''}
+      ${_buildLogHtml(r)}
+      <div style="background:#0b1c30;border-radius:10px;padding:11px 12px;border:.5px solid rgba(79,168,208,.12);margin-top:8px;">
+        <div style="font-size:11px;color:#4fa8d0;font-weight:700;margin-bottom:8px;">💬 댓글</div>
+        <div id="commentList_adv_${r.id}">${renderComments(r.id)}</div>
+        <div style="display:flex;gap:6px;margin-top:8px;">
+          <input type="text" id="cmtInput_adv_${r.id}" class="fi" placeholder="댓글 입력..." style="flex:1;">
+          <button onclick="submitComment(${r.id},'adv')" style="background:#1a4a6e;color:#fff;border:none;padding:0 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">등록</button>
+        </div>
+      </div>
       `;
     if(_tlTeams.some(t=>t.wps.some(w=>w.lat&&w.lng)))setTimeout(()=>_initTlMiniMap((_tlTeams.find(t=>t.wps.some(w=>w.lat&&w.lng))||{wps:[]}).wps),150);
   } else {
@@ -5223,38 +5293,7 @@ function renderTimeline(r,viewMode,outId){
     if(_ok(r.extra))rows.push(_row('특이',r.extra));
     const updates=(r.reports||[]).filter(p=>p.update||(p.victimChange&&p.victimChange!=='변화없음')||p.addMem||p.extra);
     const updHtml=updates.length?`<div style="margin-top:7px;padding-top:7px;border-top:.5px solid rgba(255,255,255,.08);">${updates.map(p=>{const pts=[];if(p.update)pts.push(p.update);if(p.victimChange&&p.victimChange!=='변화없음')pts.push('부상자 '+p.victimChange);if(p.addMem)pts.push('추가대원 '+p.addMem);if(p.extra)pts.push(p.extra);return `<div style="padding:5px 0;border-bottom:.5px solid rgba(255,255,255,.04);"><span style="font-size:10px;color:#4a7090;font-weight:600;">${p.repTime||''} · ${p.author||''}</span><br><span style="font-size:11px;color:#b8d4e8;line-height:1.5;">${pts.join(' / ')}</span></div>`;}).join('')}</div>`:'';
-    // 통합 상황일지: 1보 접수 + 타임테이블 + 표지판 통과 + 추가보고 + 인계를 시간순 병합
-    const baseDate=(r.date||'').slice(0,10);
-    const _tKey=t=>{ // 정렬키: 날짜 포함이면 그대로, HH:MM뿐이면 접수일 기준
-      const s=String(t||'').trim();
-      if(/^\d{4}-\d{2}-\d{2}/.test(s))return s;
-      return baseDate+' '+s;
-    };
-    const _tShow=t=>{const s=String(t||'').trim();return s.length>5?s.slice(11,16)||s.slice(-5):s;};
-    const logEntries=[];
-    if(r.date)logEntries.push({k:_tKey(r.date),t:_tShow(r.date),ico:'🚨',label:'1보 접수',sub:r.reception||''});
-    (r.timetable||[]).forEach(e=>{if(e.time)logEntries.push({k:_tKey(e.time),t:_tShow(e.time),ico:e.stage==='요구조자 조우'?'🎯':'📌',label:e.stage,sub:e.note||''});});
-    (r.wpLog||[]).forEach(l=>{logEntries.push({k:_tKey(l.time),t:l.time,ico:'📍',label:(l.teamName||'팀')+' · '+(l.code||'?')+' 통과',sub:l.wpName||''});});
-    (r.teams||[]).forEach(t=>{
-      if(t.createdAt){
-        const _ico=t.type==='heli'?'🚁':t.type==='vehicle'?'🚗':'🚶';
-        const _base=t.wps&&t.wps[0]?t.wps[0].name:'';
-        const _tgt=t.wps&&t.wps.length>1?t.wps[t.wps.length-1].name:'';
-        const _routeSub=_base&&_tgt?_base+' → '+_tgt:'';
-        const _mem=t.members&&t.members.length?' ('+t.members.join(', ')+')':'';
-        logEntries.push({k:_tKey(t.createdAt),t:_tShow(t.createdAt),ico:_ico,label:t.name+' 출동'+_mem,sub:_routeSub});
-      }
-    });
-    (r.reports||[]).forEach((p,pi)=>{if(p.repTime)logEntries.push({k:_tKey(p.repTime),t:_tShow(p.repTime),ico:'📋',label:(pi+2)+'보 보고'+(p.author?' ('+p.author+')':''),sub:p.update||''});});
-    if(r.handover&&r.handover.to)logEntries.push({k:_tKey(r.handover.time),t:_tShow(r.handover.time),ico:'🤝',label:'환자 인계: '+r.handover.to,sub:r.handover.by||''});
-    logEntries.sort((a,b)=>a.k.localeCompare(b.k));
-    const logHtml=logEntries.length?`<div style="background:#060d1a;border-radius:9px;padding:10px 13px;margin-bottom:8px;border:.5px solid rgba(79,168,208,.15);">
-      <div style="font-size:11px;color:#4fa8d0;font-weight:700;margin-bottom:6px;">📜 상황 일지 (자동 통합)</div>
-      ${logEntries.map(e=>`<div style="display:flex;gap:8px;padding:3px 0;align-items:baseline;">
-        <span style="font-size:10px;color:#4a7090;font-family:monospace;flex-shrink:0;width:38px;">${e.t}</span>
-        <span style="font-size:11px;color:#b8d4e8;line-height:1.5;">${e.ico} ${e.label}${e.sub?` <span style="color:#5a7a94;">— ${e.sub}</span>`:''}</span>
-      </div>`).join('')}
-    </div>`:'';
+    const logHtml=_buildLogHtml(r);
     w.innerHTML=tabHdr+logHtml+`
       <div style="background:#0b1c30;border-radius:10px;padding:12px;border:.5px solid rgba(255,255,255,.07);margin-bottom:8px;">
         ${rows.join('')||'<div style="font-size:11px;color:rgba(255,255,255,.25);">입력된 정보 없음</div>'}
@@ -5300,11 +5339,13 @@ function renderTimeline(r,viewMode,outId){
   if(_ftEl){
     if(r.status==='ongoing'){
       _ftEl.style.display='block';
-      if(mode==='write'){
+      if(mode==='write'&&!isExternal()){
         const _histBtn=all.length>1?`<button onclick="showPrevHistModal(${r.id})" style="display:block;width:100%;padding:6px 10px;border-radius:7px;border:.5px solid rgba(79,168,208,.25);background:rgba(79,168,208,.07);color:#4a8aaa;font-size:11px;font-weight:600;cursor:pointer;margin-bottom:6px;text-align:left;">📋 이전 이력 보기 (${all.length-1}건)</button>`:'';
-        _ftEl.innerHTML=_histBtn+`<div style="display:flex;gap:7px;"><button class="btn-submit" style="flex:2;background:#1a4a6e;color:#fff;" onclick="selResId=${r.id};curResId=${r.id};addPhase();">📝 내용 추가</button><button class="btn-submit" style="flex:1;background:#0d5040;color:#fff;" onclick="selResId=${r.id};curResId=${r.id};endSit();">✅ 상황 종료</button></div>`;
-      } else {
-        _ftEl.innerHTML=`<button class="btn-submit" style="width:100%;background:#0d5040;color:#fff;" onclick="selResId=${r.id};curResId=${r.id};endSit();">✅ 상황 종료</button>`;
+        _ftEl.innerHTML=_histBtn+`<div style="display:flex;gap:7px;"><button class="btn-submit" style="flex:2;background:#1a4a6e;color:#fff;" onclick="selResId=${r.id};curResId=${r.id};addPhase();">📝 내용 추가</button><button class="btn-submit" style="flex:1;background:#0d5040;color:#fff;" onclick="selResId=${r.id};curResId=${r.id};endSit();">✅ 상황 종료</button></div>`
+          +`<button onclick="openNpsResponse(${r.id})" style="margin-top:6px;width:100%;background:rgba(0,120,60,.18);color:#7ec8a0;border:1px solid rgba(0,120,60,.3);border-radius:9px;padding:9px;font-size:12px;font-weight:600;cursor:pointer;">🏕️ 공단 응소 기록</button>`;
+      } else if(!isExternal()){
+        _ftEl.innerHTML=`<button class="btn-submit" style="width:100%;background:#0d5040;color:#fff;" onclick="selResId=${r.id};curResId=${r.id};endSit();">✅ 상황 종료</button>`
+          +`<button onclick="openNpsResponse(${r.id})" style="margin-top:6px;width:100%;background:rgba(0,120,60,.18);color:#7ec8a0;border:1px solid rgba(0,120,60,.3);border-radius:9px;padding:9px;font-size:12px;font-weight:600;cursor:pointer;">🏕️ 공단 응소 기록</button>`;
       }
     } else {
       _ftEl.style.display='block';
@@ -5408,8 +5449,9 @@ function openLightbox(url){
   document.getElementById('lightboxImg').src=url;
   lb.style.display='flex';
 }
-function submitComment(resId){
-  const inp=document.getElementById('cmtInput_'+resId);if(!inp)return;
+function submitComment(resId,variant){
+  const prefix=variant==='adv'?'cmtInput_adv_':'cmtInput_';
+  const inp=document.getElementById(prefix+resId);if(!inp)return;
   const text=inp.value.trim();if(!text){toast('⚠️ 댓글을 입력하세요');return;}
   const res=DB.g('rescues')||[];const ri=res.findIndex(x=>x.id===resId);
   if(ri<0){toast('⚠️ 구조 정보 없음');return;}
@@ -5425,16 +5467,38 @@ function submitComment(resId){
   DB.s('rescues',res);
   const cmts=res[ri].comments;
   inp.value='';
-  // 댓글 목록만 갱신
-  const listEl=document.getElementById('commentList_'+resId);
-  if(listEl){
-    listEl.innerHTML=cmts.map(cm=>`<div style="background:#060d1a;border-radius:7px;padding:8px 10px;margin-bottom:5px;"><div style="font-size:11px;color:#4fa8d0;font-weight:600;">${_esc(cm.author)} · ${cm.time}</div><div style="font-size:12px;color:#b8d4e8;margin-top:3px;line-height:1.5;">${_esc(cm.text)}</div></div>`).join('');
-  }
+  const cmtHtml=cmts.map(cm=>`<div style="background:#060d1a;border-radius:7px;padding:8px 10px;margin-bottom:5px;"><div style="font-size:11px;color:#4fa8d0;font-weight:600;">${_esc(cm.author)} · ${cm.time}</div><div style="font-size:12px;color:#b8d4e8;margin-top:3px;line-height:1.5;">${_esc(cm.text)}</div></div>`).join('');
+  // 댓글 목록 갱신 (두 위치 모두)
+  const listEl=document.getElementById('commentList_'+resId);if(listEl)listEl.innerHTML=cmtHtml;
+  const listElAdv=document.getElementById('commentList_adv_'+resId);if(listElAdv)listElAdv.innerHTML=cmtHtml;
   toast('💬 댓글 등록');
-  // 관련 알림
   pushNoti(`💬 댓글: ${text.slice(0,20)}...`,'💬','info',{app:'rescue',tab:2,id:resId});
 }
 
+function openNpsResponse(resId){
+  var txt=prompt('공단 응소 내용을 입력하세요:','공단에서 응소를 실시하고 있어요');
+  if(txt===null)return;
+  txt=(txt||'').trim();
+  if(!txt){toast('⚠️ 내용을 입력하세요');return;}
+  submitNpsResponse(resId,txt);
+}
+function submitNpsResponse(resId,text){
+  const res=DB.g('rescues')||[];
+  const idx=res.findIndex(x=>x.id===resId);
+  if(idx===-1){toast('⚠️ 사고 정보 없음');return;}
+  if(!res[idx].npsLog)res[idx].npsLog=[];
+  const author=getAuthor();
+  res[idx].npsLog.push({time:new Date().toISOString(),author,text});
+  DB.s('rescues',res);
+  toast('🏕️ 공단 응소 기록됨');
+  if(document.getElementById('v-report').classList.contains('on')){
+    renderTimeline(res[idx],_tlViewMode||'brief');
+  }
+  if(_boardDetailId===resId){
+    const bd=document.getElementById('boardDetail');
+    if(bd&&bd.style.display!=='none')renderTimeline(res[idx],_tlViewMode||'advanced','boardDetailContent');
+  }
+}
 function endSit(){
   const res=DB.g('rescues')||[];const idx=res.findIndex(x=>x.id===selResId);if(idx===-1)return;
   if(!confirm('상황을 종료 처리하겠습니까?'))return;
@@ -6817,6 +6881,14 @@ function renderAdmSys(){
       </div>
     </div>
     <div class="scard" style="margin-bottom:8px;">
+      <div class="stitle">🚒 외부기관 접속 코드</div>
+      <div style="font-size:11px;color:#7a9cb8;margin-bottom:8px;">환동해 특수대응단 등 외부기관에 전달하세요 (사고 접수·조회·댓글만 가능)</div>
+      <div style="display:flex;gap:6px;">
+        <input id="extAgencyCodeInp" class="fi" value="${DB.g('extAgencyCode')||'HWANDONGHA'}" style="flex:1;font-family:monospace;font-size:14px;letter-spacing:2px;">
+        <button onclick="setExtAgencyCode()" style="background:#7a3010;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">저장</button>
+      </div>
+    </div>
+    <div class="scard" style="margin-bottom:8px;">
       <div class="stitle">👥 새 가입자 알림${unseenCnt>0?` <span style="background:#c0392b;color:#fff;font-size:10px;padding:1px 7px;border-radius:20px;margin-left:6px;font-weight:700;">${unseenCnt}</span>`:''}</div>
       ${_renderPendingList()}
     </div>
@@ -7080,6 +7152,39 @@ function kakaoLogout(){
   try{renderSettings();}catch(e){}
   toast('로그아웃 됐습니다');
 }
+// ── 외부기관 로그인 ──
+function _toggleExtLogin(){
+  var f=document.getElementById('extLoginForm');
+  if(!f)return;
+  var open=f.style.display==='none';
+  f.style.display=open?'block':'none';
+  if(open)setTimeout(function(){var i=document.getElementById('extCodeInp');if(i)i.focus();},100);
+}
+async function doExtAgencyLogin(){
+  var nameEl=document.getElementById('extAgencyName');
+  var codeEl=document.getElementById('extCodeInp');
+  var name=(nameEl?nameEl.value:'').trim()||'외부기관';
+  var code=(codeEl?codeEl.value:'').trim().toUpperCase();
+  if(!code){toast('⚠️ 코드를 입력하세요');return;}
+  var storedCode=(DB.g('extAgencyCode')||'HWANDONGHA').toUpperCase();
+  var storedH=await _sha256(storedCode);
+  var inputH=await _sha256(code);
+  if(inputH!==storedH&&code!==storedCode){toast('❌ 코드가 올바르지 않습니다');if(codeEl){codeEl.value='';codeEl.focus();}return;}
+  DB.s('currentUser',{name:name,dept:name,rank:'외부기관',authType:'external'});
+  DB.s('authType','external');
+  if(window.hideLoginScreen)window.hideLoginScreen();
+  updateUserUI();
+  goHome();
+  toast('✅ '+name+' 로그인 완료');
+}
+function extAgencyLogout(){
+  DB.s('currentUser',{});
+  DB.s('authType','');
+  if(window.showLoginScreen)window.showLoginScreen();
+  updateUserUI();
+  toast('로그아웃 됐습니다');
+}
+function isExternal(){return DB.g('authType')==='external';}
 function withdrawAccount(){
   if(!confirm('정말 회원탈퇴 하시겠습니까?\n탈퇴 후 재가입 시 승인코드가 다시 필요합니다.'))return;
   var u=DB.g('currentUser')||{};
@@ -7101,6 +7206,7 @@ function withdrawAccount(){
 function _checkAndRequireProfile(){
   var authType=DB.g('authType');
   if(!authType)return;
+  if(authType==='external')return; // 외부기관: 프로필 입력 불필요
   var u=DB.g('currentUser')||{};
   var isKakao=authType==='kakao';
   if(isKakao){
