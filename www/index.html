@@ -1080,8 +1080,8 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
 <!-- 하단 네비 -->
 <div class="bnav" id="bnav">
   <div class="navi on" id="nv1" onclick="switchTab(1,this)"><div class="navi-ico">🗺️</div><span class="navi-lbl">지도</span></div>
-  <div class="navi" id="nv2" onclick="switchTab(2,this)"><div class="navi-ico">📋</div><span class="navi-lbl" id="nvl2">목록</span></div>
-  <div class="navi" id="nv3" onclick="switchTab(3,this)"><div class="navi-ico">📊</div><span class="navi-lbl">통계</span></div>
+  <div class="navi ext-hide" id="nv2" onclick="switchTab(2,this)"><div class="navi-ico">📋</div><span class="navi-lbl" id="nvl2">목록</span></div>
+  <div class="navi ext-hide" id="nv3" onclick="switchTab(3,this)"><div class="navi-ico">📊</div><span class="navi-lbl">통계</span></div>
 </div>
 <div class="toast" id="toast"></div>
 <!-- ══ 관리자 로그인 오버레이 ══ -->
@@ -1515,7 +1515,7 @@ window.addEventListener('error',e=>{_logErr((e.message||'오류')+' @'+(e.filena
 window.addEventListener('unhandledrejection',e=>{_logErr('Promise: '+((e.reason&&e.reason.message)||e.reason||'거부'));});
 
 // ── 앱 버전 (배포 시 갱신) ──
-const APP_VER='v9.33 (2026.06.14)';
+const APP_VER='v9.34 (2026.06.14)';
 try{document.getElementById('appVerLabel').textContent='설악산 현장관리 '+APP_VER;}catch(e){}
 // ══════════════════════════════════════════
 // DB
@@ -2642,6 +2642,7 @@ function openApp(mode){
   }
 }
 function switchTab(idx,el){
+  if(isExternal()&&idx!==1){toast('⚠️ 외부기관 계정은 지도만 이용 가능합니다');return;}
   [1,2,3].forEach(i=>document.getElementById('nv'+i).classList.remove('on'));if(el)el.classList.add('on');closeDB();
   if(curApp==='rescue'){
     if(idx===1){showV('v-rescue-map');rMaps();updateRescueCross();}
