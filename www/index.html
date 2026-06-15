@@ -1516,7 +1516,7 @@ window.addEventListener('error',e=>{_logErr((e.message||'오류')+' @'+(e.filena
 window.addEventListener('unhandledrejection',e=>{_logErr('Promise: '+((e.reason&&e.reason.message)||e.reason||'거부'));});
 
 // ── 앱 버전 (배포 시 갱신) ──
-const APP_VER='v9.39 (2026.06.15)';
+const APP_VER='v9.40 (2026.06.15)';
 try{document.getElementById('appVerLabel').textContent='설악산 현장관리 '+APP_VER;}catch(e){}
 // ══════════════════════════════════════════
 // DB
@@ -4874,6 +4874,12 @@ function _initTlMiniMap(wps){
     map.setMapTypeId(kakao.maps.MapTypeId.HYBRID);
     _tlMiniMapInst=map;
     const bounds=new kakao.maps.LatLngBounds();
+    // 경로선: 거점→표지판→목표 순서대로 연결 (흰 점선 밑 + 파란 실선 위)
+    if(pts.length>1){
+      const linePath=pts.map(w=>new kakao.maps.LatLng(w.lat,w.lng));
+      new kakao.maps.Polyline({path:linePath,strokeWeight:6,strokeColor:'#ffffff',strokeOpacity:.25,strokeStyle:'solid',map}).setMap(map);
+      new kakao.maps.Polyline({path:linePath,strokeWeight:3.5,strokeColor:'#4fa8d0',strokeOpacity:.95,strokeStyle:'solid',map}).setMap(map);
+    }
     pts.forEach((w,i)=>{
       const latlng=new kakao.maps.LatLng(w.lat,w.lng);
       bounds.extend(latlng);
