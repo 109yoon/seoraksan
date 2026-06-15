@@ -1516,7 +1516,7 @@ window.addEventListener('error',e=>{_logErr((e.message||'오류')+' @'+(e.filena
 window.addEventListener('unhandledrejection',e=>{_logErr('Promise: '+((e.reason&&e.reason.message)||e.reason||'거부'));});
 
 // ── 앱 버전 (배포 시 갱신) ──
-const APP_VER='v9.40 (2026.06.15)';
+const APP_VER='v9.41 (2026.06.15)';
 try{document.getElementById('appVerLabel').textContent='설악산 현장관리 '+APP_VER;}catch(e){}
 // ══════════════════════════════════════════
 // DB
@@ -4966,14 +4966,36 @@ function _buildRoute(r,facs){
   return res;
 }
 
+// 저장된 경로가 비어 있는(좌표 2개 미만) 팀을 현재 표지판 기준으로 재계산.
+// 표지판이 사라졌던 시점에 만든 팀의 경로를 복구하기 위함. 멀쩡한 팀은 그대로 둠.
+function _regenTeamWpsIfEmpty(t,r,facs){
+  const coordCnt=(t.wps||[]).filter(w=>w.lat&&w.lng).length;
+  if(coordCnt>=2)return t; // 정상 경로 → 보존
+  let newWps=null;
+  if(t.type==='heli'){
+    if(r.lat&&r.lng)newWps=[{code:'',name:'헬기 기지',isBase:true,status:'active'},{code:'',name:r.location||'사고지점',lat:r.lat,lng:r.lng,isTarget:true,status:'pending'}];
+  }else{
+    const route=_buildRoute(r,facs).map(w=>({...w,status:w.isBase?'active':'pending'}));
+    if(route.filter(w=>w.lat&&w.lng).length>=2)newWps=route;
+  }
+  if(!newWps)return t; // 복구 불가(좌표 없음) → 그대로
+  return {...t,wps:newWps,wpIdx:0}; // 깨진 경로였으므로 진행도 초기화
+}
 function _initTlTeams(r){
   if(_tlWpResId===r.id&&(_tlTeams.length||_tlBuilding))return;
   _tlWpResId=r.id;_tlVehicle=false;_tlAnimating=false;_tlBuilding=false;
   _tlBuildType=null;_tlBuildMembers=[];_tlBuildOtherOpen=false;_tlBuildAgencyType='소방';
   // Load persisted teams from rescue record
   if(r.teams&&r.teams.length){
-    _tlTeams=r.teams.map(t=>({...t,collapsed:true}));
+    const facs=DB.g('facilities')||[];
+    let _regen=false;
+    _tlTeams=r.teams.map(t=>{
+      const t2=_regenTeamWpsIfEmpty({...t,collapsed:true},r,facs);
+      if(t2.wps!==t.wps&&t2!==t&&JSON.stringify(t2.wps)!==JSON.stringify(t.wps))_regen=true;
+      return t2;
+    });
     _tlSelTeam=0;_tlWps=_tlTeams[0].wps;_tlWpIdx=_tlTeams[0].wpIdx||0;
+    if(_regen)_persistTeams(); // 복구된 경로를 저장 → 상황판 지도·타 기기에도 반영
   }else{
     _tlTeams=[];_tlSelTeam=0;_tlWps=[];_tlWpIdx=0;
   }
