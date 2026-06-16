@@ -1518,7 +1518,7 @@ window.addEventListener('error',e=>{_logErr((e.message||'오류')+' @'+(e.filena
 window.addEventListener('unhandledrejection',e=>{_logErr('Promise: '+((e.reason&&e.reason.message)||e.reason||'거부'));});
 
 // ── 앱 버전 (배포 시 갱신) ──
-const APP_VER='v9.48 (2026.06.16)';
+const APP_VER='v9.49 (2026.06.16)';
 try{document.getElementById('appVerLabel').textContent='설악산 현장관리 '+APP_VER;}catch(e){}
 // ══════════════════════════════════════════
 // DB
@@ -3919,6 +3919,18 @@ function _renderFocusPanelRouteInfo(resId){
 function _getBaseByName(name){
   return Object.values(SEORAK_BASES).find(b=>b.name===name)||null;
 }
+// 도로 접근 가능한 거점 중 사고지점에서 가장 가까운 곳 (대피소 등 도보전용 제외)
+function _nearestBase(lat,lng){
+  if(!(lat&&lng))return null;
+  let best=null,bd=Infinity;
+  Object.values(SEORAK_BASES).forEach(b=>{
+    if(/대피소/.test(b.name||''))return; // 대청봉대피소 등 차량 진입 불가 → 제외
+    if(!(b.lat&&b.lng))return;
+    const d=_haversineKm(lat,lng,b.lat,b.lng);
+    if(d<bd){bd=d;best=b;}
+  });
+  return best?Object.assign({},best,{distKm:bd}):null;
+}
 
 function _applyFocusDim(){
   const fid=String(_rFocusResId);
@@ -4989,11 +5001,19 @@ function _initTlMiniMap(wps){
     map.setMapTypeId(kakao.maps.MapTypeId.HYBRID);
     _tlMiniMapInst=map;
     const bounds=new kakao.maps.LatLngBounds();
-    // 경로선: 거점→표지판→목표 순서대로 연결 (흰 점선 밑 + 파란 실선 위)
+    // 경로선: 거점→표지판→목표. 차량 구간(byVehicle)은 빨강 점선, 도보는 파랑 실선.
     if(pts.length>1){
-      const linePath=pts.map(w=>new kakao.maps.LatLng(w.lat,w.lng));
-      new kakao.maps.Polyline({path:linePath,strokeWeight:6,strokeColor:'#ffffff',strokeOpacity:.25,strokeStyle:'solid',map}).setMap(map);
-      new kakao.maps.Polyline({path:linePath,strokeWeight:3.5,strokeColor:'#4fa8d0',strokeOpacity:.95,strokeStyle:'solid',map}).setMap(map);
+      const full=pts.map(w=>new kakao.maps.LatLng(w.lat,w.lng));
+      const vehIdx=pts.findIndex(w=>w.byVehicle); // 차량으로 접근한 첫 도보지점
+      new kakao.maps.Polyline({path:full,strokeWeight:6,strokeColor:'#ffffff',strokeOpacity:.22,strokeStyle:'solid',map}).setMap(map);
+      if(vehIdx>0){
+        const footPath=full.slice(vehIdx);   // 차량 도착 지점부터 도보
+        const vehPath=[full[vehIdx-1],full[vehIdx]]; // 거점→들머리 차량 구간
+        if(footPath.length>1)new kakao.maps.Polyline({path:footPath,strokeWeight:3.5,strokeColor:'#4fa8d0',strokeOpacity:.95,strokeStyle:'solid',map}).setMap(map);
+        new kakao.maps.Polyline({path:vehPath,strokeWeight:4,strokeColor:'#e74c3c',strokeOpacity:.9,strokeStyle:'dash',map}).setMap(map);
+      }else{
+        new kakao.maps.Polyline({path:full,strokeWeight:3.5,strokeColor:'#4fa8d0',strokeOpacity:.95,strokeStyle:'solid',map}).setMap(map);
+      }
     }
     pts.forEach((w,i)=>{
       const latlng=new kakao.maps.LatLng(w.lat,w.lng);
@@ -5064,10 +5084,23 @@ function _buildRoute(r,facs){
     }
     if(_nearest&&!route.some(w=>w.code===_nearest.code))route.push(_nearest);
   }
-  // base 좌표를 SEORAK_BASES에서 채워 거점→목표 직선이라도 지도에 표시되게 함
-  const _baseObj=Object.values(SEORAK_BASES).find(b=>b.name===base)||null;
+  // 거점 결정: 사고 GPS가 있으면 가장 가까운 도로 거점(대피소 제외)을 출발점으로,
+  // 없으면 동선(zone) 기본 거점 사용.
+  let _baseObj=Object.values(SEORAK_BASES).find(b=>b.name===base)||null;
+  if(r.lat&&r.lng){
+    const _nb=_nearestBase(r.lat,r.lng);
+    if(_nb){_baseObj=_nb;base=_nb.name;}
+  }
   const res=[{code:'',name:base,isBase:true,lat:_baseObj?_baseObj.lat:null,lng:_baseObj?_baseObj.lng:null,status:'active'}];
   route.forEach((w,i)=>res.push({code:w.code,name:w.name,lat:w.lat,lng:w.lng,approx:w.approx||false,isTarget:i===route.length-1,status:'pending'}));
+  // 거점 → 첫 도보 지점 거리가 멀면(차로 들머리 접근) 차량 이동 구간으로 표시
+  if(res.length>1&&_baseObj&&_baseObj.lat){
+    const _ff=res[1];
+    if(_ff&&_ff.lat&&_ff.lng){
+      const _vd=_haversineKm(_baseObj.lat,_baseObj.lng,_ff.lat,_ff.lng);
+      if(_vd>0.6){_ff.byVehicle=true;_ff.vehKm=_vd;}
+    }
+  }
   // 목표 표지판 좌표가 시설 데이터에 없어도 사고 GPS가 있으면 그 좌표로 목표 지점 보정/추가
   if(r.lat&&r.lng){
     const _last=res[res.length-1];
@@ -5275,15 +5308,17 @@ function _wpItemHtmlTeam(w,i,team,teamIdx){
     dbg='rgba(79,168,208,.08)';dbd='rgba(79,168,208,.25)';dtxt=w.isHosp?'🏥':(w.code||'·');nc='rgba(255,255,255,.35)';
     if(w.descent)badge='<span style="background:rgba(39,174,96,.08);color:rgba(93,191,138,.7);border:1px solid rgba(39,174,96,.18);border-radius:5px;font-size:9px;padding:1px 6px;">🔽 하산</span>';
   }
+  // 차량 접근 구간(거점→들머리): 🚗 배지로 명시
+  const vehBadge=w.byVehicle?`<span style="background:rgba(231,76,60,.14);color:#ff6a4d;border:1px solid rgba(231,76,60,.3);border-radius:5px;font-size:9px;padding:1px 6px;font-weight:700;margin-right:4px;">🚗 차량 이동${w.vehKm?' '+w.vehKm.toFixed(1)+'km':''}</span>`:'';
   const click=(!isBase&&!isActive)?`onclick="event.stopPropagation();tlWarpToTeam(${teamIdx},${i})"`:'' ;
   return `<div id="tlWp_${teamIdx}_${i}" class="tl-wp${isActive?' tl-wp-active':''}${isLast?' last':''}" ${click} style="${!isBase&&!isActive?'cursor:pointer;':''}">
     <div style="position:relative;flex-shrink:0;">
       <div class="tl-wp-dot" style="background:${dbg};border-color:${dbd};">${dtxt}</div>
-      ${!isLast?'<div class="tl-wp-conn"></div>':''}
+      ${!isLast?`<div class="tl-wp-conn"${w.byVehicle?' style="background:repeating-linear-gradient(to bottom,#e74c3c 0,#e74c3c 3px,transparent 3px,transparent 6px);"':''}></div>`:''}
     </div>
     <div style="padding-top:2px;flex:1;min-width:0;">
       <div style="font-size:12px;font-weight:${isActive?700:600};color:${nc};line-height:1.35;overflow:hidden;text-overflow:ellipsis;">${w.name}</div>
-      <div style="margin-top:3px;">${badge}${w.passedAt?`<span style="font-size:9px;color:rgba(255,255,255,.28);margin-left:5px;">${w.passedAt}</span>`:''}</div>
+      <div style="margin-top:3px;">${vehBadge}${badge}${w.passedAt?`<span style="font-size:9px;color:rgba(255,255,255,.28);margin-left:5px;">${w.passedAt}</span>`:''}</div>
     </div>
   </div>`;
 }
@@ -5319,8 +5354,8 @@ function _compactRouteHtml(team,idx){
     <div style="display:flex;align-items:center;gap:9px;padding:0 6px;margin-bottom:8px;">
       <div style="display:flex;flex-direction:column;align-items:center;gap:0;"><div style="width:1.5px;height:10px;background:rgba(79,168,208,.25);"></div><span style="font-size:13px;line-height:1;">▼</span><div style="width:1.5px;height:10px;background:rgba(79,168,208,.25);"></div></div>
       <div style="flex:1;background:rgba(79,168,208,.06);border:1px solid rgba(79,168,208,.15);border-radius:8px;padding:8px 11px;">
-        <div style="font-size:10px;color:#4a7090;font-weight:600;margin-bottom:3px;">다음 ${typeIco}</div>
-        <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,.6);">${nextCode}${next.name}</div>
+        <div style="font-size:10px;color:#4a7090;font-weight:600;margin-bottom:3px;">다음 ${next.byVehicle?'🚗 차량':typeIco}</div>
+        <div style="font-size:13px;font-weight:600;color:rgba(255,255,255,.6);">${nextCode}${next.name}${next.byVehicle?`<span style="font-size:10px;color:#ff6a4d;margin-left:6px;">🚗 차량 이동${next.vehKm?' '+next.vehKm.toFixed(1)+'km':''}</span>`:''}</div>
       </div>
     </div>`:(()=>{
       // 경로 끝: 환자조우 시점이면 하산/이송 유도, 하산까지 끝났으면 완료
