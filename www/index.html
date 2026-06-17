@@ -1535,7 +1535,7 @@ window.addEventListener('error',e=>{_logErr((e.message||'오류')+' @'+(e.filena
 window.addEventListener('unhandledrejection',e=>{_logErr('Promise: '+((e.reason&&e.reason.message)||e.reason||'거부'));});
 
 // ── 앱 버전 (배포 시 갱신) ──
-const APP_VER='v9.54 (2026.06.17)';
+const APP_VER='v9.55 (2026.06.17)';
 try{document.getElementById('appVerLabel').textContent='설악산 현장관리 '+APP_VER;}catch(e){}
 // ══════════════════════════════════════════
 // DB
@@ -4846,6 +4846,7 @@ function submitNBoFromForm(){
     vAllergy: document.getElementById('r_vAll')?.value||res[idx].vAllergy||'',
     vMeds: document.getElementById('r_vMed')?.value||res[idx].vMeds||'',
     severity: getSelPills('sevPills')[0]||res[idx].severity,
+    vitals: _collectVitals(),
     injuryParts: getSelPills('injParts'),
     injuryTypes: getSelPills('injTypes'),
     cause: document.getElementById('r_cause')?.value||res[idx].cause,
@@ -5744,6 +5745,9 @@ function renderTimeline(r,viewMode,outId){
     if(vp.length)rows.push(_row('사고자',vp.join(' · ')));
     if(_ok(r.vTel))rows.push(_row('연락처',r.vTel));
     if(_ok(r.severity))rows.push(_row('중증도',r.severity));
+    // 활력징후 추이: 1보 + 각 보고의 vitals 수집
+    {const vseq=[];if(r.vitals&&_vitalsStr(r.vitals))vseq.push(r.vitals);(r.reports||[]).forEach(p=>{if(p.vitals&&_vitalsStr(p.vitals))vseq.push(p.vitals);});
+     if(vseq.length){const vhtml=vseq.map(v=>`<div style="font-size:10px;color:#9bbdd4;line-height:1.6;"><span style="color:#4a7090;">${(v.at||'').slice(11)||'-'}</span> ${_vitalsStr(v)}</div>`).join('');rows.push(_row('활력',vhtml));}}
     const inj=_okA(r.injuryParts);if(inj.length)rows.push(_row('부상',inj.join(', ')));
     const rm=_okA(r.rescueMethod);if(rm.length)rows.push(_row('구조',rm.join(', ')));
     const mob=_okA(r.mobilize);if(mob.length)rows.push(_row('응소',mob.join(', ')));
@@ -6058,6 +6062,23 @@ function submitNpsResponse(resId,text){
   }
 }
 // ── 구조 보고서 텍스트/공유/인쇄 ────────────────────
+// 활력징후 수집 — 하나라도 입력됐을 때만 객체 반환(측정시각 포함)
+function _collectVitals(){
+  const g=id=>{const e=document.getElementById(id);return e?e.value.trim():'';};
+  const hr=g('r_hr'),spo2=g('r_spo2'),temp=g('r_temp'),avpu=g('r_avpu'),bp=g('r_bp');
+  if(!hr&&!spo2&&!temp&&(!avpu||avpu==='선택')&&!bp)return null;
+  return {hr,spo2,temp,avpu:avpu==='선택'?'':avpu,bp,at:now()};
+}
+function _vitalsStr(v){
+  if(!v)return '';
+  const p=[];
+  if(v.hr)p.push('HR '+v.hr);
+  if(v.bp)p.push('BP '+v.bp);
+  if(v.spo2)p.push('SpO₂ '+v.spo2+'%');
+  if(v.temp)p.push(v.temp+'℃');
+  if(v.avpu)p.push(v.avpu);
+  return p.join(' · ');
+}
 function _buildReportText(r){
   if(!r)return '';
   const _ok=v=>{if(!v&&v!==0)return false;const s=String(v).trim();return s&&s!=='-'&&!['미상','없음','모르겠음','알수없음','미정','해당없음'].includes(s);};
@@ -6075,6 +6096,8 @@ function _buildReportText(r){
   if(vp.length)L.push('사고자: '+vp.join(' · '));
   if(_ok(r.vTel))L.push('연락처: '+r.vTel);
   if(_ok(r.severity))L.push('중증도: '+r.severity);
+  {const vseq=[];if(r.vitals&&_vitalsStr(r.vitals))vseq.push(r.vitals);(r.reports||[]).forEach(p=>{if(p.vitals&&_vitalsStr(p.vitals))vseq.push(p.vitals);});
+   if(vseq.length){L.push('활력징후:');vseq.forEach(v=>L.push('  · '+((v.at||'').slice(11)||'-')+' '+_vitalsStr(v)));}}
   const inj=_okA(r.injuryParts);if(inj.length)L.push('부상부위: '+inj.join(', '));
   if(_ok(r.cause))L.push('원인: '+r.cause);
   const rm=_okA(r.rescueMethod);if(rm.length)L.push('구조방법: '+rm.join(', '));
@@ -6352,6 +6375,19 @@ function render1BoForm(prefill=null){
           <select id="r_alc" class="fsel">${['없음','의심','확인됨'].map(o=>`<option${(p.alcohol||'없음')===o?' selected':''}>${o}</option>`).join('')}</select>
         </div>
       </div>
+      <div class="rsec"><div class="rsec-t">💓 활력징후 <span style="font-size:9px;color:#4a7090;font-weight:400;">(측정 시 입력 — 보고마다 기록되어 추이 확인)</span></div>
+        <div class="frow">
+          <div class="fg"><span class="fl">맥박 (회/분)</span><input type="number" inputmode="numeric" id="r_hr" class="fi" placeholder="예: 88" value="${p.vitals?.hr||''}"></div>
+          <div class="fg"><span class="fl">SpO₂ (%)</span><input type="number" inputmode="numeric" id="r_spo2" class="fi" placeholder="예: 97" value="${p.vitals?.spo2||''}"></div>
+        </div>
+        <div class="frow">
+          <div class="fg"><span class="fl">체온 (℃)</span><input type="number" inputmode="decimal" step="0.1" id="r_temp" class="fi" placeholder="예: 36.5" value="${p.vitals?.temp||''}"></div>
+          <div class="fg"><span class="fl">의식 (AVPU)</span>
+            <select id="r_avpu" class="fsel">${['','A (명료)','V (음성반응)','P (통증반응)','U (무반응)'].map(o=>`<option${(p.vitals?.avpu||'')===o?' selected':''}>${o||'선택'}</option>`).join('')}</select>
+          </div>
+        </div>
+        <div class="fg"><span class="fl">혈압 (선택)</span><input type="text" id="r_bp" class="fi" placeholder="예: 120/80" value="${p.vitals?.bp||''}"></div>
+      </div>
       <div class="rsec"><div class="rsec-t">📸 현장 사진</div>
         <div class="frow">
           <div class="fg"><span class="fl">부상 사진</span>
@@ -6590,6 +6626,7 @@ function submit1Bo(){
     transPhoto:_photoUrl('prevTrans'),
     timetable: sortTTByTime(_ttInlineEntries||[]),
     mobilize:getSelPills('mobilizePills'),
+    vitals:_collectVitals(),
     status:'ongoing', reports:[],
   };
   // 등록 폼 타임라인에서 만든 팀이 있으면 새 구조 레코드로 이관
