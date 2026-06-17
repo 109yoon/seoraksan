@@ -194,14 +194,18 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .mpin-num{background:rgba(8,20,40,.88);border:1px solid rgba(79,168,208,.6);border-radius:3px;padding:1px 3px;font-size:6px;font-weight:700;color:#7ac8e8;white-space:nowrap;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.6);line-height:1.2;user-select:none;-webkit-user-select:none;}
 .map-cluster{min-width:30px;height:30px;padding:0 8px;border-radius:16px;background:rgba(192,57,43,.93);border:2px solid #fff;color:#fff;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 9px rgba(0,0,0,.55);cursor:pointer;user-select:none;-webkit-user-select:none;}
 .map-cluster.fac{background:rgba(26,74,110,.94);border-color:rgba(125,211,250,.9);}
+.sheet-handle{width:30px;height:3px;background:rgba(255,255,255,.18);border-radius:9px;margin:0 auto;}
 .mpin-shelter{border-color:#27ae60;}
 .p-ok{border-color:#27ae60;}.p-warn{border-color:#e67e22;}.p-bad{border-color:#c0392b;}
 .p-acc{border-color:#c0392b;background:#c0392b;color:#fff;}.p-rock{border-color:#7d3c98;background:#7d3c98;color:#fff;}
 .p-tree{border-color:#ca6f1e;background:#ca6f1e;color:#fff;}.p-fire{border-color:#a93226;background:#a93226;color:#fff;}
 .p-haz{border-color:#e67e22;background:#e67e22;color:#fff;}.p-etc{border-color:#5d6d7e;background:#4a5568;color:#fff;}.p-done{opacity:.4;}
 .p-me{border-color:#4fa8d0;background:#4fa8d0;color:#fff;}
-@keyframes blink{0%,100%{box-shadow:0 0 4px 2px rgba(192,57,43,.5);}50%{transform:scale(1.2);box-shadow:0 0 16px 6px rgba(192,57,43,.85);}}
+/* 합성(opacity·transform)만 애니메이션 → 매 프레임 repaint 없이 GPU에서 처리(배터리 절약).
+   글로우는 정적 box-shadow로 유지 */
+@keyframes blink{0%,100%{opacity:1;transform:scale(1);}50%{opacity:.62;transform:scale(1.18);}}
 .blink{animation:blink .95s infinite;}
+.mpin.blink{box-shadow:0 0 11px 4px rgba(192,57,43,.62);}
 .team-chip{display:inline-flex;align-items:center;gap:4px;background:rgba(8,20,45,.93);border:1.5px solid rgba(79,168,208,.5);border-radius:11px;padding:3px 8px 3px 6px;font-size:11px;font-weight:700;color:#7dd3fa;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,.75);white-space:nowrap;user-select:none;-webkit-user-select:none;transition:opacity .2s;}
 #focusModePanel{position:absolute;bottom:-60vh;left:0;right:0;z-index:16;background:#09172a;border-radius:14px 14px 0 0;border-top:1.5px solid rgba(79,168,208,.22);box-shadow:0 -5px 28px rgba(0,0,0,.85);transition:bottom .3s cubic-bezier(.4,0,.2,1);max-height:56vh;overflow:hidden;display:flex;flex-direction:column;}
 #focusModePanel.on{bottom:62px;}
@@ -836,7 +840,7 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
     <button class="fab2" onclick="openNewHazard()">⚠️ 위험상황 보고</button>
     <!-- 재난/구조 필터 패널 -->
     <div id="resMapFilterPanel" style="display:none;position:absolute;bottom:0;left:0;right:0;z-index:20;background:#0a1828;border-radius:11px 11px 0 0;box-shadow:0 -3px 18px rgba(0,0,0,.7);max-height:52%;flex-direction:column;transition:transform .22s cubic-bezier(.4,0,.2,1);touch-action:none;">
-      <div id="resMFPHandle" style="padding:7px 0 3px;flex-shrink:0;cursor:grab;user-select:none;"><div style="width:30px;height:3px;background:rgba(255,255,255,.18);border-radius:9px;margin:0 auto;"></div></div>
+      <div id="resMFPHandle" style="padding:7px 0 3px;flex-shrink:0;cursor:grab;user-select:none;"><div class="sheet-handle"></div></div>
       <div style="padding:2px 12px 5px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.06);">
         <span style="font-size:11px;font-weight:700;color:#4fa8d0;">🔍 필터 <span id="resMapFilterCount" style="color:#e05050;font-size:10px;"></span></span>
         <button onclick="resetResFilter()" style="background:none;border:none;color:rgba(255,255,255,.3);font-size:10px;cursor:pointer;padding:2px 6px;">↺ 초기화</button>
@@ -849,7 +853,7 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
     </div>
     <!-- 시설물 카테고리 필터 패널 -->
     <div id="resCatFilterPanel" style="display:none;position:absolute;bottom:0;left:0;right:0;z-index:20;background:#0a1828;border-radius:11px 11px 0 0;box-shadow:0 -3px 18px rgba(0,0,0,.7);max-height:60%;flex-direction:column;transition:transform .22s cubic-bezier(.4,0,.2,1);touch-action:none;">
-      <div id="resCFPHandle" style="padding:7px 0 3px;flex-shrink:0;cursor:grab;user-select:none;"><div style="width:30px;height:3px;background:rgba(255,255,255,.18);border-radius:9px;margin:0 auto;"></div></div>
+      <div id="resCFPHandle" style="padding:7px 0 3px;flex-shrink:0;cursor:grab;user-select:none;"><div class="sheet-handle"></div></div>
       <div style="padding:2px 12px 5px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.06);">
         <span style="font-size:11px;font-weight:700;color:#27ae60;">🗺️ 시설물 필터 <span id="resCatFilterCount" style="color:#e05050;font-size:10px;"></span></span>
         <button onclick="resetResCatFilter()" style="background:none;border:none;color:rgba(255,255,255,.3);font-size:10px;cursor:pointer;padding:2px 6px;">↺ 초기화</button>
@@ -898,7 +902,7 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
   </div>
   <div style="flex:1;overflow-y:auto;padding:8px 12px 80px;" id="resListWrap"></div>
   <div id="resListFilterPanel" style="display:none;position:absolute;bottom:0;left:0;right:0;z-index:20;background:#0a1828;border-radius:11px 11px 0 0;box-shadow:0 -3px 18px rgba(0,0,0,.7);max-height:52%;flex-direction:column;transition:transform .22s cubic-bezier(.4,0,.2,1);touch-action:none;">
-    <div id="resLFPHandle" style="padding:7px 0 3px;flex-shrink:0;cursor:grab;user-select:none;"><div style="width:30px;height:3px;background:rgba(255,255,255,.18);border-radius:9px;margin:0 auto;"></div></div>
+    <div id="resLFPHandle" style="padding:7px 0 3px;flex-shrink:0;cursor:grab;user-select:none;"><div class="sheet-handle"></div></div>
     <div style="padding:2px 12px 5px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.06);">
       <span style="font-size:11px;font-weight:700;color:#4fa8d0;">🔍 필터 <span id="resListFilterCount" style="color:#e05050;font-size:10px;"></span></span>
       <button onclick="resetResFilter()" style="background:none;border:none;color:rgba(255,255,255,.3);font-size:10px;cursor:pointer;padding:2px 6px;">↺ 초기화</button>
@@ -954,7 +958,7 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
     <div id="inspFilterPanel" style="display:none;position:absolute;bottom:0;left:0;right:0;z-index:20;background:#0a1828;border-radius:11px 11px 0 0;box-shadow:0 -3px 18px rgba(0,0,0,.7);max-height:52%;flex-direction:column;transition:transform .22s cubic-bezier(.4,0,.2,1);touch-action:none;">
       <!-- 드래그 핸들 -->
       <div id="inspFPHandle" style="padding:7px 0 3px;flex-shrink:0;cursor:grab;user-select:none;">
-        <div style="width:30px;height:3px;background:rgba(255,255,255,.18);border-radius:9px;margin:0 auto;"></div>
+        <div class="sheet-handle"></div>
       </div>
       <!-- 헤더 -->
       <div style="padding:2px 12px 5px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.06);">
@@ -986,7 +990,7 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
   <button id="facListFilterBtn" onclick="toggleFacListFilter()" style="position:absolute;top:6px;right:8px;z-index:10;background:#0a1828;border:1px solid rgba(79,168,208,.3);color:#4fa8d0;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:700;display:flex;align-items:center;gap:4px;cursor:pointer;">⚙️ 필터 <span id="facListFilterBadge" style="display:none;background:#e05050;color:#fff;border-radius:50%;width:17px;height:17px;font-size:9px;font-weight:800;align-items:center;justify-content:center;box-shadow:0 1px 5px rgba(224,80,80,.55);flex-shrink:0;"></span></button>
   <div style="flex:1;overflow-y:auto;padding:42px 12px 80px;" id="facListWrap"></div>
   <div id="facListFilterPanel" style="display:none;position:absolute;bottom:0;left:0;right:0;z-index:20;background:#0a1828;border-radius:11px 11px 0 0;box-shadow:0 -3px 18px rgba(0,0,0,.7);max-height:52%;flex-direction:column;transition:transform .22s cubic-bezier(.4,0,.2,1);touch-action:none;">
-    <div id="facLFPHandle" style="padding:7px 0 3px;flex-shrink:0;cursor:grab;user-select:none;"><div style="width:30px;height:3px;background:rgba(255,255,255,.18);border-radius:9px;margin:0 auto;"></div></div>
+    <div id="facLFPHandle" style="padding:7px 0 3px;flex-shrink:0;cursor:grab;user-select:none;"><div class="sheet-handle"></div></div>
     <div style="padding:2px 12px 5px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,.06);">
       <span style="font-size:11px;font-weight:700;color:#4fa8d0;">🔍 필터 <span id="facListFilterCount" style="color:#e05050;font-size:10px;"></span></span>
       <button onclick="resetFacListFilter()" style="background:none;border:none;color:rgba(255,255,255,.3);font-size:10px;cursor:pointer;padding:2px 6px;">↺ 초기화</button>
@@ -1537,7 +1541,7 @@ window.addEventListener('error',e=>{_logErr((e.message||'오류')+' @'+(e.filena
 window.addEventListener('unhandledrejection',e=>{_logErr('Promise: '+((e.reason&&e.reason.message)||e.reason||'거부'));});
 
 // ── 앱 버전 (배포 시 갱신) ──
-const APP_VER='v9.59 (2026.06.17)';
+const APP_VER='v9.60 (2026.06.17)';
 try{document.getElementById('appVerLabel').textContent='설악산 현장관리 '+APP_VER;}catch(e){}
 // ══════════════════════════════════════════
 // DB
