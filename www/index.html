@@ -94,11 +94,13 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .home-brand-sub{font-size:10px;color:#5a90b8;font-weight:600;letter-spacing:.8px;text-transform:uppercase;}
 .home-brand-title{font-size:19px;font-weight:800;color:#e0edf8;letter-spacing:-.3px;}
 .home-date{font-size:10px;color:#6a9cc0;margin-top:2px;}
-.my-card{background:linear-gradient(135deg,#0d2236,#0a1727);border-radius:13px;padding:10px 13px;border:1px solid rgba(79,168,208,.14);display:flex;align-items:center;gap:11px;cursor:pointer;flex-shrink:0;margin-bottom:7px;box-shadow:0 2px 9px rgba(0,0,0,.26);}
-.my-avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#1f567e,#0d3050);display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;box-shadow:0 0 0 1px rgba(79,168,208,.28),0 2px 6px rgba(0,0,0,.3);}
+.my-card{background:linear-gradient(135deg,#0d2236,#0a1727);border-radius:13px;padding:10px 13px;border:1px solid rgba(79,168,208,.14);display:flex;align-items:center;gap:11px;cursor:pointer;flex-shrink:0;margin-bottom:7px;box-shadow:0 2px 9px rgba(0,0,0,.26);transition:transform .12s var(--qt),background .12s ease;}
+.my-card:active{transform:scale(.98);background:#0d1f30;}
+.my-avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#1f567e,#0d3050);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;box-shadow:0 0 0 1px rgba(79,168,208,.28),0 2px 6px rgba(0,0,0,.3);}
 .my-info{flex:1;min-width:0;}
-.my-name{font-size:13px;font-weight:700;color:#e0edf8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.my-sub{font-size:10px;color:#3a6a8a;margin-top:1px;}
+.my-name{font-size:13.5px;font-weight:700;color:#e0edf8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.my-sub{font-size:10.5px;color:#5f93b5;margin-top:1px;}
+.my-chevron{font-size:14px;color:#3a6a8a;flex-shrink:0;}
 .my-change-btn{background:rgba(79,168,208,.1);border:1px solid rgba(79,168,208,.22);color:#4fa8d0;padding:4px 9px;border-radius:6px;font-size:11px;font-weight:600;flex-shrink:0;}
 .home-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;flex-shrink:0;margin-bottom:7px;}
 .hstat{background:#0b1c30;border-radius:12px;padding:10px 11px;border:1px solid rgba(79,168,208,.16);cursor:pointer;}
@@ -110,7 +112,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .home-menu-bottom{display:grid;grid-template-columns:1fr 1fr;gap:6px;flex-shrink:0;margin-top:6px;}
 .mbtn{border-radius:13px;padding:12px 12px 11px;font-weight:700;color:#fff;border:none;cursor:pointer;display:flex;flex-direction:column;justify-content:space-between;text-align:left;transition:transform .1s;overflow:hidden;min-height:0;box-shadow:0 3px 11px rgba(0,0,0,.3),inset 0 1px 0 rgba(255,255,255,.08);}
 .mbtn:active{transform:scale(.96);}
-.mbtn-ico{font-size:26px;margin-bottom:6px;}
+.mbtn-ico{font-size:19px;margin-bottom:8px;width:34px;height:34px;border-radius:10px;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;box-shadow:inset 0 1px 0 rgba(255,255,255,.12);}
 .mbtn-title{font-size:13.5px;font-weight:800;line-height:1.2;letter-spacing:.2px;}
 .mbtn-desc{font-size:10px;font-weight:400;opacity:.72;margin-top:2px;line-height:1.3;}
 .mb-red{background:linear-gradient(145deg,#7a1818,#601010);}
@@ -122,7 +124,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 /* 설정/관리자는 작게 */
 .mbtn-sm{border-radius:11px;padding:10px 12px;font-weight:600;color:#c0d8ec;border:1px solid rgba(255,255,255,.08);cursor:pointer;display:flex;align-items:center;gap:8px;text-align:left;transition:transform .1s;background:#0b1c30;box-shadow:0 1px 5px rgba(0,0,0,.2);}
 .mbtn-sm:active{transform:scale(.97);}
-.mbtn-sm-ico{font-size:16px;flex-shrink:0;}
+.mbtn-sm-ico{font-size:15px;flex-shrink:0;width:30px;height:30px;border-radius:9px;background:rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center;}
 .mbtn-sm-text{flex:1;}
 .mbtn-sm-title{font-size:12px;font-weight:600;color:#e0edf8;}
 .mbtn-sm-desc{font-size:10px;color:#5f9bc4;margin-top:1px;}
@@ -759,6 +761,7 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
   <div class="my-card" onclick="openChangeUser()" style="flex-shrink:0;margin-bottom:0;">
     <div class="my-avatar" id="myAvatar">👤</div>
     <div class="my-info"><div class="my-name" id="myName">작성자를 선택하세요</div><div class="my-sub" id="mySub">탭하여 설정</div></div>
+    <span class="my-chevron">›</span>
   </div>
 
   <!-- 주의 현황: 진행중 구조 + 위험상황 + 위험시설 통합 (없으면 정상 상태 카드) -->
@@ -1529,7 +1532,7 @@ window.addEventListener('error',e=>{_logErr((e.message||'오류')+' @'+(e.filena
 window.addEventListener('unhandledrejection',e=>{_logErr('Promise: '+((e.reason&&e.reason.message)||e.reason||'거부'));});
 
 // ── 앱 버전 (배포 시 갱신) ──
-const APP_VER='v9.76 (2026.06.18)';
+const APP_VER='v9.77 (2026.06.18)';
 try{document.getElementById('appVerLabel').textContent='설악산 현장관리 '+APP_VER;}catch(e){}
 // ══════════════════════════════════════════
 // DB
@@ -4485,7 +4488,7 @@ function renderResList(){
       const isOg=r.status==='ongoing';const ti=RES_TYPES[r.type]||RES_TYPES['기타'];
       const totalPh=(r.reports||[]).length+1;
       const hasCoord=!!(r.lat&&r.lng);
-      return `<div class="lcard" onclick="openResListDetail(${r.id})" style="position:relative;">
+      return `<div class="lcard" onclick="openResListDetail(${r.id})" style="position:relative;border-left:3px solid ${isOg?'#e74c3c':'#27ae60'};">
         <div class="lico" style="background:${isOg?ti.color:'#1a3a1a'};border:none;color:#fff;">${ti.ico}</div>
         <div class="linfo"><div class="lname">🚨 ${_esc(r.title)}${r.extAgency?` <span style="font-size:9px;background:rgba(255,120,30,.18);color:#f08050;border:1px solid rgba(255,120,30,.35);border-radius:9px;padding:1px 6px;font-weight:700;vertical-align:middle;">🚒 ${_esc(r.extAgency)}</span>`:''}${(r.mobilize&&r.mobilize.length)?` <span style="font-size:9px;background:rgba(231,76,60,.18);color:#e74c3c;border:1px solid rgba(231,76,60,.4);border-radius:9px;padding:1px 6px;font-weight:700;vertical-align:middle;">🚨 ${_esc(r.mobilize.join('·'))}</span>`:''}</div>
           <div class="lmeta">${_esc(r.type)} · ${r.date}</div>
@@ -4503,7 +4506,7 @@ function renderResList(){
     html+=(haz.filter(h=>_stOkHaz(h.hazStatus)&&_dateOkL(h.date)&&_resMatchSearch(h))).slice().reverse().map(h=>{
       const done=h.hazStatus&&h.hazStatus!=='미조치'&&h.hazStatus!=='조치중';
       const hasCoord=!!(h.lat&&h.lng);
-      return `<div class="haz-card ${done?'haz-removed':''}" onclick="openHazDetail(${h.id})">
+      return `<div class="haz-card ${done?'haz-removed':''}" onclick="openHazDetail(${h.id})" style="border-left:3px solid ${done?'#27ae60':'#e67e22'};">
         <div style="display:flex;align-items:center;gap:10px;">
           <div style="font-size:22px;">${h.hazType?.split(' ')[0]||'⚠️'}</div>
           <div style="flex:1;min-width:0;">
@@ -7154,7 +7157,7 @@ function renderFacList(){
     return sOk&&tOk&&lOk;
   });
   document.getElementById('facListWrap').innerHTML=filtered.length?filtered.map(f=>`
-    <div class="lcard" style="padding:7px 10px;" onclick="openFacDetail(${f.id})">
+    <div class="lcard" style="padding:7px 10px;border-left:3px solid ${SC(f.status)};" onclick="openFacDetail(${f.id})">
       <div class="lico" style="width:30px;height:30px;font-size:14px;border-color:${SC(f.status)};color:${SC(f.status)};">${_esc(f.type.split(' ')[0])}</div>
       <div class="linfo"><div class="lname" style="font-size:12px;">${_esc(f.name)}</div>
         <div class="lmeta">${_esc(f.type.split(' ').slice(1).join(' ')||f.type)} · ${_esc(f.loc||'-')} · ${f.lat?'📍':''}</div>
