@@ -761,24 +761,8 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
     <div class="my-info"><div class="my-name" id="myName">작성자를 선택하세요</div><div class="my-sub" id="mySub">탭하여 설정</div></div>
   </div>
 
-  <!-- 통계 칩 -->
-  <div class="home-chips">
-    <div class="hchip hchip-r" onclick="openApp('rescue')">
-      <div><div class="hchip-num" id="hs-og">0</div><div class="hchip-lbl">진행중</div></div>
-    </div>
-    <div class="hchip hchip-b" onclick="openApp('rescue')">
-      <div><div class="hchip-num" id="hs-tot">0</div><div class="hchip-lbl">이번달</div></div>
-    </div>
-    <div class="hchip hchip-o" onclick="openApp('inspect')">
-      <div><div class="hchip-num" id="hs-fb">0</div><div class="hchip-lbl">위험시설</div></div>
-    </div>
-    <div class="hchip hchip-g" onclick="openApp('inspect')">
-      <div><div class="hchip-num" id="hs-ft">0</div><div class="hchip-lbl">전체시설</div></div>
-    </div>
-  </div>
-
-  <!-- 진행중 구조 카드 스트립 (진행중 건 있을 때만 표시) -->
-  <div id="homeActiveStrip" style="display:none;flex-shrink:0;"></div>
+  <!-- 주의 현황: 진행중 구조 + 위험상황 + 위험시설 통합 (없으면 정상 상태 카드) -->
+  <div id="homeActiveStrip" style="flex-shrink:0;"></div>
 
   <!-- 날씨 -->
   <div id="weatherStrip" class="weather-strip" style="display:none;" onclick="openWeatherDetail()">
@@ -1545,7 +1529,7 @@ window.addEventListener('error',e=>{_logErr((e.message||'오류')+' @'+(e.filena
 window.addEventListener('unhandledrejection',e=>{_logErr('Promise: '+((e.reason&&e.reason.message)||e.reason||'거부'));});
 
 // ── 앱 버전 (배포 시 갱신) ──
-const APP_VER='v9.75 (2026.06.18)';
+const APP_VER='v9.76 (2026.06.18)';
 try{document.getElementById('appVerLabel').textContent='설악산 현장관리 '+APP_VER;}catch(e){}
 // ══════════════════════════════════════════
 // DB
@@ -8582,30 +8566,75 @@ function updateSummary(){
 function renderHomeActive(){
   const el=document.getElementById('homeActiveStrip');if(!el)return;
   if(isExternal()){el.style.display='none';el.innerHTML='';return;}
-  const og=(DB.g('rescues')||[]).filter(r=>r.status==='ongoing');
-  if(!og.length){el.style.display='none';el.innerHTML='';return;}
   el.style.display='block';
-  const cards=og.slice().reverse().map(r=>{
+  const og=(DB.g('rescues')||[]).filter(r=>r.status==='ongoing');
+  const haz=(DB.g('hazards')||[]).filter(h=>!h.hazStatus||h.hazStatus==='미조치'||h.hazStatus==='조치중');
+  const badFac=(DB.g('facilities')||[]).filter(f=>f.status==='bad');
+  const total=og.length+haz.length+badFac.length;
+  if(!total){
+    el.innerHTML=`<div style="display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#0e2a20,#0b1c19);border:1px solid rgba(39,174,96,.22);border-radius:16px;padding:15px 16px;">
+      <div style="width:40px;height:40px;border-radius:50%;background:rgba(39,174,96,.15);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">✅</div>
+      <div style="min-width:0;"><div style="font-size:14px;font-weight:800;color:#eaf2fa;">현재 주의 항목 없음</div>
+      <div style="font-size:11.5px;color:#7fb89c;margin-top:2px;">진행 중인 구조·위험 상황이 없습니다</div></div>
+    </div>`;
+    return;
+  }
+  // 상단 요약(0건 카테고리는 생략)
+  const sum=[];
+  if(og.length)sum.push(`<span style="color:#ff7a6e;font-weight:800;">진행중 ${og.length}</span>`);
+  if(haz.length)sum.push(`<span style="color:#f0a44a;font-weight:800;">위험상황 ${haz.length}</span>`);
+  if(badFac.length)sum.push(`<span style="color:#ffc05a;font-weight:800;">위험시설 ${badFac.length}</span>`);
+  // 공통 카드 골격
+  const _card=(onclick,accent,borderRGBA,badgeBg,badgeCol,badgeTxt,ico,mobHtml,title,meta,foot)=>
+    `<div onclick="${onclick}" style="flex:0 0 auto;width:166px;background:#0f1e30;border:1px solid ${borderRGBA};border-left:3px solid ${accent};border-radius:13px;padding:10px 12px;cursor:pointer;box-shadow:0 2px 9px rgba(0,0,0,.3);">
+      <div style="display:flex;align-items:center;gap:5px;margin-bottom:6px;">
+        <span style="font-size:14px;">${ico}</span>
+        <span style="font-size:8.5px;font-weight:800;color:${badgeCol};background:${badgeBg};border-radius:6px;padding:2px 6px;letter-spacing:.2px;">${badgeTxt}</span>
+        ${mobHtml||''}
+      </div>
+      <div style="font-size:11.5px;font-weight:700;color:#eaf2fa;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${title}</div>
+      <div style="font-size:9.5px;color:#8ab4cc;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${meta}</div>
+      ${foot||''}
+    </div>`;
+  const cards=[];
+  og.slice().reverse().forEach(r=>{
     const ti=RES_TYPES[r.type]||RES_TYPES['기타'];
     const elp=_elapsedStr(r.date);
     const mob=(r.mobilize&&r.mobilize.length)?`<span style="font-size:8px;background:rgba(231,76,60,.2);color:#ff6b5e;border-radius:7px;padding:1px 5px;font-weight:700;">🚨</span>`:'';
-    return `<div onclick="openRescueFromHome(${r.id})" style="flex:0 0 auto;width:158px;background:linear-gradient(135deg,#13243a,#0d1a2c);border:1px solid rgba(231,76,60,.28);border-radius:12px;padding:9px 11px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.28);">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px;">
-        <span style="font-size:15px;">${ti.ico}</span>
-        <span style="font-size:8px;font-weight:800;color:#ff6b5e;background:rgba(231,76,60,.18);border-radius:6px;padding:2px 6px;">진행중</span>
-        ${mob}
-      </div>
-      <div style="font-size:11.5px;font-weight:700;color:#eaf2fa;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_esc(r.title||r.type)}</div>
-      <div style="font-size:9.5px;color:#8ab4cc;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_esc(r.vName||'미상')}${r.location?' · '+_esc(r.location):''}</div>
-      ${elp?`<div style="font-size:10px;font-weight:700;color:#f0a500;margin-top:4px;">⏱ ${elp}</div>`:''}
-    </div>`;
-  }).join('');
-  el.innerHTML=`<div class="sec-label" style="padding:0 0 5px;">🔴 진행중 구조 ${og.length}건</div>
-    <div style="display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:2px;">${cards}</div>`;
+    cards.push(_card(`openRescueFromHome(${r.id})`,'#e74c3c','rgba(231,76,60,.3)','rgba(231,76,60,.18)','#ff7a6e','진행중',ti.ico,mob,
+      _esc(r.title||r.type),
+      _esc(r.vName||'미상')+(r.location?' · '+_esc(r.location):''),
+      elp?`<div style="font-size:10px;font-weight:700;color:#f0a500;margin-top:4px;">⏱ ${elp}</div>`:''));
+  });
+  haz.slice().reverse().forEach(h=>{
+    const hico=(h.hazType||'').split(' ')[0]||'⚠️';
+    cards.push(_card(`openHazFromHome(${h.id})`,'#e67e22','rgba(230,126,34,.32)','rgba(230,126,34,.18)','#f0a44a',_esc(h.hazStatus||'미조치'),hico,'',
+      _esc((h.hazType||'위험상황').replace(/^\S+\s/,'')||'위험상황'),
+      _esc(h.loc||'위치 미상')+(h.danger?' · '+_esc(h.danger):'')));
+  });
+  badFac.forEach(f=>{
+    const fico=(f.type||'').split(' ')[0]||'🛠️';
+    cards.push(_card(`openFacFromHome(${f.id})`,'#e0a030','rgba(224,160,48,.32)','rgba(224,160,48,.18)','#ffc05a','위험',fico,'',
+      _esc(f.name||'시설물'),
+      _esc(f.type.split(' ').slice(1).join(' ')||'시설')+(f.loc?' · '+_esc(f.loc):'')));
+  });
+  el.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <span style="font-size:12.5px;font-weight:800;color:#eaf2fa;">⚡ 주의 현황</span>
+      <span style="font-size:10.5px;color:#9bb8cc;">${sum.join(' <span style=\"color:#3a5a74;\">·</span> ')}</span>
+    </div>
+    <div style="display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:2px;">${cards.join('')}</div>`;
 }
 function openRescueFromHome(id){
   openApp('rescue');
   setTimeout(()=>{try{openResListDetail(id);}catch(e){}},90);
+}
+function openHazFromHome(id){
+  openApp('rescue');
+  setTimeout(()=>{try{openResPopup(id,'hazard');}catch(e){}},90);
+}
+function openFacFromHome(id){
+  openApp('inspect');
+  setTimeout(()=>{try{openFacDetail(id);}catch(e){}},120);
 }
 // ══════════════════════════════════════════
 // 전체 통계 (일반직원도 열람 가능)
