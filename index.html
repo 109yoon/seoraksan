@@ -1545,7 +1545,7 @@ window.addEventListener('error',e=>{_logErr((e.message||'오류')+' @'+(e.filena
 window.addEventListener('unhandledrejection',e=>{_logErr('Promise: '+((e.reason&&e.reason.message)||e.reason||'거부'));});
 
 // ── 앱 버전 (배포 시 갱신) ──
-const APP_VER='v9.70 (2026.06.18)';
+const APP_VER='v9.71 (2026.06.18)';
 try{document.getElementById('appVerLabel').textContent='설악산 현장관리 '+APP_VER;}catch(e){}
 // ══════════════════════════════════════════
 // DB
@@ -4469,9 +4469,9 @@ function renderResList(){
       const hasCoord=!!(r.lat&&r.lng);
       return `<div class="lcard" onclick="openResListDetail(${r.id})" style="position:relative;">
         <div class="lico" style="background:${isOg?ti.color:'#1a3a1a'};border:none;color:#fff;">${ti.ico}</div>
-        <div class="linfo"><div class="lname">🚨 ${r.title}${r.extAgency?` <span style="font-size:9px;background:rgba(255,120,30,.18);color:#f08050;border:1px solid rgba(255,120,30,.35);border-radius:9px;padding:1px 6px;font-weight:700;vertical-align:middle;">🚒 ${r.extAgency}</span>`:''}${(r.mobilize&&r.mobilize.length)?` <span style="font-size:9px;background:rgba(231,76,60,.18);color:#e74c3c;border:1px solid rgba(231,76,60,.4);border-radius:9px;padding:1px 6px;font-weight:700;vertical-align:middle;">🚨 ${r.mobilize.join('·')}</span>`:''}</div>
-          <div class="lmeta">${r.type} · ${r.date}</div>
-          <div class="lmeta">작성: ${r.author||'-'} · ${totalPh}보 기록 · 사고자: ${r.vName||'미상'}${(r.victims2&&r.victims2.length)?` <span style="color:#e9897e;font-weight:700;">외 ${r.victims2.length}명</span>`:''}</div>
+        <div class="linfo"><div class="lname">🚨 ${_esc(r.title)}${r.extAgency?` <span style="font-size:9px;background:rgba(255,120,30,.18);color:#f08050;border:1px solid rgba(255,120,30,.35);border-radius:9px;padding:1px 6px;font-weight:700;vertical-align:middle;">🚒 ${_esc(r.extAgency)}</span>`:''}${(r.mobilize&&r.mobilize.length)?` <span style="font-size:9px;background:rgba(231,76,60,.18);color:#e74c3c;border:1px solid rgba(231,76,60,.4);border-radius:9px;padding:1px 6px;font-weight:700;vertical-align:middle;">🚨 ${_esc(r.mobilize.join('·'))}</span>`:''}</div>
+          <div class="lmeta">${_esc(r.type)} · ${r.date}</div>
+          <div class="lmeta">작성: ${_esc(r.author||'-')} · ${totalPh}보 기록 · 사고자: ${_esc(r.vName||'미상')}${(r.victims2&&r.victims2.length)?` <span style="color:#e9897e;font-weight:700;">외 ${r.victims2.length}명</span>`:''}</div>
           ${hasCoord?`<button onclick="event.stopPropagation();viewOnMap(${r.lat},${r.lng})" style="margin-top:5px;padding:4px 10px;background:rgba(79,168,208,.12);border:1px solid rgba(79,168,208,.35);color:#4fa8d0;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;">🗺️ 지도보기</button>`:''}
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;align-self:flex-start;flex-shrink:0;">
@@ -4489,12 +4489,12 @@ function renderResList(){
         <div style="display:flex;align-items:center;gap:10px;">
           <div style="font-size:22px;">${h.hazType?.split(' ')[0]||'⚠️'}</div>
           <div style="flex:1;min-width:0;">
-            <div style="font-size:13px;color:#e0edf8;font-weight:600;">${h.hazType||'위험상황'} · ${h.loc||'-'}${(h.mobilize&&h.mobilize.length)?` <span style="font-size:9px;background:rgba(231,76,60,.18);color:#e74c3c;border:1px solid rgba(231,76,60,.4);border-radius:9px;padding:1px 6px;font-weight:700;vertical-align:middle;">🚨 ${h.mobilize.join('·')}</span>`:''}</div>
-            <div style="font-size:10.5px;color:#8ab4cc;margin-top:3px;">${h.dt||'-'} · ${h.danger||'-'} · ${h.author||'-'}</div>
-            <div style="font-size:11px;color:#7a9cb8;margin-top:2px;">${(h.desc||'').slice(0,40)}${(h.desc||'').length>40?'...':''}</div>
+            <div style="font-size:13px;color:#e0edf8;font-weight:600;">${_esc(h.hazType||'위험상황')} · ${_esc(h.loc||'-')}${(h.mobilize&&h.mobilize.length)?` <span style="font-size:9px;background:rgba(231,76,60,.18);color:#e74c3c;border:1px solid rgba(231,76,60,.4);border-radius:9px;padding:1px 6px;font-weight:700;vertical-align:middle;">🚨 ${_esc(h.mobilize.join('·'))}</span>`:''}</div>
+            <div style="font-size:10.5px;color:#8ab4cc;margin-top:3px;">${h.dt||'-'} · ${_esc(h.danger||'-')} · ${_esc(h.author||'-')}</div>
+            <div style="font-size:11px;color:#7a9cb8;margin-top:2px;">${_esc((h.desc||'').slice(0,40))}${(h.desc||'').length>40?'...':''}</div>
             ${hasCoord?`<button onclick="event.stopPropagation();viewOnMap(${h.lat},${h.lng})" style="margin-top:5px;padding:4px 10px;background:rgba(230,126,34,.12);border:1px solid rgba(230,126,34,.35);color:#e67e22;border-radius:7px;font-size:11px;font-weight:600;cursor:pointer;">🗺️ 지도보기</button>`:''}
           </div>
-          <span class="lbadge ${done?'haz-badge-done':'haz-badge-active'}" style="align-self:flex-start;flex-shrink:0;">${h.hazStatus||'미조치'}</span>
+          <span class="lbadge ${done?'haz-badge-done':'haz-badge-active'}" style="align-self:flex-start;flex-shrink:0;">${_esc(h.hazStatus||'미조치')}</span>
         </div>
       </div>`;
     }).join('');
@@ -4816,7 +4816,7 @@ function downloadStatsExcel(tab){
 // ══════════════════════════════════════════
 // 팝업 & 상황 종료
 // ══════════════════════════════════════════
-function _popRow(ico,val){return val?`<div style="display:flex;gap:5px;margin-bottom:3px;"><span style="color:#4a7090;flex-shrink:0;">${ico}</span><span style="color:#c0d8ec;font-size:11px;">${val}</span></div>`:'';}
+function _popRow(ico,val){return val?`<div style="display:flex;gap:5px;margin-bottom:3px;"><span style="color:#4a7090;flex-shrink:0;">${ico}</span><span style="color:#c0d8ec;font-size:11px;">${_esc(val)}</span></div>`:'';}
 function openResPopup(id,type='rescue'){
   const data=type==='rescue'?(DB.g('rescues')||[]).find(x=>x.id===id):(DB.g('hazards')||[]).find(x=>x.id===id);if(!data)return;
   selResId=id;
@@ -4847,7 +4847,7 @@ function openResPopup(id,type='rescue'){
       <div style="display:flex;gap:5px;margin-bottom:6px;align-items:center;">
         <span style="font-size:10px;padding:2px 7px;border-radius:9px;font-weight:700;background:${isOg?'rgba(192,57,43,.2)':'rgba(39,174,96,.15)'};color:${isOg?'#e05050':'#27ae60'};">${isOg?'진행중':'종료'}</span>
         <span style="font-size:10px;color:#4a7090;">${totalPh}보 기록</span>
-        <span style="font-size:10px;color:#3a6a8a;">${d.type}</span>
+        <span style="font-size:10px;color:#3a6a8a;">${_esc(d.type)}</span>
       </div>
       ${rows||'<div style="color:#4a7090;font-size:11px;">상세 정보 없음</div>'}`;
     document.getElementById('btnViewRep').style.display='block';
@@ -5813,8 +5813,8 @@ function renderTimeline(r,viewMode,outId){
   }
 
   const tabHdr=`<div style="background:#0b1c30;border-radius:10px;padding:11px 12px;border:.5px solid rgba(255,255,255,.07);margin-bottom:10px;">
-    <div style="font-size:14px;font-weight:700;color:#e0edf8;">${r.title}</div>
-    <div style="font-size:11px;color:#3a6a8a;margin-top:3px;">${r.type} · ${r.status==='ongoing'?'<span style="color:#c0392b;font-weight:700;">진행중</span>':'<span style="color:#27ae60;font-weight:700;">종료</span>'} · ${r.date}${r.status==='ongoing'&&_elapsedStr(r.date)?` · <span style="color:#f0a500;font-weight:700;">⏱ ${_elapsedStr(r.date)}</span>`:''}</div>
+    <div style="font-size:14px;font-weight:700;color:#e0edf8;">${_esc(r.title)}</div>
+    <div style="font-size:11px;color:#3a6a8a;margin-top:3px;">${_esc(r.type)} · ${r.status==='ongoing'?'<span style="color:#c0392b;font-weight:700;">진행중</span>':'<span style="color:#27ae60;font-weight:700;">종료</span>'} · ${r.date}${r.status==='ongoing'&&_elapsedStr(r.date)?` · <span style="color:#f0a500;font-weight:700;">⏱ ${_elapsedStr(r.date)}</span>`:''}</div>
     <div style="display:flex;gap:5px;margin-top:9px;">
       <button onclick="${_isBoard?`_boardOpenDetail(${r.id},'advanced')`:`renderTimeline(getRes(${r.id}),'advanced')`}" style="flex:1;padding:6px;border-radius:7px;border:1px solid;font-size:11px;font-weight:600;cursor:pointer;background:${'advanced'===mode?'rgba(79,168,208,.15)':'transparent'};color:${'advanced'===mode?'#4fa8d0':'rgba(255,255,255,.35)'};border-color:${'advanced'===mode?'rgba(79,168,208,.5)':'rgba(255,255,255,.1)'};">📍 고도화 타임라인</button>
       ${isExternal()?'':`<button onclick="${_isBoard?`_boardOpenDetail(${r.id},'write')`:`renderTimeline(getRes(${r.id}),'write')`}" style="flex:1;padding:6px;border-radius:7px;border:1px solid;font-size:11px;font-weight:600;cursor:pointer;background:${'write'===mode?'rgba(79,168,208,.15)':'transparent'};color:${'write'===mode?'#4fa8d0':'rgba(255,255,255,.35)'};border-color:${'write'===mode?'rgba(79,168,208,.5)':'rgba(255,255,255,.1)'};">📄 보고서</button>`}
@@ -5868,28 +5868,28 @@ function renderTimeline(r,viewMode,outId){
     const rows=[];
     const dparts=[_ok(r.date)?r.date:'',_ok(r.dispatch)?'신고 '+r.dispatch:'',_ok(r.arrival)?'출동 '+r.arrival:''].filter(Boolean);
     if(dparts.length)rows.push(_row('일시',dparts.join(' · ')));
-    if(_ok(r.location))rows.push(_row('위치',r.location+(_ok(r.loctype)?' · '+r.loctype:'')));
-    const wx=[_ok(r.weather)?r.weather:'',_ok(r.weatherAlert)?r.weatherAlert:''].filter(Boolean).join(' ');
+    if(_ok(r.location))rows.push(_row('위치',_esc(r.location)+(_ok(r.loctype)?' · '+_esc(r.loctype):'')));
+    const wx=[_ok(r.weather)?_esc(r.weather):'',_ok(r.weatherAlert)?_esc(r.weatherAlert):''].filter(Boolean).join(' ');
     if(wx)rows.push(_row('기상',wx));
-    const vp=[_ok(r.vName)?r.vName:'',_ok(r.vBirth)?_ageFromBirth(r.vBirth)+'세':'',_ok(r.vGender)&&r.vGender!=='알수없음'?r.vGender:'',_ok(r.vNation)&&r.vNation!=='알수없음'?r.vNation:''].filter(Boolean);
+    const vp=[_ok(r.vName)?_esc(r.vName):'',_ok(r.vBirth)?_ageFromBirth(r.vBirth)+'세':'',_ok(r.vGender)&&r.vGender!=='알수없음'?_esc(r.vGender):'',_ok(r.vNation)&&r.vNation!=='알수없음'?_esc(r.vNation):''].filter(Boolean);
     if(vp.length)rows.push(_row('사고자',vp.join(' · ')+((r.victims2&&r.victims2.length)?` <span style="color:#e9897e;font-weight:700;">외 ${r.victims2.length}명</span>`:'')));
-    if(r.victims2&&r.victims2.length)rows.push(_row('추가자',r.victims2.map(v=>[v.name||'미상',v.gender&&v.gender!=='알수없음'?v.gender:'',v.age?v.age+'세':'',v.severity,v.note].filter(Boolean).join(' · ')).join('<br>')));
-    if(_ok(r.vTel))rows.push(_row('연락처',r.vTel));
-    if(_ok(r.severity))rows.push(_row('중증도',r.severity));
+    if(r.victims2&&r.victims2.length)rows.push(_row('추가자',r.victims2.map(v=>[_esc(v.name||'미상'),v.gender&&v.gender!=='알수없음'?_esc(v.gender):'',v.age?_esc(v.age)+'세':'',_esc(v.severity),_esc(v.note)].filter(Boolean).join(' · ')).join('<br>')));
+    if(_ok(r.vTel))rows.push(_row('연락처',_esc(r.vTel)));
+    if(_ok(r.severity))rows.push(_row('중증도',_esc(r.severity)));
     // 활력징후 추이: 1보 + 각 보고의 vitals 수집
     {const vseq=[];if(r.vitals&&_vitalsStr(r.vitals))vseq.push(r.vitals);(r.reports||[]).forEach(p=>{if(p.vitals&&_vitalsStr(p.vitals))vseq.push(p.vitals);});
      if(vseq.length){const vhtml=vseq.map(v=>`<div style="font-size:10px;color:#9bbdd4;line-height:1.6;"><span style="color:#4a7090;">${(v.at||'').slice(5,16)||'-'}</span> ${_vitalsStr(v)}</div>`).join('');rows.push(_row('활력',vhtml));}}
     const inj=_okA(r.injuryParts);if(inj.length)rows.push(_row('부상',inj.join(', ')));
     const rm=_okA(r.rescueMethod);if(rm.length)rows.push(_row('구조',rm.join(', ')));
     const mob=_okA(r.mobilize);if(mob.length)rows.push(_row('응소',mob.join(', ')));
-    if(_ok(r.cause))rows.push(_row('원인',r.cause));
-    if(_ok(r.alcohol)&&r.alcohol!=='알수없음')rows.push(_row('음주',r.alcohol));
-    if(_ok(r.situation))rows.push(_row('경위',r.situation));
-    if(_ok(r.hospital)&&r.hospital!=='미정')rows.push(_row('이송',r.hospital));
-    if(r.handover&&r.handover.to)rows.push(_row('인계',r.handover.to+(r.handover.time?' · '+r.handover.time.slice(11):'')+(r.handover.by?' ('+r.handover.by+')':'')));
-    if(_ok(r.extra))rows.push(_row('특이',r.extra));
+    if(_ok(r.cause))rows.push(_row('원인',_esc(r.cause)));
+    if(_ok(r.alcohol)&&r.alcohol!=='알수없음')rows.push(_row('음주',_esc(r.alcohol)));
+    if(_ok(r.situation))rows.push(_row('경위',_esc(r.situation)));
+    if(_ok(r.hospital)&&r.hospital!=='미정')rows.push(_row('이송',_esc(r.hospital)));
+    if(r.handover&&r.handover.to)rows.push(_row('인계',_esc(r.handover.to)+(r.handover.time?' · '+r.handover.time.slice(11):'')+(r.handover.by?' ('+_esc(r.handover.by)+')':'')));
+    if(_ok(r.extra))rows.push(_row('특이',_esc(r.extra)));
     const updates=(r.reports||[]).map((p,i)=>({p,pn:i+2})).filter(({p})=>p.update||(p.victimChange&&p.victimChange!=='변화없음')||p.addMem||p.extra);
-    const updHtml=updates.length?`<div style="margin-top:7px;padding-top:7px;border-top:.5px solid rgba(255,255,255,.08);"><div style="font-size:10px;color:#4a7090;font-weight:700;margin-bottom:3px;">추가 보고</div>${updates.map(({p,pn})=>{const pts=[];if(p.update)pts.push(p.update);if(p.victimChange&&p.victimChange!=='변화없음')pts.push('부상자 '+p.victimChange);if(p.addMem)pts.push('추가대원 '+p.addMem);if(p.extra)pts.push(p.extra);return `<div style="padding:5px 0;border-bottom:.5px solid rgba(255,255,255,.04);"><span style="font-size:10px;color:#4fa8d0;font-weight:700;">${pn}보</span> <span style="font-size:10px;color:#4a7090;font-weight:600;">${p.repTime||''} · ${p.author||''}</span><br><span style="font-size:11px;color:#b8d4e8;line-height:1.5;">${pts.join(' / ')}</span></div>`;}).join('')}</div>`:'';
+    const updHtml=updates.length?`<div style="margin-top:7px;padding-top:7px;border-top:.5px solid rgba(255,255,255,.08);"><div style="font-size:10px;color:#4a7090;font-weight:700;margin-bottom:3px;">추가 보고</div>${updates.map(({p,pn})=>{const pts=[];if(p.update)pts.push(_esc(p.update));if(p.victimChange&&p.victimChange!=='변화없음')pts.push('부상자 '+_esc(p.victimChange));if(p.addMem)pts.push('추가대원 '+_esc(p.addMem));if(p.extra)pts.push(_esc(p.extra));return `<div style="padding:5px 0;border-bottom:.5px solid rgba(255,255,255,.04);"><span style="font-size:10px;color:#4fa8d0;font-weight:700;">${pn}보</span> <span style="font-size:10px;color:#4a7090;font-weight:600;">${p.repTime||''} · ${_esc(p.author||'')}</span><br><span style="font-size:11px;color:#b8d4e8;line-height:1.5;">${pts.join(' / ')}</span></div>`;}).join('')}</div>`:'';
     const logHtml=_buildLogHtml(r);
     w.innerHTML=tabHdr+logHtml+`
       <div style="display:flex;gap:6px;margin-bottom:8px;">
@@ -7324,9 +7324,9 @@ function renderWikiList(filter=''){
   document.getElementById('wikiListWrap').innerHTML=list.length?list.map(w=>`
     <div class="lcard" onclick="openWikiPage(${w.id})">
       <div style="font-size:20px;flex-shrink:0;">📄</div>
-      <div class="linfo"><div class="lname">${w.title}</div>
-        <div class="lmeta">${(w.cats||[]).map(c=>`<span style="background:rgba(79,168,208,.08);color:#4fa8d0;padding:1px 6px;border-radius:20px;font-size:9px;margin-right:2px;">${c}</span>`).join('')}</div>
-        <div class="lmeta">v${(w.versions||[]).length+1} · ${w.author||'-'}</div>
+      <div class="linfo"><div class="lname">${_esc(w.title)}</div>
+        <div class="lmeta">${(w.cats||[]).map(c=>`<span style="background:rgba(79,168,208,.08);color:#4fa8d0;padding:1px 6px;border-radius:20px;font-size:9px;margin-right:2px;">${_esc(c)}</span>`).join('')}</div>
+        <div class="lmeta">v${(w.versions||[]).length+1} · ${_esc(w.author||'-')}</div>
       </div>
     </div>`).join(''):'<div class="empty"><div class="empty-ico">📚</div><div class="empty-txt">검색 결과 없음</div></div>';
 }
@@ -7334,10 +7334,12 @@ function openWikiPage(id){
   const wikis=DB.g('wikis')||[];const w=wikis.find(x=>x.id===id);if(!w)return;
   document.getElementById('wikiListWrap').style.display='none';document.getElementById('wikiPageWrap').style.display='block';history.pushState({view:'wiki-page'},'','');
   function linkify(txt){
-  return txt
+  // 보안: 먼저 HTML 이스케이프 후 마크다운 치환(저장형 XSS 방지).
+  // _esc가 '>'를 '&gt;'로 바꾸므로 인용구 정규식도 '&gt; '로 매칭.
+  return _esc(txt)
     .replace(/!\[([^\]]+)\]\((data:[^)]+)\)/g,'<img src="$2" style="max-width:100%;border-radius:8px;margin:6px 0;display:block;">')
     .replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>')
-    .replace(/^> (.+)/gm,'<div class="wiki-quote">$1</div>')
+    .replace(/^&gt; (.+)/gm,'<div class="wiki-quote">$1</div>')
     .replace(/\[([^\]]+)\]/g,function(_,t){return '<span class="wlink" onclick="jumpWiki(\''+_escq(t)+'\')">'+t+'</span>';});
 }
   function renderTable(lines){const rows=lines.filter(l=>l.trim().startsWith('|'));if(!rows.length)return'';let h='<table class="wiki-tbl">';rows.forEach((r,i)=>{if(r.includes('---'))return;const cs=r.split('|').filter(c=>c.trim());h+=`<tr>${cs.map(c=>`<${i===0?'th':'td'}>${linkify(c.trim())}</${i===0?'th':'td'}>`).join('')}</tr>`;});return h+'</table>';}
@@ -7350,31 +7352,31 @@ function openWikiPage(id){
     else{if(!secs.length||secs[secs.length-1].level!==0)secs.push({level:0,title:'',lines:[]});secs[secs.length-1].lines.push(l);}
   });if(cur)secs.push(cur);
   function renderSecBody(sls){const out=[];let tb=[];sls.forEach(l=>{if(l.trim().startsWith('|')){tb.push(l);}else{if(tb.length){out.push(renderTable(tb));tb=[];}out.push(l);}});if(tb.length)out.push(renderTable(tb));return linkify(out.join('\n'));}
-  const tocItems=secs.filter(s=>s.title&&s.level>0).map(s=>{const prefix=s.level===1?'●':s.level===2?'◆':'▸';const indent=s.level===1?'0px':s.level===2?'10px':'20px';const cls=s.level===1?'wiki-toc-item':'wiki-toc-sub';return`<span class="${cls}" style="padding-left:${indent};" onclick="document.getElementById('ws_${encodeURIComponent(s.title)}')?.scrollIntoView({behavior:'smooth'})">${prefix} ${s.title}</span>`;}).join('');
-  const bodyHtml=secs.map(s=>{if(!s.title&&s.level===0)return`<div class="wiki-txt">${renderSecBody(s.lines)}</div>`;const cls=s.level===1?'wiki-h1':s.level===2?'wiki-h2':'wiki-h3';return`<div id="ws_${encodeURIComponent(s.title)}" class="${cls}">${s.title}</div><div class="wiki-txt">${renderSecBody(s.lines)}</div>`;}).join('');
+  const tocItems=secs.filter(s=>s.title&&s.level>0).map(s=>{const prefix=s.level===1?'●':s.level===2?'◆':'▸';const indent=s.level===1?'0px':s.level===2?'10px':'20px';const cls=s.level===1?'wiki-toc-item':'wiki-toc-sub';return`<span class="${cls}" style="padding-left:${indent};" onclick="document.getElementById('ws_${encodeURIComponent(s.title)}')?.scrollIntoView({behavior:'smooth'})">${prefix} ${_esc(s.title)}</span>`;}).join('');
+  const bodyHtml=secs.map(s=>{if(!s.title&&s.level===0)return`<div class="wiki-txt">${renderSecBody(s.lines)}</div>`;const cls=s.level===1?'wiki-h1':s.level===2?'wiki-h2':'wiki-h3';return`<div id="ws_${encodeURIComponent(s.title)}" class="${cls}">${_esc(s.title)}</div><div class="wiki-txt">${renderSecBody(s.lines)}</div>`;}).join('');
   const verCount=(w.versions||[]).length;
   document.getElementById('wikiPageWrap').innerHTML=`
     <div class="wiki-page">
-      <div class="wiki-ph"><div class="wiki-ph-title">${w.title}</div>
+      <div class="wiki-ph"><div class="wiki-ph-title">${_esc(w.title)}</div>
         <div class="wiki-ph-acts">
           <button class="wiki-act" onclick="copyWikiDoc(${w.id})">📋복사</button>
           <button class="wiki-act" onclick="openWikiEdit(${w.id})">✏️편집</button>
           <button class="wiki-act del" onclick="deleteWiki(${w.id})">🗑️</button>
         </div>
       </div>
-      ${(w.cats&&w.cats.length)?`<div class="wiki-cats">${w.cats.map(c=>`<span class="wiki-cat">${c}</span>`).join('')}</div>`:''}
-      <div class="wiki-info-bar">v${verCount+1} · 작성: ${w.author||'-'}</div>
-      ${w.photo?`<img src="${w.photo}" class="wiki-img-el">`:''}
+      ${(w.cats&&w.cats.length)?`<div class="wiki-cats">${w.cats.map(c=>`<span class="wiki-cat">${_esc(c)}</span>`).join('')}</div>`:''}
+      <div class="wiki-info-bar">v${verCount+1} · 작성: ${_esc(w.author||'-')}</div>
+      ${w.photo?`<img src="${_esc(w.photo)}" class="wiki-img-el">`:''}
       ${tocItems?`<div class="wiki-toc"><div class="wiki-toc-t">📋 목차</div>${tocItems}</div>`:''}
       <div class="wiki-body">${bodyHtml}</div>
-      ${verCount?`<div class="wiki-ver-area"><div class="wiki-ver-t">버전 히스토리</div>${(w.versions||[]).slice().reverse().map((v,i)=>`<span class="wiki-ver-item" onclick="showVer(${w.id},${verCount-1-i})">v${verCount-i} · ${v.savedAt} · ${v.author||'-'}</span>`).join('')}</div>`:''}
+      ${verCount?`<div class="wiki-ver-area"><div class="wiki-ver-t">버전 히스토리</div>${(w.versions||[]).slice().reverse().map((v,i)=>`<span class="wiki-ver-item" onclick="showVer(${w.id},${verCount-1-i})">v${verCount-i} · ${v.savedAt} · ${_esc(v.author||'-')}</span>`).join('')}</div>`:''}
       <div class="wiki-bottom"><button class="wiki-act" onclick="history.back()">← 뒤로</button></div>
     </div>`;
 }
 function showWikiList(){document.getElementById('wikiPageWrap').style.display='none';document.getElementById('wikiListWrap').style.display='block';}
 function jumpWiki(title){const w=(DB.g('wikis')||[]).find(x=>x.title===title);if(w)openWikiPage(w.id);else{document.getElementById('wikiSearch').value=title;renderWikiList(title);toast(`'${title}' 검색`);}}
 function copyWikiDoc(id){const wikis=DB.g('wikis')||[];const w=wikis.find(x=>x.id===id);if(!w)return;wikis.push({...w,id:Date.now(),title:w.title+' (복사본)',author:getAuthor(),versions:[]});DB.s('wikis',wikis);renderWikiList('');toast('📋 복사본 생성');showWikiList();}
-function showVer(wikiId,vIdx){const w=(DB.g('wikis')||[]).find(x=>x.id===wikiId);if(!w)return;const ver=(w.versions||[])[vIdx];if(!ver)return;document.getElementById('verContent').innerHTML=`<div style="font-size:11px;color:#4fa8d0;margin-bottom:10px;">${w.title} · ${ver.savedAt} · ${ver.author||'-'}</div><div style="font-size:12px;color:#7a9cb8;line-height:1.85;white-space:pre-wrap;">${ver.body}</div>`;document.getElementById('modalVer').classList.add('on');}
+function showVer(wikiId,vIdx){const w=(DB.g('wikis')||[]).find(x=>x.id===wikiId);if(!w)return;const ver=(w.versions||[])[vIdx];if(!ver)return;document.getElementById('verContent').innerHTML=`<div style="font-size:11px;color:#4fa8d0;margin-bottom:10px;">${_esc(w.title)} · ${ver.savedAt} · ${_esc(ver.author||'-')}</div><div style="font-size:12px;color:#7a9cb8;line-height:1.85;white-space:pre-wrap;">${_esc(ver.body)}</div>`;document.getElementById('modalVer').classList.add('on');}
 function openWikiEdit(id=null){
   _editWikiId=id;_selCats=new Set();
   document.getElementById('wikiEditId').value=id||'';
@@ -8550,8 +8552,8 @@ function renderHomeActive(){
         <span style="font-size:8px;font-weight:800;color:#ff6b5e;background:rgba(231,76,60,.18);border-radius:6px;padding:2px 6px;">진행중</span>
         ${mob}
       </div>
-      <div style="font-size:11.5px;font-weight:700;color:#eaf2fa;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.title||r.type}</div>
-      <div style="font-size:9.5px;color:#8ab4cc;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${r.vName||'미상'}${r.location?' · '+r.location:''}</div>
+      <div style="font-size:11.5px;font-weight:700;color:#eaf2fa;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_esc(r.title||r.type)}</div>
+      <div style="font-size:9.5px;color:#8ab4cc;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_esc(r.vName||'미상')}${r.location?' · '+_esc(r.location):''}</div>
       ${elp?`<div style="font-size:10px;font-weight:700;color:#f0a500;margin-top:4px;">⏱ ${elp}</div>`:''}
     </div>`;
   }).join('');
