@@ -1698,13 +1698,15 @@ function _mergeRecord(local,server){
     ['wpLog',e=>JSON.stringify(e)],
     ['npsLog',e=>JSON.stringify(e)],
     ['photos',p=>(p&&p.url)?('url:'+p.url):JSON.stringify(p)],
-    ['mobilizeResp',m=>(m&&m.name)?('name:'+m.name):JSON.stringify(m)] // 응소 응답(이름별 1건, 본인 응답은 항상 최신 로컬값 우선)
+    ['mobilizeResp',m=>(m&&m.name)?('name:'+m.name):JSON.stringify(m)], // 응소 응답(이름별 1건, 본인 응답은 항상 최신 로컬값 우선)
+    ['fireTL',e=>JSON.stringify(e)] // 산불 진행 타임라인(등록 후에도 계속 추가됨)
   ];
   fields.forEach(([f,keyFn])=>{
     if(!Array.isArray(local[f])&&!Array.isArray(server[f]))return; // 양쪽 다 없으면 손대지 않음
     out[f]=_unionBy(server[f],local[f],keyFn);
   });
   if(Array.isArray(out.reports))out.reports.sort((a,b)=>String((a&&a.repTime)||'').localeCompare(String((b&&b.repTime)||'')));
+  if(Array.isArray(out.fireTL))out.fireTL.sort((a,b)=>String((a&&a.time)||'').localeCompare(String((b&&b.time)||'')));
   // 추가 사고자(victims2): 병합된 보고 중 가장 최신 보고의 값을 신뢰
   // (한쪽 기기가 오프라인 중 작성한 stale 본으로 다른 기기가 추가한 사고자가 덮여 사라지는 것을 방지)
   if(Array.isArray(out.reports)&&out.reports.length){
@@ -5011,6 +5013,7 @@ function openHazDetail(id){
         ${h.desc?`<br><br>${_esc(h.desc)}`:''}
       </div>
       ${_mobilizeBlockHtml('hazards',h)}
+      ${_hazFireTLHtml(h)}
     </div>
   </div>`;
   ov.onclick=e=>{if(e.target===ov)ov.style.display='none';};
@@ -6978,6 +6981,52 @@ function renderHazFireTL(){
     <button onclick="_hazFireTL.splice(${i},1);renderHazFireTL()" style="background:none;border:none;color:#c0392b;font-size:13px;cursor:pointer;">✕</button>
   </div>`).join(''):'<div style="font-size:11px;color:rgba(255,255,255,.25);padding:4px 0;">타임라인 항목 없음</div>';
 }
+// 등록 후 상세화면에서도 산불 진행 타임라인을 계속 추가/삭제할 수 있도록(N보 대체)
+function _hazFireTLHtml(h){
+  if(!h.hazType||!h.hazType.includes('산불'))return '';
+  const tl=h.fireTL||[];
+  const stages=['최초 발화 확인','소방 신고','소방 도착','진화 시작','진화 완료','재발화','완전 진화'];
+  return `<div id="fireTLBlk_${h.id}" style="background:#0b1c30;border-radius:10px;padding:11px 12px;border:.5px solid rgba(192,57,43,.25);margin-top:8px;">
+    <div style="font-size:11px;color:#c0392b;font-weight:700;margin-bottom:7px;">🔥 산불 진행 타임라인</div>
+    <div style="margin-bottom:6px;">
+      ${tl.length?tl.map((t,i)=>`<div style="display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);">
+        <span style="font-size:10px;color:#4fa8d0;flex-shrink:0;">${_esc((t.time||'').slice(11)||t.time||'-')}</span>
+        <span style="font-size:11px;color:#e0edf8;flex:1;">${_esc(t.note)}</span>
+        <button onclick="delHazFireTL(${h.id},${i})" style="background:none;border:none;color:#c0392b;font-size:13px;cursor:pointer;">✕</button>
+      </div>`).join(''):'<div style="font-size:11px;color:rgba(255,255,255,.25);padding:4px 0;">타임라인 항목 없음</div>'}
+    </div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px;">
+      ${stages.map(s=>`<div class="pill" onclick="document.getElementById('fireTLNote_${h.id}').value='${_escq(s)}'" style="font-size:10px;">${s}</div>`).join('')}
+    </div>
+    <div style="display:flex;gap:5px;align-items:flex-end;">
+      <input type="datetime-local" id="fireTLTime_${h.id}" class="fi" style="flex:1;" value="${new Date().toISOString().slice(0,16)}">
+      <input type="text" id="fireTLNote_${h.id}" class="fi" style="flex:2;" placeholder="상황 내용">
+      <button onclick="addHazFireTLEntry(${h.id})" style="background:#1a4a6e;color:#fff;border:none;padding:9px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;">추가</button>
+    </div>
+  </div>`;
+}
+function addHazFireTLEntry(id){
+  const haz=DB.g('hazards')||[];
+  const idx=haz.findIndex(x=>x.id===id);if(idx===-1)return;
+  const time=(document.getElementById('fireTLTime_'+id)?.value||'').replace('T',' ');
+  const note=document.getElementById('fireTLNote_'+id)?.value||'';
+  if(!note.trim()){toast('⚠️ 내용 입력');return;}
+  const tl=[...(haz[idx].fireTL||[]),{time,note}].sort((a,b)=>(a.time||'').localeCompare(b.time||''));
+  haz[idx]={...haz[idx],fireTL:tl};
+  DB.s('hazards',haz);
+  const blk=document.getElementById('fireTLBlk_'+id);
+  if(blk)blk.outerHTML=_hazFireTLHtml(haz[idx]);
+  toast('🔥 타임라인 추가');
+}
+function delHazFireTL(id,i){
+  const haz=DB.g('hazards')||[];
+  const idx=haz.findIndex(x=>x.id===id);if(idx===-1)return;
+  const tl=(haz[idx].fireTL||[]).slice();tl.splice(i,1);
+  haz[idx]={...haz[idx],fireTL:tl};
+  DB.s('hazards',haz);
+  const blk=document.getElementById('fireTLBlk_'+id);
+  if(blk)blk.outerHTML=_hazFireTLHtml(haz[idx]);
+}
 function openNewHazard(){
   _hazFireTL=[];
   document.getElementById('hz_dt').value=nowDT();
@@ -8766,7 +8815,7 @@ function openRescueFromHome(id){
 }
 function openHazFromHome(id){
   openApp('rescue');
-  setTimeout(()=>{try{openResPopup(id,'hazard');}catch(e){}},90);
+  setTimeout(()=>{try{openHazDetail(id);}catch(e){}},90);
 }
 function openFacFromHome(id){
   openApp('inspect');
