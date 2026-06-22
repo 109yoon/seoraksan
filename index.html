@@ -9209,7 +9209,40 @@ function _mobilizeBlockHtml(coll,r){
       <button onclick="submitMobilizeResp('${coll}',${r.id},'eta')" style="flex:1;background:rgba(39,174,96,.15);color:#3ad17a;border:1px solid rgba(39,174,96,.35);border-radius:8px;padding:7px;font-size:11px;font-weight:700;cursor:pointer;">🟢 ${myResp&&myResp.status==='eta'?'도착시간 수정':'응소 가능·도착시간 입력'}</button>
       <button onclick="submitMobilizeResp('${coll}',${r.id},'unable')" style="flex:1;background:rgba(231,76,60,.12);color:#e74c3c;border:1px solid rgba(231,76,60,.3);border-radius:8px;padding:7px;font-size:11px;font-weight:700;cursor:pointer;">🔴 응소 불가</button>
     </div>`:''}
+    ${(pendCnt>0&&isAdminUser())?`<button onclick="_remindMobilizeNonResponders('${coll}',${r.id})" style="width:100%;margin-top:7px;background:rgba(240,165,0,.12);color:#f0a500;border:1px solid rgba(240,165,0,.35);border-radius:8px;padding:6px;font-size:10.5px;font-weight:700;cursor:pointer;">🔔 미응답자 ${pendCnt}명 재알림</button>`:''}
   </div>`;
+}
+async function _remindMobilizeNonResponders(coll,id){
+  if(!isAdminUser()){toast('⚠️ 관리자만 가능');return;}
+  const arr=DB.g(coll)||[];
+  const r=arr.find(x=>x.id===id);
+  if(!r)return;
+  const roster=_mobilizeRoster(r.mobilize);
+  const respMap={};(r.mobilizeResp||[]).forEach(x=>{respMap[x.name]=x;});
+  const pendNames=roster.filter(s=>!respMap[s.name]).map(s=>s.name);
+  if(!pendNames.length){toast('✅ 전원 응답 완료');return;}
+  const title=r.title||r.hazType||'위험상황';
+  const body=`🔔 [재알림] ${title} — 응소 여부를 회신해 주세요`;
+  toast('🔔 미응답자 재알림 발송 중…');
+  try{
+    if(!_fdb)throw new Error('no-db');
+    const url=_FCM_PUSH_URL||(DB.g('fcmPushUrl')||'').trim();
+    const snap=await _fdb.collection('fcmTokens').get();
+    const tokens=[];snap.forEach(d=>{const v=d.data()||{};if(v.token&&pendNames.includes(v.name))tokens.push(v.token);});
+    if(tokens.length&&url){
+      const res=await fetch(url,{method:'POST',headers:{'content-type':'text/plain;charset=utf-8'},
+        body:JSON.stringify({secret:_FCM_PUSH_SECRET||(DB.g('fcmPushSecret')||''),title:'설악산 현장관리',body,
+          data:{app:'rescue',tab:'2',id:String(id)},tokens:tokens})});
+      const out=await res.json().catch(()=>({}));
+      toast(`🔔 ${out.sent||tokens.length}명에게 재알림 발송됨`);
+    }else{
+      pushNoti(`🔔 [재알림] ${pendNames.join(', ')} — ${title} 응소 여부 회신 요청`,'🔔',r.type||'화재',{app:'rescue',tab:2,id},'안전사고');
+      toast('🔔 미응답자에게 전체 알림으로 발송됨');
+    }
+  }catch(e){
+    pushNoti(`🔔 [재알림] ${pendNames.join(', ')} — ${title} 응소 여부 회신 요청`,'🔔',r.type||'화재',{app:'rescue',tab:2,id},'안전사고');
+    toast('🔔 미응답자에게 전체 알림으로 발송됨');
+  }
 }
 function submitMobilizeResp(coll,id,status){
   const arr=DB.g(coll)||[];
