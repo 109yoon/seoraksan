@@ -82,8 +82,21 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon -x test --stacktrace
 
+      # secrets 컨텍스트는 if: 에서 못 쓰므로(=startup_failure 원인) 여기서 검사해 output 으로 전달
+      - name: Check signing secret
+        id: sign
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+        run: |
+          if [ -n "$SIGNING_KEY" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::SIGNING_KEY 시크릿 미설정 — 서명/릴리즈를 건너뜁니다."
+          fi
+
       - name: Sign APK
-        if: ${{ secrets.SIGNING_KEY != '' }}
+        if: steps.sign.outputs.available == 'true'
         run: |
           echo "${{ secrets.SIGNING_KEY }}" | base64 -d > /tmp/keystore.jks
           UNSIGNED=android/app/build/outputs/apk/release/app-release-unsigned.apk
@@ -102,7 +115,7 @@ jobs:
         run: echo "version=$(date +%Y%m%d-%H%M)" >> $GITHUB_OUTPUT
 
       - name: Create Release
-        if: ${{ secrets.SIGNING_KEY != '' }}
+        if: steps.sign.outputs.available == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
