@@ -2196,6 +2196,17 @@ function _elapsedStr(dateStr){
   }catch(e){return'';}
 }
 function today(){return now().slice(0,10);}
+// 진행중 경과시간 라이브 갱신: '.js-elapsed[data-d]' 요소의 텍스트를 주기적으로 다시 계산.
+// (경과시간은 분 단위라 30초 간격이면 충분 — 새로고침 없이 자동으로 시간이 올라감)
+function _tickElapsed(){
+  try{
+    document.querySelectorAll('.js-elapsed[data-d]').forEach(function(el){
+      var v=_elapsedStr(el.getAttribute('data-d'));
+      if(v)el.textContent='⏱ '+v;
+    });
+  }catch(e){}
+}
+if(!window._elapsedTimer)window._elapsedTimer=setInterval(_tickElapsed,30000);
 function nowDT(){
   const d=new Date();
   return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
@@ -3050,7 +3061,7 @@ function renderBoard(){
       <div onclick="_boardFocus(${r.id})" style="cursor:pointer;">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:6px;margin-bottom:4px;">
           <div style="font-size:18px;font-weight:800;color:#e0edf8;">${ti.ico} ${_esc(r.title)}</div>
-          ${elp?`<div style="font-size:16px;font-weight:800;color:#f0a500;font-family:monospace;">⏱ ${elp}</div>`:''}
+          ${elp?`<div class="js-elapsed" data-d="${_esc(r.date)}" style="font-size:16px;font-weight:800;color:#f0a500;font-family:monospace;">⏱ ${elp}</div>`:''}
         </div>
         <div style="font-size:13px;color:#7aa8c8;margin-bottom:12px;">${_esc(r.type)} · ${_esc(_resLocLabel(r))} · ${r.date}</div>
         ${(r.teams&&r.teams.length)?r.teams.map((t,ti2)=>{
@@ -4521,7 +4532,7 @@ function _renderFocusPanel(resId){
   const rescue=(DB.g('rescues')||[]).find(r=>r.id===resId);
   if(!rescue){exitFocusMode();return;}
   const _elp=_elapsedStr(rescue.date);
-  titleEl.innerHTML='🔴 '+_esc(rescue.title)+(_elp?` <span style="color:#f0a500;font-size:10px;font-weight:700;">⏱ ${_elp}</span>`:'');
+  titleEl.innerHTML='🔴 '+_esc(rescue.title)+(_elp?` <span class="js-elapsed" data-d="${_esc(rescue.date)}" style="color:#f0a500;font-size:10px;font-weight:700;">⏱ ${_elp}</span>`:'');
   const teams=rescue.teams||[];
   // 보고서·타임라인 버튼 (상단 고정)
   const actionBtns=`<div style="display:flex;gap:6px;margin-bottom:10px;">
@@ -4768,7 +4779,7 @@ function renderResList(){
         </div>
         <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;align-self:flex-start;flex-shrink:0;">
           <span class="lbadge" style="background:${isOg?'rgba(231,76,60,.22)':'rgba(39,174,96,.2)'};color:${isOg?'#ff6b5e':'#3ad17a'};">${isOg?'진행중':'종료'}</span>
-          ${isOg&&_elapsedStr(r.date)?`<span style="font-size:10px;font-weight:700;color:#f0a500;white-space:nowrap;">⏱ ${_elapsedStr(r.date)}</span>`:''}
+          ${isOg&&_elapsedStr(r.date)?`<span class="js-elapsed" data-d="${_esc(r.date)}" style="font-size:10px;font-weight:700;color:#f0a500;white-space:nowrap;">⏱ ${_elapsedStr(r.date)}</span>`:''}
         </div>
       </div>`;
     }).join('');
@@ -6134,7 +6145,7 @@ function renderTimeline(r,viewMode,outId){
 
   const tabHdr=`<div style="background:#0b1c30;border-radius:10px;padding:11px 12px;border:.5px solid rgba(255,255,255,.07);margin-bottom:10px;">
     <div style="font-size:14px;font-weight:700;color:#e0edf8;">${_esc(r.title)}</div>
-    <div style="font-size:11px;color:#3a6a8a;margin-top:3px;">${_esc(r.type)} · ${r.status==='ongoing'?'<span style="color:#c0392b;font-weight:700;">진행중</span>':'<span style="color:#27ae60;font-weight:700;">종료</span>'} · ${r.date}${r.status==='ongoing'&&_elapsedStr(r.date)?` · <span style="color:#f0a500;font-weight:700;">⏱ ${_elapsedStr(r.date)}</span>`:''}</div>
+    <div style="font-size:11px;color:#3a6a8a;margin-top:3px;">${_esc(r.type)} · ${r.status==='ongoing'?'<span style="color:#c0392b;font-weight:700;">진행중</span>':'<span style="color:#27ae60;font-weight:700;">종료</span>'} · ${r.date}${r.status==='ongoing'&&_elapsedStr(r.date)?` · <span class="js-elapsed" data-d="${_esc(r.date)}" style="color:#f0a500;font-weight:700;">⏱ ${_elapsedStr(r.date)}</span>`:''}</div>
     <div style="display:flex;gap:5px;margin-top:9px;">
       <button onclick="${_isBoard?`_boardOpenDetail(${r.id},'advanced')`:`renderTimeline(getRes(${r.id}),'advanced')`}" style="flex:1;padding:6px;border-radius:7px;border:1px solid;font-size:11px;font-weight:600;cursor:pointer;background:${'advanced'===mode?'rgba(79,168,208,.15)':'transparent'};color:${'advanced'===mode?'#4fa8d0':'rgba(255,255,255,.35)'};border-color:${'advanced'===mode?'rgba(79,168,208,.5)':'rgba(255,255,255,.1)'};">📍 고도화 타임라인</button>
       ${isExternal()?'':`<button onclick="${_isBoard?`_boardOpenDetail(${r.id},'write')`:`renderTimeline(getRes(${r.id}),'write')`}" style="flex:1;padding:6px;border-radius:7px;border:1px solid;font-size:11px;font-weight:600;cursor:pointer;background:${'write'===mode?'rgba(79,168,208,.15)':'transparent'};color:${'write'===mode?'#4fa8d0':'rgba(255,255,255,.35)'};border-color:${'write'===mode?'rgba(79,168,208,.5)':'rgba(255,255,255,.1)'};">📄 보고서</button>`}
@@ -9092,7 +9103,7 @@ function renderHomeActive(){
     cards.push(_card(`openRescueFromHome(${r.id})`,'#e74c3c','rgba(231,76,60,.3)','rgba(231,76,60,.18)','#ff7a6e','진행중',ti.ico,mob,
       _esc(r.title||r.type),
       _esc(r.vName||'미상')+(r.location?' · '+_esc(r.location):''),
-      elp?`<div style="font-size:10px;font-weight:700;color:#f0a500;margin-top:4px;">⏱ ${elp}</div>`:''));
+      elp?`<div class="js-elapsed" data-d="${_esc(r.date)}" style="font-size:10px;font-weight:700;color:#f0a500;margin-top:4px;">⏱ ${elp}</div>`:''));
   });
   haz.slice().reverse().forEach(h=>{
     const hico=(h.hazType||'').split(' ')[0]||'⚠️';
@@ -9486,7 +9497,7 @@ function renderMobilizeBanner(){
   const first=pend[0];
   const onclick=first.coll==='rescues'?`openRescueFromHome(${first.id})`:`openHazFromHome(${first.id})`;
   const qBtn=(label,min)=>`<button onclick="event.stopPropagation();submitMobilizeResp('${first.coll}',${first.id},'eta',_etaFromMinutes(${min}))" style="flex:1;background:rgba(39,174,96,.18);color:#3ad17a;border:1px solid rgba(39,174,96,.4);border-radius:8px;padding:6px 2px;font-size:10.5px;font-weight:700;cursor:pointer;">${label}</button>`;
-  el.innerHTML=`<div style="background:linear-gradient(135deg,#3a1410,#240a08);border:1px solid rgba(231,76,60,.5);border-radius:16px;padding:14px 16px;margin-bottom:10px;">
+  el.innerHTML=`<div style="background:linear-gradient(135deg,#3a1410,#240a08);border:1px solid rgba(231,76,60,.5);border-radius:16px;padding:14px 16px;margin-bottom:20px;">
     <div onclick="${onclick}" style="display:flex;align-items:center;gap:12px;cursor:pointer;">
       <div style="width:40px;height:40px;border-radius:50%;background:rgba(231,76,60,.22);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;"><span class="blink">🚨</span></div>
       <div style="min-width:0;flex:1;">
