@@ -149,7 +149,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 .mbtn-sm-text{flex:1;}
 .mbtn-sm-title{font-size:12px;font-weight:600;color:#e0edf8;}
 .mbtn-sm-desc{font-size:10px;color:#5f9bc4;margin-top:1px;}
-.mb-wiki{background:linear-gradient(145deg,#163c5e,#0e2640);}
+.mb-alert{background:linear-gradient(145deg,#1a3a4a,#0e2030);}
 .home-alert{background:linear-gradient(90deg,rgba(192,57,43,.18),rgba(192,57,43,.08));border:1px solid rgba(192,57,43,.4);border-radius:10px;padding:9px 13px;display:flex;align-items:center;gap:10px;flex-shrink:0;cursor:pointer;}
 .home-alert-ico{font-size:16px;}
 .home-alert-text{flex:1;font-size:11px;font-weight:700;color:#ff8a80;line-height:1.4;}
@@ -417,58 +417,18 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
   #boardSide{width:100%;border-left:none;border-top:1px solid rgba(79,168,208,.18);flex:1;}
 }
 
-/* ─── 위키 ─── */
-.wiki-search{background:#0b1c30;border:1px solid rgba(79,168,208,.22);color:#e0edf8;padding:10px 13px;border-radius:9px;width:100%;font-size:13px;outline:none;}
-.wiki-search:focus{border-color:rgba(79,168,208,.5);}
-.hot-wrap{margin:5px 0;}
-.hot-title{font-size:10px;color:#3a6a8a;font-weight:600;margin-bottom:4px;}
-.hot-tags{display:flex;flex-wrap:wrap;gap:4px;}
-.hot-tag{display:flex;align-items:center;gap:3px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);color:#b8d4e8;padding:4px 9px;border-radius:20px;font-size:11px;cursor:pointer;}
-.hot-rank{font-size:9px;font-weight:700;color:#4fa8d0;width:11px;}
-.wiki-page{background:#0b1c30;border-radius:10px;border:.5px solid rgba(255,255,255,.07);}
-.wiki-ph{padding:12px 13px 0;display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
-.wiki-ph-title{font-size:16px;font-weight:800;color:#e0edf8;flex:1;}
-.wiki-ph-acts{display:flex;gap:4px;flex-shrink:0;}
-.wiki-act{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);color:#8ab4cc;padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;font-weight:600;}
-.wiki-act:active{opacity:.7;}.wiki-act.del{color:#c0392b;border-color:rgba(192,57,43,.25);}
-.wiki-cats{display:flex;flex-wrap:wrap;gap:3px;padding:7px 13px;border-top:1px solid rgba(255,255,255,.05);}
-.wiki-cat{font-size:9px;background:rgba(79,168,208,.08);color:#4fa8d0;padding:2px 7px;border-radius:20px;}
-.wiki-info-bar{padding:4px 13px;font-size:10px;color:rgba(255,255,255,.2);border-top:1px solid rgba(255,255,255,.04);}
-.wiki-toc{border:1px solid rgba(79,168,208,.15);border-radius:8px;margin:8px 13px;background:rgba(79,168,208,.04);padding:9px 11px;}
-.wiki-toc-t{font-size:10px;color:#3a6a8a;margin-bottom:4px;font-weight:700;}
-.wiki-toc-item{font-size:11px;color:#4fa8d0;padding:2px 0 2px 0;cursor:pointer;text-decoration:underline;display:block;}
-.wiki-toc-sub{font-size:11px;color:#6a9ab8;padding:2px 0 2px 12px;cursor:pointer;text-decoration:underline;display:block;}
-.wiki-toc-sub2{font-size:11px;color:#5a8090;padding:2px 0 2px 22px;cursor:pointer;text-decoration:underline;display:block;}
-.wiki-body{padding:11px 13px;border-top:1px solid rgba(255,255,255,.05);}
-.wiki-h1{font-size:14px;font-weight:700;color:#e0edf8;margin:12px 0 5px;padding:6px 10px;background:rgba(79,168,208,.1);border-left:3px solid #4fa8d0;border-radius:0 5px 5px 0;}
-.wiki-h1:first-child{margin-top:0;}
-.wiki-h2{font-size:13px;font-weight:700;color:#b8d4e8;margin:9px 0 4px;padding:4px 8px;background:rgba(79,168,208,.05);border-left:2px solid rgba(79,168,208,.4);}
-.wiki-h3{font-size:12px;font-weight:700;color:#9abece;margin:6px 0 3px;padding:3px 8px 3px 14px;border-left:1px dashed rgba(79,168,208,.3);}
-.wiki-txt{font-size:12px;color:#7a9cb8;line-height:1.85;margin-bottom:5px;}
-.wiki-quote{border-left:3px solid rgba(79,168,208,.3);padding:4px 10px;margin:5px 0;color:#5a8aa0;font-style:italic;font-size:12px;}
-.wlink{color:#4fa8d0;text-decoration:underline;cursor:pointer;font-weight:600;}
-.wiki-img-el{width:100%;border-radius:7px;margin:7px 0;max-height:160px;object-fit:cover;}
-.wiki-tbl{width:100%;border-collapse:collapse;margin:7px 0;font-size:11px;}
-.wiki-tbl th{background:rgba(79,168,208,.08);color:#4fa8d0;padding:6px 8px;border:1px solid rgba(255,255,255,.07);text-align:left;}
-.wiki-tbl td{padding:6px 8px;border:1px solid rgba(255,255,255,.05);color:#b8d4e8;}
-.wiki-tbl tr:nth-child(even) td{background:rgba(255,255,255,.02);}
-.wiki-ver-area{padding:8px 13px;border-top:1px solid rgba(255,255,255,.05);}
-.wiki-ver-t{font-size:10px;color:#3a6a8a;margin-bottom:3px;}
-.wiki-ver-item{font-size:11px;color:#4fa8d0;cursor:pointer;text-decoration:underline;display:block;padding:2px 0;}
-.wiki-bottom{padding:8px 13px;border-top:1px solid rgba(255,255,255,.05);display:flex;gap:5px;}
-
-/* 위키 에디터 - 개선 */
-.wiki-editor-wrap{background:#060d1a;border-radius:9px;border:1px solid rgba(79,168,208,.2);overflow:hidden;}
-.wiki-toolbar{display:flex;flex-wrap:wrap;gap:3px;padding:7px 8px;background:rgba(79,168,208,.05);border-bottom:1px solid rgba(79,168,208,.12);}
-.tb-btn{background:rgba(79,168,208,.08);border:1px solid rgba(79,168,208,.15);color:#4fa8d0;padding:5px 9px;border-radius:6px;font-size:11px;cursor:pointer;white-space:nowrap;}
-.tb-btn:active{background:rgba(79,168,208,.2);}
-.tb-sep{width:1px;background:rgba(79,168,208,.15);margin:3px 2px;flex-shrink:0;}
-.wiki-textarea{width:100%;background:transparent;border:none;color:#e0edf8;padding:10px 11px;font-size:12px;outline:none;font-family:inherit;resize:none;line-height:1.7;min-height:160px;}
-.ac-box{background:#0b1c30;border:1px solid rgba(79,168,208,.3);border-radius:8px;max-height:120px;overflow-y:auto;display:none;position:absolute;left:0;right:0;top:calc(100%+2px);z-index:30;box-shadow:0 4px 14px rgba(0,0,0,.5);}
-.ac-item{padding:8px 12px;font-size:12px;color:#b8d4e8;cursor:pointer;border-bottom:.5px solid rgba(255,255,255,.04);}
-.cat-tags{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:5px;}
-.cat-tag-sel{padding:4px 10px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;border:1.5px solid rgba(255,255,255,.1);color:rgba(255,255,255,.36);background:transparent;transition:all .15s;}
-.cat-tag-sel.on{border-color:rgba(79,168,208,.65);color:#4fa8d0;background:rgba(79,168,208,.08);}
+/* ─── 특보운영 ─── */
+.ao-card{background:#0a1626;border-radius:12px;padding:14px;margin-bottom:10px;}
+.ao-level-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:800;}
+.ao-level-예비특보{background:rgba(241,196,15,.15);color:#f0d040;border:1px solid rgba(241,196,15,.3);}
+.ao-level-Ⅰ단계{background:rgba(230,126,34,.15);color:#ffa040;border:1px solid rgba(230,126,34,.3);}
+.ao-level-Ⅱ단계{background:rgba(192,57,43,.2);color:#ff8a80;border:1px solid rgba(192,57,43,.4);}
+.ao-level-Ⅲ단계{background:rgba(142,68,173,.2);color:#d7aefb;border:1px solid rgba(142,68,173,.4);}
+.ao-req-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:8px;}
+.ao-req-table th{background:rgba(79,168,208,.08);color:#4fa8d0;padding:5px 8px;border:1px solid rgba(255,255,255,.07);text-align:left;font-size:10px;}
+.ao-req-table td{padding:5px 8px;border:1px solid rgba(255,255,255,.05);color:#b8d4e8;}
+.ao-resp-chip{display:inline-flex;align-items:center;gap:4px;background:rgba(79,168,208,.12);color:#7db8d8;border:1px solid rgba(79,168,208,.25);border-radius:20px;padding:3px 8px;font-size:10px;font-weight:600;margin:2px;}
+.ao-resp-chip.arrived{background:rgba(39,174,96,.15);color:#7ec8a0;border-color:rgba(39,174,96,.3);}
 
 /* ─── 관리자 ─── */
 .adm-tabs{display:flex;background:#040a16;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;overflow-x:auto;}
@@ -545,13 +505,6 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 
 /* 간편/전체 토글 버튼 active */
 .view-toggle-btn.active{background:rgba(79,168,208,.15);color:#4fa8d0;border-color:rgba(79,168,208,.5);}
-
-/* WYSIWYG 에디터 */
-#wikiEditor{background:#060d1a;min-height:160px;padding:10px 11px;outline:none;font-size:12px;color:#e0edf8;line-height:1.7;border-bottom-left-radius:9px;border-bottom-right-radius:9px;}
-#wikiEditor:empty:before{content:attr(placeholder);color:#3a6a8a;pointer-events:none;}
-#wikiEditor b{color:#e0edf8;font-weight:700;}
-#wikiEditor [contenteditable]{outline:1px solid rgba(79,168,208,.15);border-radius:3px;}
-#wikiEditor [contenteditable]:focus{outline:1px solid rgba(79,168,208,.4);}
 
 /* 보고서 섹터탭 */
 .rep-tab{transition:color .15s,border-color .15s;flex-shrink:0;}
@@ -812,7 +765,7 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
   <div class="home-menu" style="flex:1;min-height:0;">
     <button class="mbtn mb-red" onclick="openApp('rescue')"><div class="mbtn-ico">🚨</div><div><div class="mbtn-title">재난/구조</div><div class="mbtn-desc" id="hdR">구조보고·위험상황</div></div></button>
     <button class="mbtn mb-teal ext-hide" onclick="openApp('inspect')"><div class="mbtn-ico">🛠️</div><div><div class="mbtn-title">시설물 점검</div><div class="mbtn-desc" id="hdI">시설 관리·이력</div></div></button>
-    <button class="mbtn mb-wiki ext-hide" onclick="openApp('wiki')"><div class="mbtn-ico">📚</div><div><div class="mbtn-title">설악위키</div><div class="mbtn-desc" id="hdW">현장 지식 DB</div></div></button>
+    <button class="mbtn mb-alert ext-hide" onclick="openApp('alert')"><div class="mbtn-ico">🌀</div><div><div class="mbtn-title">특보운영</div><div class="mbtn-desc" id="hdA">기상특보 비상근무</div></div></button>
     <button class="mbtn mb-purple ext-hide" onclick="openApp('stats')"><div class="mbtn-ico">📊</div><div><div class="mbtn-title">전체 통계</div><div class="mbtn-desc">현황 분석</div></div></button>
   </div>
 
@@ -1037,14 +990,11 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
   </div>
 </div>
 
-<!-- ══ 위키 ══ -->
-<div id="v-wiki" class="view">
-  <div class="bpad">
-    <input type="text" class="wiki-search" id="wikiSearch" placeholder="🔍 문서 검색..." oninput="onWikiSearch(this.value)">
-    <div id="hotSearchWrap"></div>
-    <button class="btn btn-ghost" style="padding:9px;border-radius:9px;font-size:12px;width:100%;" onclick="openWikiEdit()">✏️ 새 문서 작성</button>
-    <div id="wikiListWrap"></div>
-    <div id="wikiPageWrap" style="display:none;"></div>
+<!-- ══ 특보운영 ══ -->
+<div id="v-alert" class="view">
+  <div class="bpad" id="alertViewWrap">
+    <div id="alertCurrentWrap"></div>
+    <div id="alertActiveWrap"></div>
   </div>
 </div>
 
@@ -1462,60 +1412,66 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
   </div>
 </div>
 
-<!-- ══ 모달: 위키 편집 ══ -->
-<div id="modalWikiEdit" class="modal">
+<!-- ══ 모달: 특보운영 시작 ══ -->
+<div id="modalAlertStart" class="modal">
   <div class="mbox">
-    <div class="mhdr"><span class="mtitle">✏️ 위키 문서</span><button class="mclose" onclick="closeM('modalWikiEdit')">×</button></div>
-    <div class="fg"><span class="fl">문서 제목</span><input type="text" id="wikiTitleIn" class="fi" placeholder="예: 너덜지대"></div>
-    <div class="fg">
-      <span class="fl">카테고리 (탭 선택 + 직접 입력)</span>
-      <div class="cat-tags" id="catTagsWrap"></div>
-      <input type="text" class="fi" style="font-size:11px;margin-top:4px;" placeholder="새 카테고리 입력 후 Enter" onkeydown="addCatInput(event,this)">
-    </div>
-    <div class="fg">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-        <span class="fl" style="margin:0;">본문 작성</span>
-        <button class="tb-btn" onclick="insertTemplate()">📋 템플릿</button>
-      </div>
-      <!-- 개선된 위키 에디터 -->
-      <div class="wiki-editor-wrap">
-        <div class="wiki-toolbar">
-          <button class="tb-btn" onclick="wysiFormat('h1')">📌 대분류</button>
-          <button class="tb-btn" onclick="wysiFormat('h2')">📂 중분류</button>
-          <button class="tb-btn" onclick="wysiFormat('h3')">📄 소분류</button>
-          <div class="tb-sep"></div>
-          <button class="tb-btn" onclick="wysiFormat('bold')"><b>굵게</b></button>
-          <button class="tb-btn" onclick="wysiFormat('link')">🔗 링크</button>
-          <button class="tb-btn" onclick="wysiFormat('quote')">💬 인용</button>
-          <div class="tb-sep"></div>
-          <button class="tb-btn" onclick="wysiFormat('table')">📋 표</button>
-          <button class="tb-btn" onclick="wysiFormat('list')">• 목록</button>
-          <button class="tb-btn" onclick="document.getElementById('wikiBodyImg').click()">📷 사진</button>
-          <input type="file" id="wikiBodyImg" accept="image/*" style="display:none;" onchange="insBodyImg(this)">
-        </div>
-        <!-- WYSIWYG contenteditable 영역 -->
-        <div id="wikiEditor" contenteditable="true" 
-          style="min-height:160px;padding:10px 11px;outline:none;font-size:12px;color:#e0edf8;line-height:1.7;caret-color:#4fa8d0;"
-          oninput="onWikiEditorInput()"
-          onkeydown="onWikiEditorKey(event)"
-          placeholder="여기에 바로 입력하세요...">
-        </div>
-        <textarea id="wikiBodyIn" style="display:none;"></textarea>
-        <div class="ac-box" id="wikiAC" style="position:absolute;"></div>
-      </div>
-      <div style="font-size:10px;color:#3a6a8a;margin-top:5px;line-height:1.5;">
-        💡 버튼을 누르면 바로 적용 · 사진도 바로 삽입 가능
+    <div class="mhdr"><span class="mtitle">🌀 특보운영 시작</span><button class="mclose" onclick="closeM('modalAlertStart')">×</button></div>
+    <div class="fg"><span class="fl">특보 단계</span>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;" id="alertLevelPills">
+        <div class="pill" onclick="selAlertLevel(this,'예비특보')">예비특보</div>
+        <div class="pill" onclick="selAlertLevel(this,'Ⅰ단계(주의보)')">Ⅰ단계(주의보)</div>
+        <div class="pill" onclick="selAlertLevel(this,'Ⅱ단계(경보)')">Ⅱ단계(경보)</div>
+        <div class="pill" onclick="selAlertLevel(this,'Ⅲ단계')">Ⅲ단계</div>
       </div>
     </div>
-    <div class="fg"><span class="fl">대표 사진</span>
-      <div class="photo-slot" onclick="document.getElementById('fileWiki').click()">
-        <input type="file" id="fileWiki" accept="image/*" style="display:none;" onchange="prevImg(this,'prevWiki')">
-        <div id="prevWiki">📸 대표 이미지</div>
+    <div class="fg"><span class="fl">특보 종류</span>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;" id="alertTypePills">
+        <div class="pill" onclick="selAlertType(this,'호우')">호우</div>
+        <div class="pill" onclick="selAlertType(this,'대설')">대설</div>
+        <div class="pill" onclick="selAlertType(this,'태풍')">태풍</div>
+        <div class="pill" onclick="selAlertType(this,'강풍')">강풍</div>
+        <div class="pill" onclick="selAlertType(this,'한파')">한파</div>
+        <div class="pill" onclick="selAlertType(this,'건조')">건조</div>
+        <div class="pill" onclick="selAlertType(this,'산불')">산불</div>
+        <div class="pill" onclick="selAlertType(this,'기타')">기타</div>
       </div>
     </div>
-    <div class="fg"><span class="fl">작성자 (누구나 가능)</span><input type="text" id="wikiAuthorIn" class="fi" placeholder="이름 입력"></div>
-    <input type="hidden" id="wikiEditId">
-    <button class="btn-submit" style="background:#112e50;color:#fff;" onclick="submitWiki()">저장</button>
+    <div class="fg"><span class="fl">비고</span><input type="text" id="alertStartNote" class="fi" placeholder="특이사항 입력"></div>
+    <div id="alertReqTable" style="margin:8px 0;"></div>
+    <button class="btn btn-red" onclick="startAlertOps()">🌀 특보운영 시작</button>
+  </div>
+</div>
+
+<!-- ══ 모달: 응소자 추가 ══ -->
+<div id="modalAlertResp" class="modal">
+  <div class="mbox">
+    <div class="mhdr"><span class="mtitle">👤 응소자 추가</span><button class="mclose" onclick="closeM('modalAlertResp')">×</button></div>
+    <div class="fg"><span class="fl">소속</span>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;" id="respLocPills">
+        <div class="pill" onclick="selRespLoc(this,'사무소')">사무소(본소)</div>
+        <div class="pill" onclick="selRespLoc(this,'대청분소')">대청분소</div>
+        <div class="pill" onclick="selRespLoc(this,'백담분소')">백담분소</div>
+        <div class="pill" onclick="selRespLoc(this,'오색분소')">오색분소</div>
+        <div class="pill" onclick="selRespLoc(this,'한계산성분소')">한계산성분소</div>
+        <div class="pill" onclick="selRespLoc(this,'점봉산분소')">점봉산분소</div>
+      </div>
+    </div>
+    <div class="fg"><span class="fl">역할</span>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px;" id="respRolePills">
+        <div class="pill" onclick="selRespRole(this,'당직')">당직</div>
+        <div class="pill" onclick="selRespRole(this,'비상근무')">비상근무</div>
+        <div class="pill" onclick="selRespRole(this,'과장')">과장</div>
+        <div class="pill" onclick="selRespRole(this,'소장')">소장</div>
+        <div class="pill" onclick="selRespRole(this,'지원반')">지원반</div>
+      </div>
+    </div>
+    <div class="fg"><span class="fl">이름</span>
+      <div id="respNameQuickWrap" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px;"></div>
+      <input type="text" id="respNameIn" class="fi" placeholder="이름 직접 입력">
+    </div>
+    <div class="fg"><span class="fl">도착시각 (비워두면 현재)</span><input type="text" id="respArrivedAt" class="fi" placeholder="예: 21:30"></div>
+    <input type="hidden" id="respTargetId">
+    <button class="btn btn-red" onclick="addAlertResponder()">✅ 추가</button>
   </div>
 </div>
 
@@ -1524,14 +1480,6 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
   <div class="mbox">
     <div class="mhdr"><span class="mtitle" id="guideTitle">안내</span><button class="mclose" onclick="closeM('modalGuide')">×</button></div>
     <div id="guideContent"></div>
-  </div>
-</div>
-
-<!-- ══ 모달: 버전 히스토리 ══ -->
-<div id="modalVer" class="modal">
-  <div class="mbox">
-    <div class="mhdr"><span class="mtitle">📅 버전 히스토리</span><button class="mclose" onclick="closeM('modalVer')">×</button></div>
-    <div id="verContent"></div>
   </div>
 </div>
 
@@ -1631,7 +1579,7 @@ const _FB_CFG={
 // history: 점검이력은 무제한으로 계속 쌓이는 로그성 데이터라 단일문서 그대로 두면 매 점검마다 전체가 전원에게 재전송됨 → 건별 문서로 전환
 const _SHARED_COLL=['rescues','hazards','facilities','history'];
 // _SHARED_DOC: 단일 문서에 JSON 배열 저장 (관리자 전용, 동시 쓰기 없음)
-const _SHARED_DOC=['wikis','staff','catFac','catFacMeta','wikiCats','pendingUsers','approvedUsers','deletedKakaoIds','adminOwnerKakaoId','adminApprovalCode','extAgencies','extAgencyCode','extAgencyDisplayName','geminiApiKey','kmaProxyUrl'];
+const _SHARED_DOC=['alertOps','staff','catFac','catFacMeta','pendingUsers','approvedUsers','deletedKakaoIds','adminOwnerKakaoId','adminApprovalCode','extAgencies','extAgencyCode','extAgencyDisplayName','geminiApiKey','kmaProxyUrl'];
 // 시설물 레거시(단일문서) 폴백/시드 동기화 상태
 let _legacyFacBackup=null; // appData/facilities(구버전)의 백업 — 컬렉션 비었을 때 화면 폴백
 let _facSeedReady=false;   // 시설물 첫 스냅샷·레거시 백업 확인 완료(시드 레이스 방지)
@@ -1803,7 +1751,7 @@ function _stripTags(v){
   if(v&&typeof v==='object'){const o={};for(const k in v)o[k]=_stripTags(v[k]);return o;}
   return v;
 }
-const _SANITIZE_KEYS=['rescues','hazards','pendingUsers','wikis'];
+const _SANITIZE_KEYS=['rescues','hazards','pendingUsers'];
 // ── 동시편집 병합: 누적 데이터(보고·댓글·타임라인·통과기록)는 합집합 보존, 단일값은 최신(로컬) 우선 ──
 function _unionBy(server,local,keyFn){
   const map=new Map();let n=0;
@@ -1982,7 +1930,7 @@ function initFirebase(onReady){
       _remoteUpdateTimer=setTimeout(function(){
         if(window.curApp==='rescue'){renderResList();try{renderRescueMap();}catch(e){}}
         else if(window.curApp==='inspect'){renderFacList();renderInspectMap();}
-        else if(window.curApp==='wiki')renderWikiList('');
+        else if(window.curApp==='alert')renderAlertView();
         else if(window.curApp==='stats')renderFullStats();
       },400);
     }
@@ -2163,18 +2111,13 @@ function initDB(){
     var c2=c.filter(function(x){if(x===TEMPLE)return true;var name=x.replace(/^[^\s]+\s/,'');if(isTemple(name)){cm=true;return false;}return true;});
     if(cm)DB.s('catFac',c2);
   })();
-  if(!DB.g('wikiCats'))   DB.s('wikiCats',['지형','안전','장비','법령','응급','탐방로','시설','동식물','기상']);
   // 다목적위치표지판 시드: 표지판이 하나도 없으면 1회 주입 (null·빈배열·전체삭제 모두 복원)
   if(!_fdb||_facSeedReady)_ensureSignSeed(); // 시드 레이스 방지 + 중복 시드 IIFE 제거(일원화)
   if(!DB.g('rescues'))    DB.s('rescues',[]);
   if(!DB.g('hazards'))    DB.s('hazards',[]);
   if(!DB.g('history'))    DB.s('history',[]);
-  if(!DB.g('wikis'))      DB.s('wikis',[
-    {id:1,title:'너덜지대',cats:['지형','안전'],body:'# 개요\n바위가 쌓인 급경사 비탈면. [낙석] 위험 상시 존재.\n\n## 주의사항\n우천 시 통제 기준 적용.\n\n### 우천 시\n강수량 20mm 이상 시 즉시 통제.\n\n# 관련 구간\n천불동 계곡, 대청봉 능선부.',photo:'',author:'손경완',versions:[]},
-    {id:2,title:'낙석',cats:['안전'],body:'# 개요\n급경사 구간에서 바위가 굴러 떨어지는 현상.\n\n## 주요 발생 구간\n[너덜지대], 천불동 계곡 상단부.\n\n## 대응 요령\n탐방객 대피 후 구역 통제.',photo:'',author:'손경완',versions:[]},
-  ]);
+  if(!DB.g('alertOps'))   DB.s('alertOps',[]);
   if(!DB.g('notis'))         DB.s('notis',[]);
-  if(!DB.g('hotSearch'))     DB.s('hotSearch',{});
   if(!DB.g('notiSetting'))   DB.s('notiSetting',{안전사고:true,낙석:true,위험수목:true,화재:true,기타:true,fac_bad:true,fac_warn:false});
   if(!DB.g('currentUser'))   DB.s('currentUser',{name:'',dept:'',rank:'',kakao:null});
 }
@@ -3140,7 +3083,7 @@ function viewOnMap(lat,lng){
   },200);
 }
 function openApp(mode){
-  if(isExternal()&&['inspect','wiki','stats','admin','settings'].includes(mode)){toast('⚠️ 외부기관 계정은 해당 메뉴에 접근할 수 없습니다');return;}
+  if(isExternal()&&['inspect','stats','admin','settings','alert'].includes(mode)){toast('⚠️ 외부기관 계정은 해당 메뉴에 접근할 수 없습니다');return;}
   curApp=mode;
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
   document.getElementById('appHdr').style.display='block';
@@ -3158,9 +3101,9 @@ function openApp(mode){
     showV('v-inspect-map');bn.style.display='flex';setNv();updateInspectCross();
     history.pushState({view:mode},'','');
     rMaps();setTimeout(()=>{try{renderInspectMap();if(mapI&&!window._mapIInited){window._mapIInited=true;mapI.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));mapI.setLevel(9);}}catch(e){renderFacList();}},200);
-  } else if(mode==='wiki'){
-    document.getElementById('topTitle').textContent='설악위키';
-    bn.style.display='none';showV('v-wiki');history.pushState({view:mode},'','');renderHotSearch();renderWikiList('');
+  } else if(mode==='alert'){
+    document.getElementById('topTitle').textContent='특보운영';
+    bn.style.display='none';showV('v-alert');history.pushState({view:mode},'','');renderAlertView();
   } else if(mode==='admin'){
     // 소유자 카카오 계정은 비밀번호 생략 (최초 1회 관리자 로그인 시 자동 등록)
     const _au=DB.g('currentUser')||{};
@@ -7727,163 +7670,179 @@ function submitAddFac(){
 }
 
 // ══════════════════════════════════════════
-// 위키
+// 특보운영
 // ══════════════════════════════════════════
-let _editWikiId=null,_selCats=new Set();
-const _logHSDebounced=_debounce(v=>logHS(v),500);
-function onWikiSearch(val){renderWikiList(val);if(val&&val.length>=2)_logHSDebounced(val);}
-function logHS(q){
-  const hs=DB.g('hotSearch')||{};const k=q.trim();if(!hs[k])hs[k]=[];
-  const cutoff=Date.now()-86400000;hs[k]=hs[k].filter(t=>t>cutoff);hs[k].push(Date.now());
-  if(!hs[k].length)delete hs[k];DB.s('hotSearch',hs);renderHotSearch();
-}
-function renderHotSearch(){
-  const hs=DB.g('hotSearch')||{};
-  const sorted=Object.entries(hs).map(([k,a])=>[k,a.filter(t=>t>Date.now()-86400000).length]).filter(([k,c])=>c>0).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  const w=document.getElementById('hotSearchWrap');if(!w)return;
-  if(!sorted.length){w.innerHTML='';return;}
-  w.innerHTML=`<div class="hot-wrap"><div class="hot-title">🔥 24시간 인기검색어</div><div class="hot-tags">${sorted.map(([k,c],i)=>`<div class="hot-tag" onclick="document.getElementById('wikiSearch').value='${_escq(k)}';onWikiSearch('${_escq(k)}');"><span class="hot-rank">${i+1}</span>${_esc(k)}<span style="font-size:9px;color:#3a6a8a;"> ${c}</span></div>`).join('')}</div></div>`;
-}
-function renderWikiList(filter=''){
-  document.getElementById('wikiPageWrap').style.display='none';document.getElementById('wikiListWrap').style.display='block';
-  const wikis=DB.g('wikis')||[];const list=filter?wikis.filter(w=>w.title.includes(filter)||w.body.includes(filter)):wikis;
-  document.getElementById('wikiListWrap').innerHTML=list.length?list.map(w=>`
-    <div class="lcard" onclick="openWikiPage(${w.id})">
-      <div style="font-size:20px;flex-shrink:0;">📄</div>
-      <div class="linfo"><div class="lname">${_esc(w.title)}</div>
-        <div class="lmeta">${(w.cats||[]).map(c=>`<span style="background:rgba(79,168,208,.08);color:#4fa8d0;padding:1px 6px;border-radius:20px;font-size:9px;margin-right:2px;">${_esc(c)}</span>`).join('')}</div>
-        <div class="lmeta">v${(w.versions||[]).length+1} · ${_esc(w.author||'-')}</div>
-      </div>
-    </div>`).join(''):`<div class="empty"><div class="empty-ico">📚</div><div class="empty-txt">${filter?'검색 결과 없음':'등록된 문서 없음'}</div>${filter?`<button onclick="document.getElementById('wikiSearch').value='';onWikiSearch('');" style="margin-top:10px;padding:7px 16px;background:rgba(79,168,208,.12);border:1px solid rgba(79,168,208,.35);color:#4fa8d0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">🔄 검색 초기화</button>`:`<button onclick="openWikiEdit(null)" style="margin-top:10px;padding:7px 16px;background:rgba(79,168,208,.12);border:1px solid rgba(79,168,208,.35);color:#4fa8d0;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">✏️ 새 문서 작성</button>`}</div>`;
-}
-function openWikiPage(id){
-  const wikis=DB.g('wikis')||[];const w=wikis.find(x=>x.id===id);if(!w)return;
-  document.getElementById('wikiListWrap').style.display='none';document.getElementById('wikiPageWrap').style.display='block';history.pushState({view:'wiki-page'},'','');
-  function linkify(txt){
-  // 보안: 먼저 HTML 이스케이프 후 마크다운 치환(저장형 XSS 방지).
-  // _esc가 '>'를 '&gt;'로 바꾸므로 인용구 정규식도 '&gt; '로 매칭.
-  return _esc(txt)
-    .replace(/!\[([^\]]+)\]\((data:[^)]+)\)/g,'<img src="$2" style="max-width:100%;border-radius:8px;margin:6px 0;display:block;">')
-    .replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>')
-    .replace(/^&gt; (.+)/gm,'<div class="wiki-quote">$1</div>')
-    .replace(/\[([^\]]+)\]/g,function(_,t){return '<span class="wlink" onclick="jumpWiki(\''+_escq(t)+'\')">'+t+'</span>';});
-}
-  function renderTable(lines){const rows=lines.filter(l=>l.trim().startsWith('|'));if(!rows.length)return'';let h='<table class="wiki-tbl">';rows.forEach((r,i)=>{if(r.includes('---'))return;const cs=r.split('|').filter(c=>c.trim());h+=`<tr>${cs.map(c=>`<${i===0?'th':'td'}>${linkify(c.trim())}</${i===0?'th':'td'}>`).join('')}</tr>`;});return h+'</table>';}
-  const lines=w.body.split('\n');const secs=[];let cur=null;
-  lines.forEach(l=>{
-    if(l.startsWith('### ')){if(cur)secs.push(cur);cur={level:3,title:l.slice(4),lines:[]};}
-    else if(l.startsWith('## ')){if(cur)secs.push(cur);cur={level:2,title:l.slice(3),lines:[]};}
-    else if(l.startsWith('# ')){if(cur)secs.push(cur);cur={level:1,title:l.slice(2),lines:[]};}
-    else if(cur)cur.lines.push(l);
-    else{if(!secs.length||secs[secs.length-1].level!==0)secs.push({level:0,title:'',lines:[]});secs[secs.length-1].lines.push(l);}
-  });if(cur)secs.push(cur);
-  function renderSecBody(sls){const out=[];let tb=[];sls.forEach(l=>{if(l.trim().startsWith('|')){tb.push(l);}else{if(tb.length){out.push(renderTable(tb));tb=[];}out.push(l);}});if(tb.length)out.push(renderTable(tb));return linkify(out.join('\n'));}
-  const tocItems=secs.filter(s=>s.title&&s.level>0).map(s=>{const prefix=s.level===1?'●':s.level===2?'◆':'▸';const indent=s.level===1?'0px':s.level===2?'10px':'20px';const cls=s.level===1?'wiki-toc-item':'wiki-toc-sub';return`<span class="${cls}" style="padding-left:${indent};" onclick="document.getElementById('ws_${encodeURIComponent(s.title)}')?.scrollIntoView({behavior:'smooth'})">${prefix} ${_esc(s.title)}</span>`;}).join('');
-  const bodyHtml=secs.map(s=>{if(!s.title&&s.level===0)return`<div class="wiki-txt">${renderSecBody(s.lines)}</div>`;const cls=s.level===1?'wiki-h1':s.level===2?'wiki-h2':'wiki-h3';return`<div id="ws_${encodeURIComponent(s.title)}" class="${cls}">${_esc(s.title)}</div><div class="wiki-txt">${renderSecBody(s.lines)}</div>`;}).join('');
-  const verCount=(w.versions||[]).length;
-  document.getElementById('wikiPageWrap').innerHTML=`
-    <div class="wiki-page">
-      <div class="wiki-ph"><div class="wiki-ph-title">${_esc(w.title)}</div>
-        <div class="wiki-ph-acts">
-          <button class="wiki-act" onclick="copyWikiDoc(${w.id})">📋복사</button>
-          <button class="wiki-act" onclick="openWikiEdit(${w.id})">✏️편집</button>
-          <button class="wiki-act del" onclick="deleteWiki(${w.id})">🗑️</button>
-        </div>
-      </div>
-      ${(w.cats&&w.cats.length)?`<div class="wiki-cats">${w.cats.map(c=>`<span class="wiki-cat">${_esc(c)}</span>`).join('')}</div>`:''}
-      <div class="wiki-info-bar">v${verCount+1} · 작성: ${_esc(w.author||'-')}</div>
-      ${w.photo?`<img src="${_esc(w.photo)}" class="wiki-img-el">`:''}
-      ${tocItems?`<div class="wiki-toc"><div class="wiki-toc-t">📋 목차</div>${tocItems}</div>`:''}
-      <div class="wiki-body">${bodyHtml}</div>
-      ${verCount?`<div class="wiki-ver-area"><div class="wiki-ver-t">버전 히스토리</div>${(w.versions||[]).slice().reverse().map((v,i)=>`<span class="wiki-ver-item" onclick="showVer(${w.id},${verCount-1-i})">v${verCount-i} · ${v.savedAt} · ${_esc(v.author||'-')}</span>`).join('')}</div>`:''}
-      <div class="wiki-bottom"><button class="wiki-act" onclick="history.back()">← 뒤로</button></div>
+// 단계별 최소 응소 인원 (별표 10 사무소 운영기준)
+const ALERT_REQS={
+  '예비특보':{사무소:[{role:'당직',min:1}],분소:[]},
+  'Ⅰ단계(주의보)':{사무소:[{role:'당직',min:1},{role:'비상근무',min:1}],분소:[{role:'당직',min:1}]},
+  'Ⅱ단계(경보)':{사무소:[{role:'당직',min:1},{role:'비상근무',min:1},{role:'과장',min:1}],분소:[{role:'당직',min:1},{role:'비상근무',min:1}]},
+  'Ⅲ단계':{사무소:[{role:'당직',min:1},{role:'과장',min:1},{role:'비상근무',min:1}],분소:[{role:'사무소 전직원',min:1}]}
+};
+const ALERT_LEVEL_COLORS={'예비특보':'#f0d040','Ⅰ단계(주의보)':'#ffa040','Ⅱ단계(경보)':'#ff8a80','Ⅲ단계':'#d7aefb'};
+let _alertLevel='',_alertType='',_respLoc='',_respRole='';
+
+function renderAlertView(){
+  const ops=DB.g('alertOps')||[];
+  const active=ops.find(o=>!o.closedAt);
+
+  // 기상청 현황
+  const alerts=_weatherAlerts||[];
+  let wxHtml='';
+  if(alerts.length){
+    wxHtml=`<div style="background:#0a1626;border-radius:10px;padding:12px 14px;margin-bottom:10px;border:1px solid rgba(79,168,208,.15);">
+      <div style="font-size:10px;color:#4a7090;font-weight:700;margin-bottom:6px;">📡 기상청 현재 특보</div>
+      ${alerts.map(a=>`<div style="font-size:12px;font-weight:700;margin-bottom:3px;"><span class="ao-level-badge ao-level-${a.level==='경보'?'Ⅱ단계':'Ⅰ단계'}">${a.level}</span> <span style="color:#b8d4e8;margin-left:6px;">${_esc(a.type||'')}${a.reason?' '+_esc(a.reason):''}</span></div>`).join('')}
     </div>`;
-}
-function showWikiList(){document.getElementById('wikiPageWrap').style.display='none';document.getElementById('wikiListWrap').style.display='block';}
-function jumpWiki(title){const w=(DB.g('wikis')||[]).find(x=>x.title===title);if(w)openWikiPage(w.id);else{document.getElementById('wikiSearch').value=title;renderWikiList(title);toast(`'${title}' 검색`);}}
-function copyWikiDoc(id){const wikis=DB.g('wikis')||[];const w=wikis.find(x=>x.id===id);if(!w)return;wikis.push({...w,id:Date.now(),title:w.title+' (복사본)',author:getAuthor(),versions:[]});DB.s('wikis',wikis);renderWikiList('');toast('📋 복사본 생성');showWikiList();}
-function showVer(wikiId,vIdx){const w=(DB.g('wikis')||[]).find(x=>x.id===wikiId);if(!w)return;const ver=(w.versions||[])[vIdx];if(!ver)return;document.getElementById('verContent').innerHTML=`<div style="font-size:11px;color:#4fa8d0;margin-bottom:10px;">${_esc(w.title)} · ${ver.savedAt} · ${_esc(ver.author||'-')}</div><div style="font-size:12px;color:#7a9cb8;line-height:1.85;white-space:pre-wrap;">${_esc(ver.body)}</div>`;document.getElementById('modalVer').classList.add('on');}
-function openWikiEdit(id=null){
-  _editWikiId=id;_selCats=new Set();
-  document.getElementById('wikiEditId').value=id||'';
-  document.getElementById('wikiTitleIn').value='';
-  document.getElementById('wikiBodyIn').value='';
-  document.getElementById('wikiAuthorIn').value=getAuthor();
-  document.getElementById('prevWiki').innerHTML='📸 대표 이미지';
-  const cats=DB.g('wikiCats')||['지형','안전','장비','법령','응급','탐방로','시설'];
-  let bodyMd='';
-  if(id){
-    const w=(DB.g('wikis')||[]).find(x=>x.id===id);
-    if(w){
-      document.getElementById('wikiTitleIn').value=w.title;
-      document.getElementById('wikiBodyIn').value=w.body;
-      document.getElementById('wikiAuthorIn').value=w.author||getAuthor();
-      (w.cats||[]).forEach(cat=>_selCats.add(cat));
-      bodyMd=w.body||'';
-    }
+  } else {
+    wxHtml=`<div style="background:#060d1a;border-radius:10px;padding:10px 14px;margin-bottom:10px;text-align:center;font-size:11px;color:#3a6a8a;">현재 기상청 발효 특보 없음</div>`;
   }
-  renderCatTagsSel(cats);
-  document.getElementById('modalWikiEdit').classList.add('on');
-  // 에디터 초기화 (모달 열린 후)
-  setTimeout(()=>{
-    const editor=document.getElementById('wikiEditor');
-    if(!editor)return;
-    editor.innerHTML='';
-    if(bodyMd){
-      markdownToEditor(bodyMd,editor);
-    } else {
-      editor.innerHTML='<div style="color:#3a6a8a;font-size:12px;">여기를 탭하여 입력 시작...</div>';
-      editor.addEventListener('focus',function once(){editor.innerHTML='';editor.removeEventListener('focus',once);},{once:true});
-    }
-  },150);
-}
-function renderCatTagsSel(cats){document.getElementById('catTagsWrap').innerHTML=cats.map(c=>`<div class="cat-tag-sel ${_selCats.has(c)?'on':''}" onclick="tCat(this,'${c}')">${c}</div>`).join('');}
-function tCat(el,c){if(_selCats.has(c)){_selCats.delete(c);el.classList.remove('on');}else{_selCats.add(c);el.classList.add('on');}}
-function addCatInput(e,inp){if(e.key!=='Enter')return;const v=inp.value.trim();if(!v)return;const cats=DB.g('wikiCats')||[];if(!cats.includes(v)){cats.push(v);DB.s('wikiCats',cats);}_selCats.add(v);inp.value='';renderCatTagsSel(cats);}
-function insertTemplate(){const ta=document.getElementById('wikiBodyIn');if(ta.value.trim()&&!confirm('현재 내용을 템플릿으로 대체할까요?'))return;ta.value='# 개요\n[이 문서에 대한 간략한 설명]\n\n# 발생/위치\n[주요 발생 구간 또는 위치 정보]\n\n## 주요 구간\n[구간 설명]\n\n## 주의사항\n[현장 대원 주의사항]\n\n# 특징\n## 현장 특성\n[특성 설명]\n\n### 세부 사항\n[더 상세한 설명]\n\n# 관련 문서\n[관련문서명]';toast('📋 템플릿 적용');}
-function submitWiki(){
-  // WYSIWYG 에디터 내용을 textarea에 동기화
-  const editor=document.getElementById('wikiEditor');
-  const ta=document.getElementById('wikiBodyIn');
-  if(editor&&ta){ta.value=editorToMarkdown(editor);}
-  const title=document.getElementById('wikiTitleIn').value.trim();const body=document.getElementById('wikiBodyIn').value.trim();
-  if(!title||!body){toast('⚠️ 제목과 본문 필수');return;}
-  const author=document.getElementById('wikiAuthorIn').value.trim()||getAuthor()||'익명';
-  const cats=[..._selCats];const editId=document.getElementById('wikiEditId').value;
-  const wikis=DB.g('wikis')||[];
-  if(editId){const idx=wikis.findIndex(x=>String(x.id)===String(editId));if(idx!==-1){if(!wikis[idx].versions)wikis[idx].versions=[];wikis[idx].versions.push({body:wikis[idx].body,savedAt:now(),author:wikis[idx].author});if(wikis[idx].versions.length>10)wikis[idx].versions.splice(0,wikis[idx].versions.length-10);wikis[idx]={...wikis[idx],title,cats,body,author};}}
-  else{wikis.push({id:Date.now(),title,cats,body,photo:_photoUrl('prevWiki'),author,versions:[]});}
-  DB.s('wikis',wikis);closeM('modalWikiEdit');renderWikiList('');toast('✅ 위키 저장');updateSummary();
-}
-function deleteWiki(id){
-  if(!confirm('삭제하겠습니까?'))return;
-  const wikis=(DB.g('wikis')||[]).filter(w=>w.id!==id);
-  DB.s('wikis',wikis);
-  showWikiList();
-  renderWikiList('');
-  toast('🗑️ 삭제 완료');
-}
-async function insBodyImg(inp){
-  if(!inp.files||!inp.files[0])return;
-  if(!navigator.onLine){toast('⚠️ 오프라인 — 연결 후 사진 삽입 가능');return;}
-  const file=inp.files[0];
-  const ta=document.getElementById('wikiBodyIn');
-  const s=ta.selectionStart;
-  const placeholder='\n![사진](업로드중...)\n';
-  ta.value=ta.value.slice(0,s)+placeholder+ta.value.slice(s);
-  ta.focus();
-  try{
-    const compressed=await _compressImage(file);
-    const url=await uploadImageToStorage(compressed,'photos/wiki');
-    ta.value=ta.value.replace('![사진](업로드중...)',`![사진](${url})`);
-    toast('📷 사진 삽입 완료');
-  }catch(e){
-    ta.value=ta.value.replace(placeholder,'');
-    toast('⚠️ 사진 업로드 실패');
+
+  // 활성 특보운영
+  let activeHtml='';
+  if(active){
+    const lvColor=ALERT_LEVEL_COLORS[active.level]||'#4fa8d0';
+    const resps=active.responders||[];
+    const req=ALERT_REQS[active.level]||{사무소:[],분소:[]};
+    const soResps=resps.filter(r=>r.loc==='사무소'||!r.loc);
+    const bsResps=resps.filter(r=>r.loc&&r.loc!=='사무소');
+    activeHtml=`<div class="ao-card" style="border:1.5px solid ${lvColor}40;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div>
+          <span class="ao-level-badge" style="background:${lvColor}22;color:${lvColor};border:1px solid ${lvColor}50;">${_esc(active.level)}</span>
+          <span style="font-size:11px;color:#7a9cb8;margin-left:8px;">${_esc(active.type||'')} · ${_esc(active.startedAt||'')}</span>
+        </div>
+        ${isAdminUser()?`<button onclick="endAlertOps(${active.id})" style="background:rgba(192,57,43,.15);color:#ff8a80;border:1px solid rgba(192,57,43,.3);border-radius:8px;padding:5px 10px;font-size:11px;cursor:pointer;">종료</button>`:''}
+      </div>
+      ${active.note?`<div style="font-size:11px;color:#7a9cb8;margin-bottom:8px;">📝 ${_esc(active.note)}</div>`:''}
+      <div style="font-size:11px;font-weight:700;color:#e0edf8;margin-bottom:6px;">📋 응소 현황</div>
+      <div style="font-size:10px;color:#4a7090;margin-bottom:4px;">🏢 사무소(본소) — ${req.사무소.length?req.사무소.map(r=>r.role+' '+r.min+'명').join(', '):'없음'}</div>
+      <div style="min-height:28px;margin-bottom:8px;">${soResps.length?soResps.map(r=>_alertRespChip(r,active.id)).join(''):`<span style="font-size:10px;color:#3a6a8a;">응소자 없음</span>`}</div>
+      <div style="font-size:10px;color:#4a7090;margin-bottom:4px;">🏔️ 분소 — ${req.분소.length?req.분소.map(r=>r.role+' '+r.min+'명').join(', '):'없음'}</div>
+      <div style="min-height:28px;margin-bottom:10px;">${bsResps.length?bsResps.map(r=>_alertRespChip(r,active.id)).join(''):`<span style="font-size:10px;color:#3a6a8a;">응소자 없음</span>`}</div>
+      <button onclick="openAddResponder(${active.id})" style="width:100%;background:rgba(79,168,208,.12);border:1px solid rgba(79,168,208,.3);color:#4fa8d0;border-radius:9px;padding:9px;font-size:12px;font-weight:600;cursor:pointer;">👤 응소자 추가</button>
+      ${isAdminUser()?_renderAlertReqTable(active.level):''}
+    </div>`;
+  } else {
+    activeHtml=`<div style="text-align:center;padding:24px 0 16px;">
+      <div style="font-size:32px;margin-bottom:8px;">🌀</div>
+      <div style="font-size:13px;color:#4a7090;margin-bottom:16px;">현재 특보운영 없음</div>
+      ${isAdminUser()?`<button onclick="openAlertStart()" style="background:rgba(192,57,43,.18);border:1px solid rgba(192,57,43,.4);color:#ff8a80;border-radius:12px;padding:12px 24px;font-size:13px;font-weight:700;cursor:pointer;">🌀 특보운영 시작</button>`:''}
+    </div>`;
   }
+
+  // 이전 운영 이력
+  const closed=ops.filter(o=>o.closedAt).slice(-5).reverse();
+  let histHtml='';
+  if(closed.length){
+    histHtml=`<div style="margin-top:14px;"><div style="font-size:10px;color:#3a6a8a;font-weight:700;margin-bottom:6px;">📜 최근 이력</div>
+    ${closed.map(o=>`<div style="background:#06101a;border-radius:8px;padding:8px 12px;margin-bottom:5px;border:.5px solid rgba(255,255,255,.07);">
+      <div style="font-size:11px;font-weight:700;color:#7a9cb8;">${_esc(o.level)} · ${_esc(o.type||'')} · ${_esc(o.startedAt||'')} → ${_esc(o.closedAt||'')}</div>
+      <div style="font-size:10px;color:#3a6a8a;margin-top:2px;">응소 ${(o.responders||[]).length}명</div>
+    </div>`).join('')}
+    </div>`;
+  }
+
+  const wrap=document.getElementById('alertViewWrap');
+  if(wrap) wrap.innerHTML=wxHtml+`<div id="alertActiveWrap">`+activeHtml+`</div>`+histHtml;
 }
 
-document.addEventListener('click',ev=>{if(!ev.target.closest('#wikiBodyIn')&&!ev.target.closest('#wikiAC')){const b=document.getElementById('wikiAC');if(b)b.style.display='none';}});
+function _alertRespChip(r,opId){
+  const del=isAdminUser()?`<span onclick="removeAlertResponder(${opId},'${_escq(r.name)}')" style="cursor:pointer;color:#c0392b;font-size:11px;margin-left:2px;">×</span>`:'';
+  return `<span class="ao-resp-chip">${_esc(r.loc&&r.loc!=='사무소'?r.loc+' ':'')}<b style="color:#e0edf8;">${_esc(r.name)}</b> ${_esc(r.role||'')}${r.arrivedAt?' <span style="color:#7ec8a0;">'+_esc(r.arrivedAt)+'</span>':''}${del}</span>`;
+}
+
+function _renderAlertReqTable(level){
+  const req=ALERT_REQS[level];
+  if(!req)return'';
+  return`<div style="margin-top:10px;font-size:10px;color:#3a6a8a;font-weight:700;margin-bottom:4px;">📋 단계별 필요 인원 (별표10)</div>
+  <table class="ao-req-table">
+    <tr><th>구분</th><th>역할</th><th>최소인원</th></tr>
+    ${req.사무소.map(r=>`<tr><td>사무소</td><td>${r.role}</td><td>${r.min}명</td></tr>`).join('')}
+    ${req.분소.map(r=>`<tr><td>분소</td><td>${r.role}</td><td>${r.min}명</td></tr>`).join('')}
+  </table>`;
+}
+
+function openAlertStart(){
+  _alertLevel='';_alertType='';
+  document.querySelectorAll('#alertLevelPills .pill,#alertTypePills .pill').forEach(p=>p.classList.remove('on'));
+  document.getElementById('alertStartNote').value='';
+  document.getElementById('alertReqTable').innerHTML='';
+  document.getElementById('modalAlertStart').classList.add('on');
+}
+function selAlertLevel(el,v){
+  document.querySelectorAll('#alertLevelPills .pill').forEach(p=>p.classList.remove('on'));
+  el.classList.add('on');_alertLevel=v;
+  document.getElementById('alertReqTable').innerHTML=_renderAlertReqTable(v);
+}
+function selAlertType(el,v){
+  document.querySelectorAll('#alertTypePills .pill').forEach(p=>p.classList.remove('on'));
+  el.classList.add('on');_alertType=v;
+}
+function startAlertOps(){
+  if(!_alertLevel){toast('단계를 선택하세요');return;}
+  if(!_alertType){toast('특보 종류를 선택하세요');return;}
+  const ops=DB.g('alertOps')||[];
+  if(ops.find(o=>!o.closedAt)){toast('⚠️ 이미 운영 중인 특보가 있습니다');return;}
+  const note=document.getElementById('alertStartNote').value.trim();
+  ops.push({id:Date.now(),level:_alertLevel,type:_alertType,note,startedAt:now(),closedAt:null,responders:[],createdBy:getAuthor()});
+  DB.s('alertOps',ops);
+  closeM('modalAlertStart');
+  pushNoti('🌀 특보운영 시작: '+_alertLevel+' ('+_alertType+')','🌀','재난',{app:'alert'},'안전사고');
+  toast('🌀 특보운영 시작');
+  renderAlertView();
+}
+function endAlertOps(id){
+  if(!isAdminUser()){toast('⚠️ 관리자만 가능');return;}
+  if(!confirm('특보운영을 종료하겠습니까?'))return;
+  const ops=DB.g('alertOps')||[];
+  const idx=ops.findIndex(o=>o.id===id);
+  if(idx===-1)return;
+  ops[idx].closedAt=now();
+  DB.s('alertOps',ops);
+  pushNoti('✅ 특보운영 종료','✅','재난',{app:'alert'},'안전사고');
+  toast('✅ 특보운영 종료');
+  renderAlertView();
+}
+function openAddResponder(id){
+  _respLoc='';_respRole='';
+  document.getElementById('respTargetId').value=id;
+  document.getElementById('respNameIn').value='';
+  document.getElementById('respArrivedAt').value='';
+  document.querySelectorAll('#respLocPills .pill,#respRolePills .pill').forEach(p=>p.classList.remove('on'));
+  // 등록된 직원 빠른선택
+  const users=(DB.g('pendingUsers')||[]).filter(u=>u.approvalStatus==='approved');
+  document.getElementById('respNameQuickWrap').innerHTML=users.map(u=>`<div onclick="document.getElementById('respNameIn').value='${_escq(u.realName||u.name||'')}'" style="cursor:pointer;background:rgba(79,168,208,.08);border:1px solid rgba(79,168,208,.2);color:#7db8d8;border-radius:20px;padding:3px 9px;font-size:10px;font-weight:600;">${_esc(u.realName||u.name||'')}</div>`).join('');
+  document.getElementById('modalAlertResp').classList.add('on');
+}
+function selRespLoc(el,v){document.querySelectorAll('#respLocPills .pill').forEach(p=>p.classList.remove('on'));el.classList.add('on');_respLoc=v;}
+function selRespRole(el,v){document.querySelectorAll('#respRolePills .pill').forEach(p=>p.classList.remove('on'));el.classList.add('on');_respRole=v;}
+function addAlertResponder(){
+  const id=parseInt(document.getElementById('respTargetId').value,10);
+  const name=document.getElementById('respNameIn').value.trim();
+  if(!name){toast('이름을 입력하세요');return;}
+  if(!_respLoc){toast('소속을 선택하세요');return;}
+  if(!_respRole){toast('역할을 선택하세요');return;}
+  const arrivedAt=document.getElementById('respArrivedAt').value.trim()||now().slice(11);
+  const ops=DB.g('alertOps')||[];
+  const idx=ops.findIndex(o=>o.id===id);
+  if(idx===-1){toast('운영 기록을 찾을 수 없습니다');return;}
+  if(!ops[idx].responders)ops[idx].responders=[];
+  ops[idx].responders.push({name,loc:_respLoc,role:_respRole,arrivedAt});
+  DB.s('alertOps',ops);
+  closeM('modalAlertResp');
+  toast('✅ 응소자 추가: '+name);
+  renderAlertView();
+}
+function removeAlertResponder(id,name){
+  if(!isAdminUser()){toast('⚠️ 관리자만 가능');return;}
+  const ops=DB.g('alertOps')||[];
+  const idx=ops.findIndex(o=>o.id===id);
+  if(idx===-1)return;
+  ops[idx].responders=(ops[idx].responders||[]).filter(r=>r.name!==name);
+  DB.s('alertOps',ops);
+  renderAlertView();
+}
 
 // ══════════════════════════════════════════
 // 관리자
@@ -8103,7 +8062,7 @@ function renderAdmSheets(){
 }
 function saveSheetsUrl(){const url=document.getElementById('sheetsUrlIn')?.value?.trim();if(!url){toast('⚠️ URL 입력');return;}DB.s('sheetsUrl',url);toast('✅ URL 저장');renderAdmSheets();}
 // ── 전체 데이터 백업/복원 (JSON) ──
-const _BACKUP_KEYS=['rescues','hazards','facilities','history','wikis','catFac','catFacMeta','wikiCats','pendingUsers','approvedUsers','deletedKakaoIds'];
+const _BACKUP_KEYS=['rescues','hazards','facilities','history','catFac','catFacMeta','pendingUsers','approvedUsers','deletedKakaoIds'];
 function exportAllData(){
   const data={};
   _BACKUP_KEYS.forEach(k=>{data[k]=DB.g(k);});
@@ -8206,7 +8165,7 @@ function renderAdmSys(){
       ${_renderPendingList()}
     </div>
     <div class="scard" style="margin-bottom:8px;"><div class="stitle">📊 데이터 현황</div>
-      <div style="font-size:12px;color:#b8d4e8;line-height:2.1;">시설물 <b>${(DB.g('facilities')||[]).length}개</b> · 점검이력 <b>${(DB.g('history')||[]).length}건</b><br>구조이력 <b>${(DB.g('rescues')||[]).length}건</b> · 위험상황 <b>${(DB.g('hazards')||[]).length}건</b><br>위키 <b>${(DB.g('wikis')||[]).length}건</b> · 대원 <b>${(DB.g('members')||[]).length}명</b></div>
+      <div style="font-size:12px;color:#b8d4e8;line-height:2.1;">시설물 <b>${(DB.g('facilities')||[]).length}개</b> · 점검이력 <b>${(DB.g('history')||[]).length}건</b><br>구조이력 <b>${(DB.g('rescues')||[]).length}건</b> · 위험상황 <b>${(DB.g('hazards')||[]).length}건</b><br>특보운영 <b>${(DB.g('alertOps')||[]).length}건</b> · 대원 <b>${(DB.g('members')||[]).length}명</b></div>
       <div style="margin-top:8px;display:flex;align-items:center;gap:6px;font-size:11px;">
         <span style="width:8px;height:8px;border-radius:50%;background:${_fdb?'#27ae60':'#e05050'};display:inline-block;flex-shrink:0;"></span>
         <span style="color:${_fdb?'#5dbf8a':'#e05050'};font-weight:700;">Firebase ${_fdb?'연결됨':'미연결'}</span>
@@ -8274,7 +8233,7 @@ function _checkDeletedUser(){
   updateUserUI();
   toast('⚠️ 계정이 관리자에 의해 삭제되었습니다');
 }
-function resetAll(){if(!isAdminUser()){toast('⚠️ 관리자만 가능');return;}if(!confirm('모든 데이터 초기화. 되돌릴 수 없습니다.'))return;['members','catFac','wikiCats','facilities','rescues','hazards','history','wikis','notis','hotSearch','notiSetting','currentUser','sheetsUrl'].forEach(k=>DB.d(k));initDB();toast('✅ 초기화');renderAdmSys();updateSummary();}
+function resetAll(){if(!isAdminUser()){toast('⚠️ 관리자만 가능');return;}if(!confirm('모든 데이터 초기화. 되돌릴 수 없습니다.'))return;['members','catFac','facilities','rescues','hazards','history','alertOps','notis','notiSetting','currentUser','sheetsUrl'].forEach(k=>DB.d(k));initDB();toast('✅ 초기화');renderAdmSys();updateSummary();}
 function clearNotisOnly(){DB.s('notis',[]);updateBell();toast('🗑️ 알림 이력 삭제');renderAdmSys();}
 
 // (구버전 exportAllData/importAllData 중복 정의 제거 — 권한 데이터 누락·복원버튼 버그 유발.
@@ -8282,7 +8241,7 @@ function clearNotisOnly(){DB.s('notis',[]);updateBell();toast('🗑️ 알림 �
 
 function forceSyncFirestore(){
   if(!_fdb){toast('⚠️ Firebase 미연결 — 인터넷 연결 확인');return;}
-  const keys=['facilities','wikis','history','catFac','catFacMeta','wikiCats'];
+  const keys=['facilities','history','catFac','catFacMeta'];
   let cnt=0;
   keys.forEach(k=>{
     const v=_fs[k];
@@ -9058,7 +9017,7 @@ function updateSummary(){
   function sd(id,v,col){const e=document.getElementById(id);if(!e)return;e.textContent=v;e.style.color=col||'';}
   sd('hdR',og.length?`⚠️ ${og.length}건 진행중`:'구조보고·위험상황',og.length?'#ffaaaa':'');
   sd('hdI',bad.length?`⚠️ 위험 ${bad.length}개`:'시설 관리·이력',bad.length?'#ffaaaa':'');
-  sd('hdW',`문서 ${(DB.g('wikis')||[]).length}건`,'');
+  {const _ao=(DB.g('alertOps')||[]).find(o=>!o.closedAt);sd('hdA',_ao?`🌀 ${_ao.level} 운영중`:'기상특보 비상근무',_ao?'#ffaaaa':'');}
   updateBell();
   try{renderHomeActive();}catch(e){}
   try{renderMobilizeBanner();}catch(e){}
@@ -9639,193 +9598,6 @@ function saveTimetable(){
   toast('✅ 타임테이블 저장');
 }
 
-// ══════════════════════════════════════════
-// WYSIWYG 위키 에디터
-// ══════════════════════════════════════════
-const WIKI_STYLES={
-  h1:'font-size:15px;font-weight:700;color:#e0edf8;background:rgba(79,168,208,.1);border-left:3px solid #4fa8d0;padding:6px 10px;border-radius:0 5px 5px 0;display:block;margin:8px 0 4px;',
-  h2:'font-size:13px;font-weight:700;color:#b8d4e8;background:rgba(79,168,208,.05);border-left:2px solid rgba(79,168,208,.4);padding:4px 8px;display:block;margin:6px 0 3px;',
-  h3:'font-size:12px;font-weight:700;color:#9abece;border-left:1px dashed rgba(79,168,208,.3);padding:3px 8px 3px 14px;display:block;margin:4px 0 2px;',
-  quote:'border-left:3px solid rgba(79,168,208,.3);padding:4px 10px;color:#5a8aa0;font-style:italic;display:block;margin:4px 0;',
-};
-function wysiFormat(type){
-  const editor=document.getElementById('wikiEditor');
-  if(!editor)return;
-  editor.focus();
-  const sel=window.getSelection();
-  const selectedText=sel.toString()||'텍스트';
-  if(type==='bold'){
-    document.execCommand('bold');
-    return;
-  }
-  if(type==='link'){
-    const target=prompt('링크할 위키 문서명:');
-    if(!target)return;
-    const span=document.createElement('span');
-    span.style.cssText='color:#4fa8d0;text-decoration:underline;cursor:pointer;font-weight:600;';
-    span.setAttribute('data-wiki-link',target);
-    span.textContent='['+target+']';
-    span.onclick=()=>jumpWiki(target);
-    // 선택영역에 삽입
-    if(sel.rangeCount){
-      const range=sel.getRangeAt(0);
-      range.deleteContents();
-      range.insertNode(span);
-      // 커서를 span 뒤로
-      range.setStartAfter(span);range.collapse(true);
-      sel.removeAllRanges();sel.addRange(range);
-    }
-    return;
-  }
-  if(type==='quote'){
-    const div=document.createElement('div');
-    div.style.cssText=WIKI_STYLES.quote;
-    div.contentEditable='true';
-    div.textContent=selectedText==='텍스트'?'인용문을 입력하세요':selectedText;
-    insertBlockEl(div);return;
-  }
-  if(type==='table'){
-    const table=document.createElement('table');
-    table.style.cssText='width:100%;border-collapse:collapse;margin:7px 0;font-size:11px;';
-    table.innerHTML=`<thead><tr><th style="background:rgba(79,168,208,.08);color:#4fa8d0;padding:6px 8px;border:1px solid rgba(255,255,255,.07);" contenteditable="true">항목</th><th style="background:rgba(79,168,208,.08);color:#4fa8d0;padding:6px 8px;border:1px solid rgba(255,255,255,.07);" contenteditable="true">내용</th></tr></thead><tbody><tr><td style="padding:6px 8px;border:1px solid rgba(255,255,255,.05);" contenteditable="true">값1</td><td style="padding:6px 8px;border:1px solid rgba(255,255,255,.05);" contenteditable="true">내용1</td></tr></tbody>`;
-    insertBlockEl(table);return;
-  }
-  if(type==='list'){
-    const ul=document.createElement('ul');
-    ul.style.cssText='padding-left:18px;margin:4px 0;';
-    const li=document.createElement('li');
-    li.style.cssText='color:#7a9cb8;font-size:12px;line-height:1.8;';
-    li.contentEditable='true';li.textContent='항목 입력';
-    ul.appendChild(li);insertBlockEl(ul);return;
-  }
-  // h1, h2, h3
-  const div=document.createElement('div');
-  div.style.cssText=WIKI_STYLES[type]||'';
-  div.contentEditable='true';
-  div.setAttribute('data-block',type);
-  div.textContent=selectedText==='텍스트'?{h1:'대분류 제목',h2:'중분류 제목',h3:'소분류 제목'}[type]:selectedText;
-  insertBlockEl(div);
-}
-function insertBlockEl(el){
-  const editor=document.getElementById('wikiEditor');
-  const sel=window.getSelection();
-  if(sel.rangeCount&&editor.contains(sel.getRangeAt(0).commonAncestorContainer)){
-    const range=sel.getRangeAt(0);
-    range.deleteContents();
-    range.insertNode(document.createElement('br'));
-    range.insertNode(el);
-    range.setStartAfter(el);range.collapse(true);
-    sel.removeAllRanges();sel.addRange(range);
-  } else {
-    editor.appendChild(document.createElement('br'));
-    editor.appendChild(el);
-  }
-  editor.focus();
-}
-function onWikiEditorInput(){
-  // hidden textarea에 HTML 동기화
-  const editor=document.getElementById('wikiEditor');
-  const ta=document.getElementById('wikiBodyIn');
-  if(ta)ta.value=editorToMarkdown(editor);
-}
-function onWikiEditorKey(e){
-  if(e.key==='Enter'&&!e.shiftKey){
-    // 일반 텍스트 줄로 복귀
-    const sel=window.getSelection();
-    if(sel.rangeCount){
-      const node=sel.getRangeAt(0).commonAncestorContainer;
-      const blockEl=node.nodeType===3?node.parentElement:node;
-      // 제목 블록 안에서 Enter면 새 일반 div 생성
-      if(blockEl&&blockEl.getAttribute&&blockEl.getAttribute('data-block')){
-        e.preventDefault();
-        const newDiv=document.createElement('div');
-        newDiv.style.cssText='color:#7a9cb8;font-size:12px;line-height:1.85;';
-        newDiv.innerHTML='<br>';
-        blockEl.insertAdjacentElement('afterend',newDiv);
-        const range=document.createRange();
-        range.setStart(newDiv,0);range.collapse(true);
-        sel.removeAllRanges();sel.addRange(range);
-      }
-    }
-  }
-}
-// 에디터 HTML → 마크다운 변환 (저장용)
-function editorToMarkdown(editor){
-  let md='';
-  editor.childNodes.forEach(node=>{
-    if(node.nodeType===3){md+=node.textContent+'\n';}
-    else if(node.nodeName==='BR'){md+='\n';}
-    else if(node.nodeName==='DIV'||node.nodeName==='P'){
-      const block=node.getAttribute&&node.getAttribute('data-block');
-      const txt=node.innerText||node.textContent||'';
-      if(block==='h1')md+='# '+txt+'\n';
-      else if(block==='h2')md+='## '+txt+'\n';
-      else if(block==='h3')md+='### '+txt+'\n';
-      else md+=txt+'\n';
-    } else if(node.nodeName==='TABLE'){
-      // 표 → 마크다운 표
-      const rows=node.querySelectorAll('tr');
-      rows.forEach((row,ri)=>{
-        const cells=[...row.querySelectorAll('th,td')].map(c=>c.textContent.trim());
-        md+='| '+cells.join(' | ')+' |\n';
-        if(ri===0)md+='|'+cells.map(()=>'---|').join('')+'\n';
-      });
-    } else if(node.nodeName==='UL'){
-      node.querySelectorAll('li').forEach(li=>md+='• '+li.textContent+'\n');
-    } else if(node.style&&node.style.fontStyle==='italic'){
-      md+='> '+node.textContent+'\n';
-    } else {
-      md+=node.innerText||node.textContent||'';md+='\n';
-    }
-  });
-  return md.trim();
-}
-// 마크다운 → 에디터 HTML 복원 (편집 시 로드용)
-function markdownToEditor(md,editor){
-  editor.innerHTML='';
-  if(!md)return;
-  const lines=md.split('\n');
-  let i=0;
-  while(i<lines.length){
-    const line=lines[i];
-    if(line.startsWith('# ')&&!line.startsWith('## ')){
-      const div=document.createElement('div');
-      div.style.cssText='font-size:15px;font-weight:700;color:#e0edf8;background:rgba(79,168,208,.1);border-left:3px solid #4fa8d0;padding:6px 10px;border-radius:0 5px 5px 0;display:block;margin:8px 0 4px;';
-      div.contentEditable='true';div.setAttribute('data-block','h1');div.textContent=line.slice(2);editor.appendChild(div);
-    } else if(line.startsWith('## ')&&!line.startsWith('### ')){
-      const div=document.createElement('div');
-      div.style.cssText='font-size:13px;font-weight:700;color:#b8d4e8;background:rgba(79,168,208,.05);border-left:2px solid rgba(79,168,208,.4);padding:4px 8px;display:block;margin:6px 0 3px;';
-      div.contentEditable='true';div.setAttribute('data-block','h2');div.textContent=line.slice(3);editor.appendChild(div);
-    } else if(line.startsWith('### ')){
-      const div=document.createElement('div');
-      div.style.cssText='font-size:12px;font-weight:700;color:#9abece;border-left:1px dashed rgba(79,168,208,.3);padding:3px 8px 3px 14px;display:block;margin:4px 0 2px;';
-      div.contentEditable='true';div.setAttribute('data-block','h3');div.textContent=line.slice(4);editor.appendChild(div);
-    } else if(line.startsWith('> ')){
-      const div=document.createElement('div');
-      div.style.cssText='border-left:3px solid rgba(79,168,208,.3);padding:4px 10px;color:#5a8aa0;font-style:italic;display:block;margin:4px 0;';
-      div.contentEditable='true';div.textContent=line.slice(2);editor.appendChild(div);
-    } else if(line.startsWith('• ')||line.startsWith('- ')){
-      const ul=editor.lastChild?.nodeName==='UL'?editor.lastChild:null;
-      const list=ul||document.createElement('ul');
-      list.style.cssText='padding-left:18px;margin:4px 0;';
-      const li=document.createElement('li');
-      li.style.cssText='color:#7a9cb8;font-size:12px;line-height:1.8;';
-      li.contentEditable='true';li.textContent=line.slice(2);list.appendChild(li);
-      if(!ul)editor.appendChild(list);
-    } else if(line){
-      const div=document.createElement('div');
-      div.style.cssText='color:#7a9cb8;font-size:12px;line-height:1.85;';
-      div.contentEditable='true';
-      // 굵게 처리
-      div.innerHTML=line.replace(/\*\*([^*]+)\*\*/g,'<b>$1</b>').replace(/\[([^\]]+)\]/g,'<span style="color:#4fa8d0;text-decoration:underline;cursor:pointer;" onclick="jumpWiki(\'$1\')">[$1]</span>');
-      editor.appendChild(div);
-    } else {
-      editor.appendChild(document.createElement('br'));
-    }
-    i++;
-  }
-}
-// WYSIWYG 에디터 초기화는 openWikiEdit 내에서 처리됨
 
 
 // ══════════════════════════════════════════
@@ -10246,10 +10018,6 @@ window.onload=function(){
     if(document.getElementById('v-type-detail').classList.contains('on')){
       showV('v-rescue-stats');renderRescueStats();history.pushState({view:'rescue-stats'},'','');return;
     }
-    // 서브뷰: 위키 페이지
-    if(document.getElementById('wikiPageWrap').style.display==='block'){
-      showWikiList();history.pushState({view:'wiki'},'','');return;
-    }
     // v-report(구조 타임라인) → 목록으로 복귀
     if(document.getElementById('v-report').classList.contains('on')){
       _hideRepFooter();
@@ -10359,7 +10127,7 @@ window.onload=function(){
   initFirebase(function(){
     initDB();
     if(window._KR){ initMaps(); } else { window._KCB=function(){initMaps();}; }
-    updateSummary();updateUserUI();renderHotSearch();fetchWeather();
+    updateSummary();updateUserUI();fetchWeather();
     const d=new Date();const days=['일','월','화','수','목','금','토'];
     document.getElementById('homeDate').textContent=d.getFullYear()+'년 '+(d.getMonth()+1)+'월 '+d.getDate()+'일 ('+days[d.getDay()]+')';
     if(window._kakaoAuthCode){var _kc=window._kakaoAuthCode;window._kakaoAuthCode=null;_handleKakaoCode(_kc);return;}
