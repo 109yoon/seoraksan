@@ -418,32 +418,66 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation;}
 }
 
 /* ─── 특보운영 ─── */
-.ao-card{background:#0a1626;border-radius:12px;padding:14px;margin-bottom:10px;}
+.ao-card{background:#0a1626;border-radius:14px;padding:14px;margin-bottom:12px;}
 .ao-level-badge{display:inline-block;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:800;}
 .ao-level-예비특보{background:rgba(241,196,15,.15);color:#f0d040;border:1px solid rgba(241,196,15,.3);}
 .ao-level-Ⅰ단계{background:rgba(230,126,34,.15);color:#ffa040;border:1px solid rgba(230,126,34,.3);}
 .ao-level-Ⅱ단계{background:rgba(192,57,43,.2);color:#ff8a80;border:1px solid rgba(192,57,43,.4);}
 .ao-level-Ⅲ단계{background:rgba(142,68,173,.2);color:#d7aefb;border:1px solid rgba(142,68,173,.4);}
-.ao-req-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:8px;}
-.ao-req-table th{background:rgba(79,168,208,.08);color:#4fa8d0;padding:5px 8px;border:1px solid rgba(255,255,255,.07);text-align:left;font-size:10px;}
-.ao-req-table td{padding:5px 8px;border:1px solid rgba(255,255,255,.05);color:#b8d4e8;}
-.ao-resp-chip{display:inline-flex;align-items:center;gap:4px;background:rgba(79,168,208,.12);color:#7db8d8;border:1px solid rgba(79,168,208,.25);border-radius:20px;padding:3px 8px;font-size:10px;font-weight:600;margin:2px;}
+/* 운영중 히어로 배너 */
+.ao-hero{position:relative;border-radius:16px;padding:16px 16px 14px;margin-bottom:12px;overflow:hidden;}
+.ao-hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+.ao-hero-live{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;letter-spacing:.5px;}
+.ao-pulse{width:9px;height:9px;border-radius:50%;background:#ff5252;box-shadow:0 0 0 0 rgba(255,82,82,.6);animation:aoPulse 1.6s infinite;}
+@keyframes aoPulse{0%{box-shadow:0 0 0 0 rgba(255,82,82,.55);}70%{box-shadow:0 0 0 9px rgba(255,82,82,0);}100%{box-shadow:0 0 0 0 rgba(255,82,82,0);}}
+.ao-hero-lv{font-size:22px;font-weight:900;line-height:1.15;margin-top:9px;}
+.ao-hero-meta{font-size:11px;color:#9fc0da;margin-top:4px;}
+.ao-end-btn{background:rgba(192,57,43,.18);color:#ff8a80;border:1px solid rgba(192,57,43,.38);border-radius:9px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;flex-shrink:0;}
+/* 요약 stat strip */
+.ao-stats{display:flex;gap:7px;margin-bottom:12px;}
+.ao-stat{flex:1;background:#0a1626;border:1px solid rgba(79,168,208,.13);border-radius:12px;padding:10px 6px;text-align:center;}
+.ao-stat-num{font-size:20px;font-weight:900;color:#e0edf8;line-height:1;}
+.ao-stat-lbl{font-size:10px;color:#5d82a0;margin-top:4px;font-weight:600;}
+/* 섹션 헤더 */
+.ao-sec-hd{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:800;color:#cfe2f2;margin:16px 2px 8px;}
+.ao-sec-hd .bar{width:3px;height:13px;border-radius:2px;background:#4fa8d0;}
+.ao-req-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:8px;border-radius:8px;overflow:hidden;}
+.ao-req-table th{background:rgba(79,168,208,.1);color:#6fb8e0;padding:6px 8px;border:1px solid rgba(255,255,255,.06);text-align:left;font-size:10px;font-weight:700;}
+.ao-req-table td{padding:6px 8px;border:1px solid rgba(255,255,255,.045);color:#b8d4e8;}
+.ao-resp-chip{display:inline-flex;align-items:center;gap:4px;background:rgba(79,168,208,.12);color:#7db8d8;border:1px solid rgba(79,168,208,.25);border-radius:20px;padding:4px 9px;font-size:10px;font-weight:600;margin:2px;}
 .ao-resp-chip.arrived{background:rgba(39,174,96,.15);color:#7ec8a0;border-color:rgba(39,174,96,.3);}
-.ao-loc-card{background:#08111f;border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:9px 11px;margin-bottom:7px;}
-.ao-loc-card.sub{background:#0a1322;border-left:2px solid rgba(79,168,208,.3);margin:5px 0 5px 8px;padding:8px 10px;}
-.ao-loc-hd{display:flex;justify-content:space-between;align-items:center;}
-.ao-loc-cnt{font-size:10px;font-weight:700;color:#7a9cb8;background:rgba(255,255,255,.05);border-radius:20px;padding:2px 9px;}
-.ao-loc-cnt.ok{color:#7ec8a0;background:rgba(39,174,96,.13);}
-.ao-loc-need{font-size:9px;color:#4a7090;margin-top:2px;}
-.ao-rep-line{font-size:10px;color:#9abece;margin-top:3px;}
-.ao-loc-btn{flex:1;background:rgba(79,168,208,.1);border:1px solid rgba(79,168,208,.25);color:#7db8d8;border-radius:8px;padding:6px;font-size:11px;font-weight:600;cursor:pointer;}
-.ao-loc-btn.rep{background:rgba(79,140,208,.1);border-color:rgba(110,150,230,.3);color:#9ab8f0;}
-.ao-grp{background:#060f1c;border:1px solid rgba(79,168,208,.12);border-radius:11px;padding:9px;margin-bottom:8px;}
-.ao-grp-hd{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#cfe2f2;padding:0 2px;}
-.ao-alert-chip{display:inline-flex;align-items:center;gap:3px;border-radius:20px;padding:3px 9px;font-size:11px;font-weight:600;margin:2px;}
+.ao-loc-card{background:#0a1424;border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:11px 12px;margin-bottom:8px;}
+.ao-loc-card.sub{background:#0b1626;border-left:3px solid rgba(79,168,208,.35);margin:6px 0 6px 8px;padding:9px 11px;border-radius:10px;}
+.ao-loc-hd{display:flex;justify-content:space-between;align-items:center;gap:8px;}
+.ao-loc-cnt{font-size:11px;font-weight:800;color:#9ab2c8;background:rgba(255,255,255,.06);border-radius:20px;padding:3px 11px;flex-shrink:0;}
+.ao-loc-cnt.ok{color:#7ee0a8;background:rgba(39,174,96,.16);}
+.ao-loc-need{font-size:10px;color:#5d82a0;margin-top:3px;}
+/* 응소 진행 바 */
+.ao-prog{height:5px;border-radius:3px;background:rgba(255,255,255,.07);margin-top:7px;overflow:hidden;}
+.ao-prog-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#2f8fd0,#4fc0a0);transition:width .3s;}
+.ao-prog-fill.ok{background:linear-gradient(90deg,#27ae60,#3ad17a);}
+.ao-rep-line{font-size:11px;color:#9abece;margin-top:7px;background:rgba(79,140,208,.07);border-radius:8px;padding:6px 9px;}
+.ao-loc-btn{flex:1;background:rgba(79,168,208,.12);border:1px solid rgba(79,168,208,.28);color:#86c2e2;border-radius:9px;padding:8px;font-size:12px;font-weight:700;cursor:pointer;}
+.ao-loc-btn:active{transform:scale(.97);}
+.ao-loc-btn.rep{background:rgba(110,150,230,.12);border-color:rgba(110,150,230,.32);color:#a8c2f5;}
+.ao-grp{background:#070f1e;border:1px solid rgba(79,168,208,.14);border-radius:13px;padding:10px;margin-bottom:10px;}
+.ao-grp-hd{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:700;color:#dfeefa;padding:2px;}
+.ao-alert-chip{display:inline-flex;align-items:center;gap:4px;border-radius:20px;padding:4px 11px;font-size:11px;font-weight:700;margin:2px;}
 .ao-alert-chip.auto{background:rgba(79,140,208,.14);color:#9ab8f0;border:1px solid rgba(110,150,230,.35);}
 .ao-alert-chip.manual{background:rgba(230,126,34,.14);color:#ffb070;border:1px solid rgba(230,126,34,.35);}
-.ao-add-alert{background:rgba(192,57,43,.14);border:1px dashed rgba(192,57,43,.4);color:#ff9a86;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer;margin-left:2px;}
+.ao-add-alert{background:rgba(192,57,43,.14);border:1px dashed rgba(192,57,43,.42);color:#ff9a86;border-radius:20px;padding:4px 11px;font-size:11px;font-weight:700;cursor:pointer;margin:2px;}
+/* KMA 실시간 특보 */
+.ao-wx{background:linear-gradient(135deg,#0b1a2e,#0a1424);border-radius:13px;padding:12px 14px;margin-bottom:12px;border:1px solid rgba(79,168,208,.16);}
+.ao-wx-empty{background:#070f1c;border-radius:13px;padding:14px;margin-bottom:12px;text-align:center;font-size:12px;color:#46708f;border:1px dashed rgba(79,168,208,.13);}
+.ao-wx-chip{display:inline-flex;align-items:center;gap:7px;font-size:13px;font-weight:700;margin:3px 0;}
+/* 빈 상태 */
+.ao-empty{text-align:center;padding:36px 16px 24px;}
+.ao-empty-ico{font-size:46px;margin-bottom:10px;opacity:.85;}
+.ao-empty-msg{font-size:14px;color:#6a90b0;margin-bottom:20px;font-weight:600;}
+.ao-start-btn{background:linear-gradient(135deg,#c0392b,#9b2d22);border:none;color:#fff;border-radius:14px;padding:14px 30px;font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 6px 18px rgba(192,57,43,.35);}
+.ao-start-btn:active{transform:scale(.97);}
+/* 이력 */
+.ao-hist{background:#080f1c;border-radius:10px;padding:10px 13px;margin-bottom:6px;border:1px solid rgba(255,255,255,.05);}
 
 /* ─── 관리자 ─── */
 .adm-tabs{display:flex;background:#040a16;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;overflow-x:auto;}
@@ -7778,12 +7812,12 @@ function renderAlertView(){
   const kmaLive=window._kmaLiveAlerts||[];
   let wxHtml='';
   if(kmaLive.length){
-    wxHtml=`<div style="background:#0a1626;border-radius:10px;padding:12px 14px;margin-bottom:10px;border:1px solid rgba(79,168,208,.15);">
-      <div style="font-size:10px;color:#4a7090;font-weight:700;margin-bottom:6px;">📡 기상청 실시간 발효 특보</div>
-      ${kmaLive.map(a=>`<div style="font-size:12px;font-weight:700;margin-bottom:3px;"><span class="ao-level-badge ao-level-${a.stage.indexOf('Ⅱ')>=0?'Ⅱ단계':'Ⅰ단계'}">${_stageShort(a.stage)}</span> <span style="color:#b8d4e8;margin-left:6px;">${_esc(a.type||'')}</span></div>`).join('')}
+    wxHtml=`<div class="ao-wx">
+      <div style="font-size:10px;color:#5d92bc;font-weight:800;letter-spacing:.3px;margin-bottom:7px;">📡 기상청 실시간 발효 특보</div>
+      ${kmaLive.map(a=>`<div class="ao-wx-chip"><span class="ao-level-badge ao-level-${a.stage.indexOf('Ⅱ')>=0?'Ⅱ단계':'Ⅰ단계'}">${_stageShort(a.stage)}</span> <span style="color:#dceaf6;">${_esc(a.type||'')}</span></div>`).join('')}
     </div>`;
   } else {
-    wxHtml=`<div style="background:#060d1a;border-radius:10px;padding:10px 14px;margin-bottom:10px;text-align:center;font-size:11px;color:#3a6a8a;">현재 기상청 발효 특보 없음</div>`;
+    wxHtml=`<div class="ao-wx-empty">☀️ 현재 기상청 발효 특보 없음</div>`;
   }
 
   // 활성 특보운영 — 분소별 응소 현황 + 시간별 기상관측
@@ -7794,28 +7828,33 @@ function renderAlertView(){
     const opLevel=_opLevel(active);
     const lvColor=ALERT_LEVEL_COLORS[opLevel]||'#4fa8d0';
     const itv=active.reportInterval||60;
-    // 한 관측소(station) 카드: 응소자 + 최신 기상관측 + 버튼
     const mt=_alertMeasureType(active);
+    // 경과 시간
+    let elapsed='';
+    if(active.startedAtMs){const ms=Date.now()-active.startedAtMs,h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000);elapsed=(h>0?h+'시간 ':'')+m+'분 경과';}
+    // 한 관측소(station) 최신 관측 한 줄
     const _repLine=(last)=>{
-      if(!last)return`<div class="ao-rep-line" style="color:#3a6a8a;">관측 보고 없음</div>`;
-      const ts=`<span style="color:#5a8aa0;">(${_esc(last.time?last.time.slice(11):'')} ${_esc(last.observer||'')})</span>`;
-      if(mt==='snow')return`<div class="ao-rep-line">❄️ 적설 <b>${_esc(String(last.snow??'-'))}</b>cm ${ts}</div>`;
-      if(mt==='rain')return`<div class="ao-rep-line">🌧️ 강우 <b>${_esc(String(last.rain??'-'))}</b>mm ${ts}</div>`;
-      return`<div class="ao-rep-line">❄️ 적설 <b>${_esc(String(last.snow??'-'))}</b>cm · 🌧️ 강우 <b>${_esc(String(last.rain??'-'))}</b>mm ${ts}</div>`;
+      if(!last)return`<div class="ao-rep-line" style="color:#456a85;background:rgba(255,255,255,.03);">관측 보고 없음</div>`;
+      const ts=`<span style="color:#6a96b4;font-weight:400;">${_esc(last.time?last.time.slice(11):'')} ${_esc(last.observer||'')}</span>`;
+      if(mt==='snow')return`<div class="ao-rep-line">❄️ 적설 <b style="color:#9ce0f0;">${_esc(String(last.snow??'-'))}</b>cm · ${ts}</div>`;
+      if(mt==='rain')return`<div class="ao-rep-line">🌧️ 강우 <b style="color:#a8cdf5;">${_esc(String(last.rain??'-'))}</b>mm · ${ts}</div>`;
+      return`<div class="ao-rep-line">❄️ <b style="color:#9ce0f0;">${_esc(String(last.snow??'-'))}</b>cm · 🌧️ <b style="color:#a8cdf5;">${_esc(String(last.rain??'-'))}</b>mm · ${ts}</div>`;
     };
+    const _progBar=(cnt,total)=>{const pct=total>0?Math.min(100,Math.round(cnt/total*100)):(cnt>0?100:0);const ok=total>0&&cnt>=total;return`<div class="ao-prog"><div class="ao-prog-fill${ok?' ok':''}" style="width:${pct}%;"></div></div>`;};
+    const repBtnLbl=mt==='snow'?'❄️ 적설보고':mt==='rain'?'🌧️ 강우보고':'🌧️ 기상보고';
     const stationCard=(st,sub)=>{
       const myResps=active.responders.filter(r=>(r.loc||'사무소')===st.loc);
       const last=_latestReport(active,st.loc);
       return `<div class="ao-loc-card${sub?' sub':''}">
         <div class="ao-loc-hd">
-          <b style="color:#e0edf8;font-size:12px;">${sub?'⛺ ':''}${_esc(st.label)}</b>
-          <span class="ao-loc-cnt ${myResps.length?'ok':''}">${myResps.length}명</span>
+          <b style="color:#e8f2fb;font-size:13px;">${sub?'⛺ ':''}${_esc(st.label)}</b>
+          <span class="ao-loc-cnt ${myResps.length?'ok':''}">👤 ${myResps.length}명</span>
         </div>
-        <div style="margin:5px 0;">${myResps.length?myResps.map(r=>_alertRespChip(r,active.id)).join(''):'<span style="font-size:10px;color:#3a6a8a;">응소자 없음</span>'}</div>
+        <div style="margin:6px 0 2px;">${myResps.length?myResps.map(r=>_alertRespChip(r,active.id)).join(''):'<span style="font-size:11px;color:#456a85;">아직 응소자 없음</span>'}</div>
         ${_repLine(last)}
-        <div style="display:flex;gap:5px;margin-top:7px;">
-          ${myResps.length===0?`<button onclick="openAddResponder(${active.id},'${st.loc}')" class="ao-loc-btn">👤 응소</button>`:''}
-          <button onclick="openAlertReport(${active.id},'${st.loc}')" class="ao-loc-btn rep">${mt==='snow'?'❄️ 적설보고':mt==='rain'?'🌧️ 강우보고':'🌧️ 기상보고'}</button>
+        <div style="display:flex;gap:6px;margin-top:8px;">
+          ${myResps.length===0?`<button onclick="openAddResponder(${active.id},'${st.loc}')" class="ao-loc-btn">👤 응소 등록</button>`:''}
+          <button onclick="openAlertReport(${active.id},'${st.loc}')" class="ao-loc-btn rep">${repBtnLbl}</button>
         </div>
       </div>`;
     };
@@ -7827,53 +7866,68 @@ function renderAlertView(){
       const gResps=active.responders.filter(r=>g.stations.some(s=>s.loc===(r.loc||'사무소')));
       const ok=total>0&&gResps.length>=total;
       if(g.stations.length===1){
-        // 단일 관측소: 그룹 헤더에 필요인원 표기
         const st=g.stations[0];
         const myResps=gResps;
         const last=_latestReport(active,st.loc);
         return `<div class="ao-loc-card">
-          <div class="ao-loc-hd"><span>${g.ico} <b style="color:#e0edf8;font-size:12px;">${_esc(g.label)}</b></span><span class="ao-loc-cnt ${ok?'ok':''}">${myResps.length}${total?'/'+total:''}명</span></div>
-          <div class="ao-loc-need">필요: ${need}</div>
-          <div style="margin:5px 0;">${myResps.length?myResps.map(r=>_alertRespChip(r,active.id)).join(''):'<span style="font-size:10px;color:#3a6a8a;">응소자 없음</span>'}</div>
+          <div class="ao-loc-hd"><span style="font-size:13px;">${g.ico} <b style="color:#e8f2fb;">${_esc(g.label)}</b></span><span class="ao-loc-cnt ${ok?'ok':''}">👤 ${myResps.length}${total?'/'+total:''}명</span></div>
+          ${total?`<div class="ao-loc-need">필요: ${need}</div>${_progBar(myResps.length,total)}`:''}
+          <div style="margin:6px 0 2px;">${myResps.length?myResps.map(r=>_alertRespChip(r,active.id)).join(''):'<span style="font-size:11px;color:#456a85;">아직 응소자 없음</span>'}</div>
           ${_repLine(last)}
-          <div style="display:flex;gap:5px;margin-top:7px;">
-            ${myResps.length===0?`<button onclick="openAddResponder(${active.id},'${st.loc}')" class="ao-loc-btn">👤 응소</button>`:''}
-            <button onclick="openAlertReport(${active.id},'${st.loc}')" class="ao-loc-btn rep">${mt==='snow'?'❄️ 적설보고':mt==='rain'?'🌧️ 강우보고':'🌧️ 기상보고'}</button>
+          <div style="display:flex;gap:6px;margin-top:8px;">
+            ${myResps.length===0?`<button onclick="openAddResponder(${active.id},'${st.loc}')" class="ao-loc-btn">👤 응소 등록</button>`:''}
+            <button onclick="openAlertReport(${active.id},'${st.loc}')" class="ao-loc-btn rep">${repBtnLbl}</button>
           </div>
         </div>`;
       }
       // 대청분소: 그룹 헤더 + 대피소 세부 카드
       return `<div class="ao-grp">
-        <div class="ao-grp-hd"><span>${g.ico} <b>${_esc(g.label)}</b></span><span class="ao-loc-cnt ${ok?'ok':''}">${gResps.length}${total?'/'+total:''}명</span></div>
-        <div class="ao-loc-need" style="padding:0 2px 4px;">필요: ${need} (분소 합계 기준)</div>
-        ${g.stations.map(st=>stationCard(st,true)).join('')}
+        <div class="ao-grp-hd"><span>${g.ico} ${_esc(g.label)}</span><span class="ao-loc-cnt ${ok?'ok':''}">👤 ${gResps.length}${total?'/'+total:''}명</span></div>
+        ${total?`<div class="ao-loc-need" style="padding:2px 2px 0;">필요: ${need} (분소 합계 기준)</div>${_progBar(gResps.length,total)}`:''}
+        <div style="margin-top:6px;">${g.stations.map(st=>stationCard(st,true)).join('')}</div>
       </div>`;
     }).join('');
-    const alertChips=active.alerts.map((a,ai)=>`<span class="ao-alert-chip ${a.source==='auto'?'auto':'manual'}">${a.source==='auto'?'📡자동':'✋수동'} <b>${_esc(a.type)}${_stageShort(a.stage)}</b>${isAdminUser()?`<span onclick="removeAlertItem(${active.id},${ai})" style="cursor:pointer;color:#c0392b;margin-left:3px;">×</span>`:''}</span>`).join('');
-    activeHtml=`<div class="ao-card" style="border:1.5px solid ${lvColor}40;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <div>
-          <span class="ao-level-badge" style="background:${lvColor}22;color:${lvColor};border:1px solid ${lvColor}50;">${_esc(opLevel)}</span>
-          <span style="font-size:11px;color:#7a9cb8;margin-left:8px;">운영 ${_esc(active.startedAt||'')}~</span>
+    const alertChips=active.alerts.map((a,ai)=>`<span class="ao-alert-chip ${a.source==='auto'?'auto':'manual'}">${a.source==='auto'?'📡자동':'✋수동'} <b>${_esc(a.type)}${_stageShort(a.stage)}</b>${isAdminUser()?`<span onclick="removeAlertItem(${active.id},${ai})" style="cursor:pointer;color:#ff6b5b;margin-left:4px;font-weight:800;">×</span>`:''}</span>`).join('');
+    // 히어로 배너 + 요약 stat + 상세
+    activeHtml=`
+      <div class="ao-hero" style="background:linear-gradient(135deg,${lvColor}26,${lvColor}0d);border:1.5px solid ${lvColor}55;">
+        <div class="ao-hero-top">
+          <div>
+            <span class="ao-hero-live" style="color:${lvColor};"><span class="ao-pulse"></span>특보운영 중</span>
+            <div class="ao-hero-lv" style="color:${lvColor};">${_esc(opLevel)}</div>
+            <div class="ao-hero-meta">🕐 ${_esc(active.startedAt||'')} 시작${elapsed?' · '+elapsed:''}</div>
+            <div class="ao-hero-meta">⏱️ 관측 보고 주기: ${itv>=60?(itv/60)+'시간':itv+'분'}마다</div>
+          </div>
+          ${isAdminUser()?`<button onclick="endAlertOps(${active.id})" class="ao-end-btn">운영 종료</button>`:''}
         </div>
-        ${isAdminUser()?`<button onclick="endAlertOps(${active.id})" style="background:rgba(192,57,43,.15);color:#ff8a80;border:1px solid rgba(192,57,43,.3);border-radius:8px;padding:5px 10px;font-size:11px;cursor:pointer;">종료</button>`:''}
       </div>
-      <div style="font-size:10px;color:#4a7090;font-weight:700;margin-bottom:4px;">🚨 발령 특보</div>
-      <div style="margin-bottom:8px;">${alertChips||'<span style="font-size:10px;color:#3a6a8a;">발령된 특보 없음</span>'} ${isAdminUser()?`<button onclick="openAlertStart()" class="ao-add-alert">+ 특보 발령</button>`:''}</div>
-      ${active.note?`<div style="font-size:11px;color:#7a9cb8;margin-bottom:6px;">📝 ${_esc(active.note)}</div>`:''}
-      <div style="font-size:10px;color:#4a7090;margin-bottom:8px;">⏱️ 관측 보고 주기: ${itv>=60?(itv/60)+'시간':itv+'분'}마다</div>
-      <div style="font-size:11px;font-weight:700;color:#e0edf8;margin-bottom:6px;">📋 분소별 응소 현황</div>
+
+      <div class="ao-stats">
+        <div class="ao-stat"><div class="ao-stat-num" style="color:${lvColor};">${active.alerts.length}</div><div class="ao-stat-lbl">발효 특보</div></div>
+        <div class="ao-stat"><div class="ao-stat-num" style="color:#7ee0a8;">${active.responders.length}</div><div class="ao-stat-lbl">응소 인원</div></div>
+        <div class="ao-stat"><div class="ao-stat-num" style="color:#a8cdf5;">${active.reports.length}</div><div class="ao-stat-lbl">관측 보고</div></div>
+      </div>
+
+      <div class="ao-card">
+        <div class="ao-sec-hd" style="margin-top:0;"><span class="bar" style="background:#ff8a80;"></span>🚨 발령 특보</div>
+        <div>${alertChips||'<span style="font-size:11px;color:#456a85;">발령된 특보 없음</span>'} ${isAdminUser()?`<button onclick="openAlertStart()" class="ao-add-alert">+ 특보 발령</button>`:''}</div>
+        ${active.note?`<div style="font-size:12px;color:#9fc0da;margin-top:8px;background:rgba(255,255,255,.03);border-radius:8px;padding:7px 10px;">📝 ${_esc(active.note)}</div>`:''}
+      </div>
+
+      <div class="ao-sec-hd"><span class="bar"></span>📋 분소별 응소 현황</div>
       ${locCards}
-      <div style="font-size:11px;font-weight:700;color:#e0edf8;margin:12px 0 6px;">📊 시간별 기상관측 기록</div>
+
+      <div class="ao-sec-hd"><span class="bar" style="background:#4fc0a0;"></span>📊 누적 관측 요약</div>
       ${_renderCumulativeSummary(active)}
-      ${_renderReportsTable(active)}
-    </div>`;
+
+      <div class="ao-sec-hd"><span class="bar" style="background:#6e96e6;"></span>🕐 시간대별 관측 기록</div>
+      ${_renderReportsTable(active)}`;
   } else {
     _stopAlertReminder();
-    activeHtml=`<div style="text-align:center;padding:24px 0 16px;">
-      <div style="font-size:32px;margin-bottom:8px;">🌀</div>
-      <div style="font-size:13px;color:#4a7090;margin-bottom:16px;">현재 특보운영 없음</div>
-      ${isAdminUser()?`<button onclick="openAlertStart()" style="background:rgba(192,57,43,.18);border:1px solid rgba(192,57,43,.4);color:#ff8a80;border-radius:12px;padding:12px 24px;font-size:13px;font-weight:700;cursor:pointer;">🌀 특보운영 시작</button>`:''}
+    activeHtml=`<div class="ao-empty">
+      <div class="ao-empty-ico">🌀</div>
+      <div class="ao-empty-msg">현재 진행 중인 특보운영이 없습니다</div>
+      ${isAdminUser()?`<button onclick="openAlertStart()" class="ao-start-btn">🌀 특보운영 시작</button>`:'<div style="font-size:11px;color:#456a85;">관리자가 특보운영을 시작하면 표시됩니다</div>'}
     </div>`;
   }
 
@@ -7881,10 +7935,10 @@ function renderAlertView(){
   const closed=ops.filter(o=>o.closedAt).slice(-5).reverse();
   let histHtml='';
   if(closed.length){
-    histHtml=`<div style="margin-top:14px;"><div style="font-size:10px;color:#3a6a8a;font-weight:700;margin-bottom:6px;">📜 최근 이력</div>
-    ${closed.map(o=>`<div style="background:#06101a;border-radius:8px;padding:8px 12px;margin-bottom:5px;border:.5px solid rgba(255,255,255,.07);">
-      <div style="font-size:11px;font-weight:700;color:#7a9cb8;">${_esc(_opLevel(o))} · ${_esc(_opAlerts(o).map(a=>a.type+_stageShort(a.stage)).join(', ')||'-')}</div>
-      <div style="font-size:10px;color:#3a6a8a;margin-top:2px;">${_esc(o.startedAt||'')} → ${_esc(o.closedAt||'')} · 응소 ${(o.responders||[]).length}명 · 관측 ${(o.reports||[]).length}건</div>
+    histHtml=`<div style="margin-top:18px;"><div class="ao-sec-hd"><span class="bar" style="background:#5d82a0;"></span>📜 최근 운영 이력</div>
+    ${closed.map(o=>`<div class="ao-hist">
+      <div style="font-size:12px;font-weight:700;color:#9ab2c8;">${_esc(_opLevel(o))} · ${_esc(_opAlerts(o).map(a=>a.type+_stageShort(a.stage)).join(', ')||'-')}</div>
+      <div style="font-size:10px;color:#46708f;margin-top:3px;">${_esc(o.startedAt||'')} → ${_esc(o.closedAt||'')} · 응소 ${(o.responders||[]).length}명 · 관측 ${(o.reports||[]).length}건</div>
     </div>`).join('')}
     </div>`;
   }
@@ -8083,26 +8137,41 @@ function removeAlertResponder(id,name,loc){
   renderAlertView();
 }
 
-// ── 시간별 기상관측(적설량·강우량) 보고 ──
+// ── 시간대별 기상관측 기록 (개별 관측값 + 관측소별 시간순 누적) ──
 function _renderReportsTable(op){
   const mt=_alertMeasureType(op);
-  const reps=(op.reports||[]).slice().sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,40);
-  if(!reps.length)return`<div style="font-size:11px;color:#3a6a8a;text-align:center;padding:10px 0;">관측 보고 없음 — 분소별 기상보고 버튼으로 입력</div>`;
-  const snowHd=mt!=='rain'?'<th>❄️ 적설<br>(cm)</th>':'';
-  const rainHd=mt!=='snow'?'<th>🌧️ 강우<br>(mm)</th>':'';
-  const cols=3+(mt==='both'?2:1)+(isAdminUser()?1:0);
+  const allReps=(op.reports||[]).slice();
+  if(!allReps.length)return`<div style="font-size:12px;color:#456a85;text-align:center;padding:16px 0;background:#0a1424;border-radius:10px;">관측 보고 없음 — 분소별 기상보고 버튼으로 입력</div>`;
+  // 관측소별 시간순 누적 계산 → 각 기록 시점의 누적값을 기록
+  const chrono=allReps.slice().sort((a,b)=>(a.at||0)-(b.at||0));
+  const run={};const cumAt={};
+  chrono.forEach(r=>{
+    const loc=r.loc||'사무소';
+    if(!run[loc])run[loc]={snow:0,rain:0};
+    if(r.snow!=null&&r.snow!=='')run[loc].snow+=(parseFloat(r.snow)||0);
+    if(r.rain!=null&&r.rain!=='')run[loc].rain+=(parseFloat(r.rain)||0);
+    cumAt[r.id]={snow:run[loc].snow,rain:run[loc].rain};
+  });
+  // 표시는 최신순(과거 기록도 모두 보존)
+  const reps=allReps.sort((a,b)=>(b.at||0)-(a.at||0)).slice(0,80);
+  const snowHd=mt!=='rain'?'<th>❄️ 적설<br>(cm)</th><th>누적<br>(cm)</th>':'';
+  const rainHd=mt!=='snow'?'<th>🌧️ 강우<br>(mm)</th><th>누적<br>(mm)</th>':'';
+  const cols=3+(mt==='both'?4:2)+(isAdminUser()?1:0);
   return`<table class="ao-req-table"><tr><th>시각</th><th>관측소</th><th>관측자</th>${snowHd}${rainHd}${isAdminUser()?'<th></th>':''}</tr>
     ${reps.map(r=>{
-      const snowTd=mt!=='rain'?`<td style="text-align:center;color:#7ec8d8;">${_esc(String(r.snow??'-'))}</td>`:'';
-      const rainTd=mt!=='snow'?`<td style="text-align:center;color:#7db8f0;">${_esc(String(r.rain??'-'))}</td>`:'';
+      const c=cumAt[r.id]||{snow:0,rain:0};
+      const snowTd=mt!=='rain'?`<td style="text-align:center;color:#7ec8d8;">${_esc(String(r.snow??'-'))}</td><td style="text-align:center;color:#9ce0f0;font-weight:800;background:rgba(120,220,240,.06);">${(r.snow!=null&&r.snow!=='')||c.snow?c.snow.toFixed(1):'-'}</td>`:'';
+      const rainTd=mt!=='snow'?`<td style="text-align:center;color:#7db8f0;">${_esc(String(r.rain??'-'))}</td><td style="text-align:center;color:#a8cdf5;font-weight:800;background:rgba(110,150,230,.06);">${(r.rain!=null&&r.rain!=='')||c.rain?c.rain.toFixed(1):'-'}</td>`:'';
       const delTd=isAdminUser()?`<td style="text-align:center;"><span onclick="removeAlertReport(${op.id},${r.id})" style="cursor:pointer;color:#c0392b;">×</span></td>`:'';
       return`<tr><td>${_esc((r.time||'').slice(5,16))}</td><td>${_esc(_stationLabel(r.loc))}</td><td>${_esc(r.observer||'-')}</td>${snowTd}${rainTd}${delTd}</tr>${r.note?`<tr><td colspan="${cols}" style="color:#5a8aa0;font-size:9px;padding:1px 6px 4px;">↳ ${_esc(r.note)}</td></tr>`:''}`;
     }).join('')}
-  </table>`;
+  </table>
+  <div style="font-size:9px;color:#456a85;margin-top:5px;">※ '누적'은 해당 관측소의 운영 시작 이후 합계 (그 시점까지)</div>`;
 }
+// ── 누적 관측 요약 (관측소별 현재 누적 합계 — 한눈에) ──
 function _renderCumulativeSummary(op){
   const reps=op.reports||[];
-  if(!reps.length)return'';
+  if(!reps.length)return`<div style="font-size:12px;color:#456a85;text-align:center;padding:14px 0;background:#0a1424;border-radius:10px;">아직 누적된 관측값이 없습니다</div>`;
   const mt=_alertMeasureType(op);
   const byLoc={};
   reps.forEach(r=>{
@@ -8113,18 +8182,15 @@ function _renderCumulativeSummary(op){
     if((r.time||'')>(byLoc[key].lastTime))byLoc[key].lastTime=r.time||'';
   });
   const entries=Object.entries(byLoc).filter(([,v])=>v.snowCount>0||v.rainCount>0);
-  if(!entries.length)return'';
+  if(!entries.length)return`<div style="font-size:12px;color:#456a85;text-align:center;padding:14px 0;background:#0a1424;border-radius:10px;">아직 누적된 관측값이 없습니다</div>`;
   const snowHd=mt!=='rain'?'<th>❄️ 누적 적설(cm)</th>':'';
   const rainHd=mt!=='snow'?'<th>🌧️ 누적 강우(mm)</th>':'';
   const rows=entries.map(([,v])=>{
-    const snowTd=mt!=='rain'?`<td style="text-align:center;color:#7ec8d8;font-weight:700;">${v.snowCount?v.snow.toFixed(1):'-'}</td>`:'';
-    const rainTd=mt!=='snow'?`<td style="text-align:center;color:#7db8f0;font-weight:700;">${v.rainCount?v.rain.toFixed(1):'-'}</td>`:'';
-    return`<tr><td>${_esc(v.label)}</td>${snowTd}${rainTd}<td style="font-size:9px;color:#5a8aa0;">${_esc((v.lastTime||'').slice(11,16))}</td></tr>`;
+    const snowTd=mt!=='rain'?`<td style="text-align:center;color:#9ce0f0;font-weight:800;">${v.snowCount?v.snow.toFixed(1):'-'}</td>`:'';
+    const rainTd=mt!=='snow'?`<td style="text-align:center;color:#a8cdf5;font-weight:800;">${v.rainCount?v.rain.toFixed(1):'-'}</td>`:'';
+    return`<tr><td style="font-weight:600;color:#cfe2f2;">${_esc(v.label)}</td>${snowTd}${rainTd}<td style="font-size:9px;color:#5a8aa0;">${_esc((v.lastTime||'').slice(11,16))}</td></tr>`;
   }).join('');
-  return`<div style="margin-top:10px;">
-    <div style="font-size:10px;color:#4a7090;font-weight:700;margin-bottom:5px;">📊 누적 관측 요약 (관측소별)</div>
-    <table class="ao-req-table"><tr><th>관측소</th>${snowHd}${rainHd}<th>최근 보고</th></tr>${rows}</table>
-  </div>`;
+  return`<table class="ao-req-table"><tr><th>관측소</th>${snowHd}${rainHd}<th>최근</th></tr>${rows}</table>`;
 }
 function openAlertReport(opId,presetLoc){
   _reportOpId=opId;_reportLoc=presetLoc||'';
