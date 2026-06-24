@@ -1546,6 +1546,14 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
   </div>
 </div>
 
+<!-- ══ 모달: 특보운영 기록 보관함 상세 ══ -->
+<div id="modalAlertHistory" class="modal">
+  <div class="mbox">
+    <div class="mhdr"><span class="mtitle">📜 특보운영 기록</span><button class="mclose" onclick="closeM('modalAlertHistory')">×</button></div>
+    <div id="alertHistBody"></div>
+  </div>
+</div>
+
 <!-- ══ 모달: 가이드 ══ -->
 <div id="modalGuide" class="modal">
   <div class="mbox">
@@ -3757,6 +3765,23 @@ function initWAlerts(prefill){
       for(const lv of lvs){if(s.endsWith(lv)){_weatherAlerts.push({type:s.slice(0,-lv.length),level:lv});return;}}
       _weatherAlerts.push({type:s,level:''});
     });
+  } else {
+    // 신규 보고 + 진행 중 특보운영(주의보·경보)이 있으면 그 특보를 자동 기록
+    try{
+      const _op=(DB.g('alertOps')||[]).find(o=>!o.closedAt);
+      if(_op){
+        const _al=(_op.alerts&&_op.alerts.length)?_op.alerts:(typeof _opAlerts==='function'?_opAlerts(_op):[]);
+        const _seen={};
+        _al.forEach(a=>{
+          const st=a.stage||'';let lv='';
+          if(st.indexOf('주의보')>=0)lv='주의보';
+          else if(st.indexOf('경보')>=0||st.indexOf('Ⅲ')>=0)lv='경보';
+          else return; // 예비특보 등은 자동 기록 제외
+          const key=(a.type||'')+lv;if(_seen[key])return;_seen[key]=1;
+          _weatherAlerts.push({type:a.type||'',level:lv});
+        });
+      }
+    }catch(e){}
   }
   _wAlertType='';_wAlertLevel='';
   renderWAlerts();
@@ -7072,6 +7097,7 @@ function submit1Bo(){
     reception:document.getElementById('r_recv')?.value||'',
     weather:getSelPills('weatherPills')[0]||'',
     weatherAlert:getWeatherAlertStr()||'',
+    alertOpId:((DB.g('alertOps')||[]).find(o=>!o.closedAt)||{}).id||null,
     lat, lng,
     location:document.getElementById('r_loc')?.value||'',
     loctype:document.getElementById('r_loctype')?.value||'',
@@ -7931,15 +7957,20 @@ function renderAlertView(){
     </div>`;
   }
 
-  // 이전 운영 이력
-  const closed=ops.filter(o=>o.closedAt).slice(-5).reverse();
+  // 이전 운영 이력 (보관·열람) — 클릭 시 상세 모달
+  const closed=ops.filter(o=>o.closedAt).reverse();
   let histHtml='';
   if(closed.length){
-    histHtml=`<div style="margin-top:18px;"><div class="ao-sec-hd"><span class="bar" style="background:#5d82a0;"></span>📜 최근 운영 이력</div>
-    ${closed.map(o=>`<div class="ao-hist">
-      <div style="font-size:12px;font-weight:700;color:#9ab2c8;">${_esc(_opLevel(o))} · ${_esc(_opAlerts(o).map(a=>a.type+_stageShort(a.stage)).join(', ')||'-')}</div>
-      <div style="font-size:10px;color:#46708f;margin-top:3px;">${_esc(o.startedAt||'')} → ${_esc(o.closedAt||'')} · 응소 ${(o.responders||[]).length}명 · 관측 ${(o.reports||[]).length}건</div>
-    </div>`).join('')}
+    histHtml=`<div style="margin-top:18px;"><div class="ao-sec-hd"><span class="bar" style="background:#5d82a0;"></span>📜 특보운영 기록 보관함 <span style="font-size:10px;color:#46708f;font-weight:600;margin-left:auto;">총 ${closed.length}건</span></div>
+    ${closed.map(o=>{
+      const incCnt=_incidentsInOp(o).length;
+      return `<div class="ao-hist" onclick="openAlertHistory(${o.id})" style="cursor:pointer;">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+        <div style="font-size:12px;font-weight:700;color:#bcd2e6;flex:1;min-width:0;">${_esc(_opLevel(o))} · ${_esc(_opAlerts(o).map(a=>a.type+_stageShort(a.stage)).join(', ')||'-')}</div>
+        <span style="font-size:14px;color:#46708f;flex-shrink:0;">›</span>
+      </div>
+      <div style="font-size:10px;color:#46708f;margin-top:3px;">${_esc((o.startedAt||'').slice(5))} → ${_esc((o.closedAt||'').slice(5))} · 응소 ${(o.responders||[]).length}명 · 관측 ${(o.reports||[]).length}건${incCnt?` · <span style="color:#ff8a80;">🚨 안전사고 ${incCnt}건</span>`:''}</div>
+    </div>`;}).join('')}
     </div>`;
   }
 
@@ -8075,11 +8106,74 @@ function endAlertOps(id){
   const idx=ops.findIndex(o=>o.id===id);
   if(idx===-1)return;
   ops[idx].closedAt=now();
+  ops[idx].closedAtMs=Date.now();
   DB.s('alertOps',ops);
   _stopAlertReminder();
   pushNoti('✅ 특보운영 종료','✅','재난',{app:'alert'},'안전사고');
   toast('✅ 특보운영 종료');
   renderAlertView();
+}
+// ── 특보운영 기간 중 발생한 안전사고(구조) 기록 찾기 ──
+function _incidentsInOp(op){
+  if(!op)return[];
+  const res=DB.g('rescues')||[];
+  const s=op.startedAtMs||(op.startedAt?Date.parse(op.startedAt.replace(' ','T')):0);
+  const e=op.closedAtMs||(op.closedAt?Date.parse(op.closedAt.replace(' ','T')):Date.now());
+  return res.filter(r=>{
+    if(op.id&&r.alertOpId===op.id)return true;          // 명시적 연결 우선
+    if(r.alertOpId&&r.alertOpId!==op.id)return false;   // 다른 운영에 연결됨
+    if(!r.id)return false;                               // 시간범위 fallback
+    return r.id>=s&&r.id<=e;
+  }).sort((a,b)=>(b.id||0)-(a.id||0));
+}
+// ── 보관함: 종료된 특보운영 상세 열람 ──
+function openAlertHistory(opId){
+  const op=(DB.g('alertOps')||[]).find(o=>o.id===opId);
+  if(!op){toast('기록을 찾을 수 없습니다');return;}
+  document.getElementById('alertHistBody').innerHTML=_renderAlertOpDetail(op);
+  document.getElementById('modalAlertHistory').classList.add('on');
+}
+function _renderAlertOpDetail(op){
+  const opLevel=_opLevel(op);
+  const lvColor=ALERT_LEVEL_COLORS[opLevel]||'#4fa8d0';
+  const alertChips=(op.alerts||_opAlerts(op)).map(a=>`<span class="ao-alert-chip ${a.source==='auto'?'auto':'manual'}">${a.source==='auto'?'📡자동':'✋수동'} <b>${_esc(a.type)}${_stageShort(a.stage)}</b></span>`).join('')||'<span style="font-size:11px;color:#456a85;">-</span>';
+  // 응소자: 관측소별 그룹
+  const resps=op.responders||[];
+  let respHtml='';
+  if(resps.length){
+    const byLoc={};
+    resps.forEach(r=>{const k=r.loc||'사무소';(byLoc[k]=byLoc[k]||[]).push(r);});
+    respHtml=Object.entries(byLoc).map(([loc,arr])=>`<div class="ao-loc-card" style="margin-bottom:6px;">
+      <div class="ao-loc-hd"><b style="color:#e8f2fb;font-size:12px;">${_esc(_stationLabel(loc))}</b><span class="ao-loc-cnt ok">👤 ${arr.length}명</span></div>
+      <div style="margin-top:5px;">${arr.map(r=>`<span class="ao-resp-chip"><b style="color:#e0edf8;">${_esc(r.name)}</b> ${_esc(r.role||'')}${r.arrivedAt?' <span style="color:#7ec8a0;">'+_esc(r.arrivedAt)+'</span>':''}</span>`).join('')}</div>
+    </div>`).join('');
+  } else respHtml='<div style="font-size:11px;color:#456a85;padding:8px 0;">응소 기록 없음</div>';
+  // 그 기간 발생 안전사고
+  const incs=_incidentsInOp(op);
+  let incHtml='';
+  if(incs.length){
+    incHtml=incs.map(r=>`<div class="ao-hist" onclick="closeM('modalAlertHistory');try{openResListDetail(${r.id});}catch(e){}" style="cursor:pointer;border-left:3px solid #c0392b;">
+      <div style="font-size:12px;font-weight:700;color:#ffc9c2;">🚨 ${_esc(r.title||r.type||'안전사고')}</div>
+      <div style="font-size:10px;color:#46708f;margin-top:3px;">${_esc((r.date||'').slice(5))}${r.weatherAlert?' · 🌀 '+_esc(r.weatherAlert):''}</div>
+    </div>`).join('');
+  } else incHtml='<div style="font-size:11px;color:#456a85;padding:8px 0;">기간 중 발생한 안전사고 없음</div>';
+  return `
+    <div class="ao-hero" style="background:linear-gradient(135deg,${lvColor}22,${lvColor}0a);border:1.5px solid ${lvColor}44;margin-bottom:14px;">
+      <div class="ao-hero-lv" style="color:${lvColor};margin-top:0;">${_esc(opLevel)}</div>
+      <div class="ao-hero-meta">🕐 ${_esc(op.startedAt||'')} → ${_esc(op.closedAt||'운영중')}</div>
+      <div class="ao-hero-meta">👤 응소 ${(op.responders||[]).length}명 · 📊 관측 ${(op.reports||[]).length}건 · 🚨 안전사고 ${incs.length}건</div>
+    </div>
+    <div class="ao-sec-hd" style="margin-top:0;"><span class="bar" style="background:#ff8a80;"></span>🚨 발령 특보</div>
+    <div style="margin-bottom:6px;">${alertChips}</div>
+    ${op.note?`<div style="font-size:12px;color:#9fc0da;background:rgba(255,255,255,.03);border-radius:8px;padding:7px 10px;margin-bottom:6px;">📝 ${_esc(op.note)}</div>`:''}
+    <div class="ao-sec-hd"><span class="bar"></span>📋 응소 현황</div>
+    ${respHtml}
+    <div class="ao-sec-hd"><span class="bar" style="background:#4fc0a0;"></span>📊 누적 관측 요약</div>
+    ${_renderCumulativeSummary(op)}
+    <div class="ao-sec-hd"><span class="bar" style="background:#6e96e6;"></span>🕐 시간대별 관측 기록</div>
+    ${_renderReportsTable(op)}
+    <div class="ao-sec-hd"><span class="bar" style="background:#c0392b;"></span>🚨 기간 중 발생 안전사고</div>
+    ${incHtml}`;
 }
 // 관측소(분소/대피소) 선택 pill을 동적으로 생성
 function _renderStationPills(wrapId,sel,fnName){
