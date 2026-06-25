@@ -1121,6 +1121,10 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
   <div class="navi ext-hide" id="nv3" onclick="switchTab(3,this)"><div class="navi-ico">📊</div><span class="navi-lbl">통계</span></div>
 </div>
 <div class="toast" id="toast"></div>
+<div id="undoBar" style="display:none;position:absolute;bottom:80px;left:50%;transform:translateX(-50%);background:#0b1c30;color:#e0edf8;padding:9px 9px 9px 18px;border-radius:24px;font-size:13px;font-weight:600;border:1px solid rgba(231,76,60,.4);box-shadow:0 4px 16px rgba(0,0,0,.6);z-index:101;max-width:92%;align-items:center;gap:12px;">
+  <span id="undoBarMsg" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
+  <button id="undoBarBtn" style="flex-shrink:0;background:rgba(231,76,60,.18);border:1px solid rgba(231,76,60,.5);color:#ff8070;border-radius:18px;padding:6px 14px;font-size:12px;font-weight:800;cursor:pointer;">↩ 되돌리기</button>
+</div>
 <!-- ══ 관리자 로그인 오버레이 ══ -->
 <div id="adminLoginOverlay" style="display:none;position:fixed;inset:0;background:#060d1a;z-index:10002;flex-direction:column;align-items:center;justify-content:center;padding:28px;">
   <div style="font-size:44px;margin-bottom:16px;">🔐</div>
@@ -1868,6 +1872,9 @@ function _mergeRecord(local,server){
   }
   // 종료 처리(status:'done')는 한쪽이라도 완료면 유지 — 동시편집으로 완료 처리가 되돌려지지 않게 함
   if(server.status==='done'||local.status==='done')out.status='done';
+  // 시설 점검 상태: 두 기기가 같은 시설을 동시 점검하면 더 최근 점검(statusAt 큰 쪽)을 신뢰
+  // — 트랜잭션 커밋 순서가 아니라 실제 점검 시각으로 승자를 정해 결과가 뒤바뀌지 않게 함
+  if(server.statusAt!=null&&local.statusAt!=null&&server.statusAt>local.statusAt&&server.status){out.status=server.status;out.statusAt=server.statusAt;}
   // 환자 인계 기록은 더 최신 시각 쪽을 유지
   if(server.handover&&(!local.handover||String(server.handover.time||'')>String(local.handover.time||'')))out.handover=server.handover;
   return out;
@@ -2257,6 +2264,23 @@ function toast(m,dur){const t=document.getElementById('toast');t.textContent=m;t
   // 중요 메시지(실패·경고·오류)는 자동으로 4초간 표시 — 놓치지 않도록
   if(dur===undefined){dur=(/실패|오류|⚠️|에러|불가|없습니다|권한/.test(String(m)))?4000:2200;}
   _toastTimer=setTimeout(()=>t.classList.remove('on'),dur);}
+// 되돌리기 스낵바: 삭제 등 위험 작업 후 일정 시간 안에 취소 가능. onUndo=취소 시, onCommit=시간 경과 후 실제 확정.
+let _undoTimer=null,_undoCommit=null;
+function _undoToast(msg,onUndo,onCommit,dur=5000){
+  const bar=document.getElementById('undoBar');if(!bar){onCommit&&onCommit();return;}
+  // 직전 대기중인 확정이 있으면 먼저 실행(중첩 방지)
+  if(_undoCommit){try{_undoCommit();}catch(e){}_undoCommit=null;}
+  clearTimeout(_undoTimer);
+  document.getElementById('undoBarMsg').textContent=msg;
+  bar.style.display='flex';
+  _undoCommit=onCommit||null;
+  const close=()=>{bar.style.display='none';};
+  document.getElementById('undoBarBtn').onclick=()=>{
+    clearTimeout(_undoTimer);_undoCommit=null;close();
+    try{onUndo&&onUndo();}catch(e){}
+  };
+  _undoTimer=setTimeout(()=>{close();_undoCommit=null;try{onCommit&&onCommit();}catch(e){}},dur);
+}
 function closeDB(){document.querySelectorAll('.dbcard').forEach(c=>c.classList.remove('on'));}
 function closeM(id){document.getElementById(id).classList.remove('on');}
 // 모달 배경(backdrop) 클릭 시 닫기
@@ -7861,6 +7885,7 @@ function submitInsp(){
   const note=document.getElementById('inspNote').value;
   const author=document.getElementById('inspAuthor').value;
   facs[idx].status=ns;
+  facs[idx].statusAt=Date.now(); // 동시 점검 충돌 시 "최신 점검 우선" 판정용 타임스탬프
   const hist=DB.g('history')||[];
   const inspDT=document.getElementById('inspDateTime')?.value||now();
   const h={id:Date.now(),facId:selFacId,facName:facs[idx].name,date:inspDT,status:ns,note,author,photo:_photoUrl('prevInsp')};
@@ -8587,7 +8612,7 @@ function renderAdmCtrl(){
     <div class="sec-label">📋 전체 시설물</div>
     ${facs.map(f=>`<div class="adm-row"><div class="adm-info"><div class="adm-name">${f.type.split(' ')[0]} ${f.name}</div><div class="adm-meta"><span style="color:${SC(f.status)};">${SL(f.status)}</span> · ${f.author||'-'}</div></div><button class="abtn del" onclick="admDelFac(${f.id})">삭제</button></div>`).join('')}`;
 }
-function admChangeFacSt(id){if(!isAdminUser()){toast('⚠️ 관리자만 가능');return;}const facs=DB.g('facilities')||[];const idx=facs.findIndex(x=>x.id===id);if(idx===-1)return;const ns=prompt(`상태 (ok/warn/bad)\n현재: ${facs[idx].status}`);if(!['ok','warn','bad'].includes(ns)){toast('⚠️ ok, warn, bad 중 입력');return;}facs[idx].status=ns;DB.s('facilities',facs);renderAdmCtrl();try{renderInspectMap();}catch(e){}toast('✅ 변경');updateSummary();}
+function admChangeFacSt(id){if(!isAdminUser()){toast('⚠️ 관리자만 가능');return;}const facs=DB.g('facilities')||[];const idx=facs.findIndex(x=>x.id===id);if(idx===-1)return;const ns=prompt(`상태 (ok/warn/bad)\n현재: ${facs[idx].status}`);if(!['ok','warn','bad'].includes(ns)){toast('⚠️ ok, warn, bad 중 입력');return;}facs[idx].status=ns;facs[idx].statusAt=Date.now();DB.s('facilities',facs);renderAdmCtrl();try{renderInspectMap();}catch(e){}toast('✅ 변경');updateSummary();}
 function admDelFac(id){
   if(!isAdminUser()){toast('⚠️ 관리자만 가능');return;}
   if(!confirm('삭제?'))return;
@@ -8599,17 +8624,26 @@ function admDelFac(id){
 function admEndRes(id){if(!isAdminUser()){toast('⚠️ 관리자만 가능');return;}const res=DB.g('rescues')||[];const i=res.findIndex(x=>x.id===id);if(i===-1)return;if(!confirm("'"+(res[i].title||'')+"' 상황을 종료 처리하겠습니까?"))return;res[i].status='done';DB.s('rescues',res);renderAdmCtrl();try{renderRescueMap();}catch(e){}toast('✅ 상황 종료');}
 function admDelRes(id){
   if(!isAdminUser()){toast('⚠️ 관리자만 가능');return;}
-  if(!confirm('삭제?'))return;
-  const res=DB.g('rescues')||[];const r=res.find(x=>x.id===id);
-  // Storage 사진 동반 삭제 (고아 파일 방지)
-  if(r&&_fst){
-    [r.injuryPhoto,r.transPhoto,...(r.reports||[]).map(p=>p.photo),...(r.photos||[]).map(p=>p.url)]
-      .filter(u=>u&&String(u).startsWith('http'))
-      .forEach(u=>{try{_fst.refFromURL(u).delete().catch(()=>{});}catch(e){}});
-  }
-  try{localStorage.removeItem('v7_comments_'+id);}catch(e){}
-  DB.s('rescues',res.filter(x=>x.id!==id));
-  renderAdmCtrl();try{renderRescueMap();}catch(e){}toast('🗑️ 삭제');updateSummary();
+  const res=DB.g('rescues')||[];const r=res.find(x=>x.id===id);if(!r)return;
+  if(!confirm("'"+(r.title||'구조 기록')+"' 을(를) 삭제하시겠습니까?\n삭제 후 5초 안에 되돌릴 수 있습니다."))return;
+  // 목록에서 즉시 제거(되돌리기 대비 사본 보관). 사진 등 비가역 삭제는 5초 후 확정 시에만.
+  const backup=JSON.parse(JSON.stringify(r));
+  DB.s('rescues',(DB.g('rescues')||[]).filter(x=>x.id!==id));
+  renderAdmCtrl();try{renderRescueMap();}catch(e){}updateSummary();
+  _undoToast("🗑️ '"+(r.title||'구조 기록')+"' 삭제됨",
+    function(){ // 되돌리기
+      const cur=DB.g('rescues')||[];
+      if(!cur.some(x=>x.id===backup.id)){cur.push(backup);DB.s('rescues',cur);}
+      renderAdmCtrl();try{renderRescueMap();}catch(e){}updateSummary();toast('↩ 삭제 취소됨');
+    },
+    function(){ // 5초 후 실제 확정: 사진·댓글 영구 삭제
+      if(backup&&_fst){
+        [backup.injuryPhoto,backup.transPhoto,...((backup.reports||[]).map(p=>p.photo)),...((backup.photos||[]).map(p=>p.url))]
+          .filter(u=>u&&String(u).startsWith('http'))
+          .forEach(u=>{try{_fst.refFromURL(u).delete().catch(()=>{});}catch(e){}});
+      }
+      try{localStorage.removeItem('v7_comments_'+id);}catch(e){}
+    });
 }
 function renderAdmMembers(){
   const pending=DB.g('pendingUsers')||[];
