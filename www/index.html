@@ -9511,11 +9511,14 @@ async function _signInWithKakaoToken(kakaoAccessToken){
   const url=_FCM_PUSH_URL||(DB.g('fcmPushUrl')||'').trim();
   if(!url||!kakaoAccessToken)return{error:'no_url_or_token'};
   let j;
+  // 미승인일 때 서버가 대기명단에 넣을 수 있도록 현재 프로필 동봉(관리자 직원 탭 자동 노출)
+  const _cu=DB.g('currentUser')||{};
+  const _prof={realName:_cu.realName||'',name:_cu.name||'',dept:_cu.dept||'',rank:_cu.rank||''};
   try{
     const res=await fetch(url,{
       method:'POST',
       headers:{'content-type':'text/plain;charset=utf-8'}, // Apps Script preflight 회피
-      body:JSON.stringify({secret:_FCM_PUSH_SECRET||(DB.g('fcmPushSecret')||''),action:'mintToken',kakaoAccessToken:kakaoAccessToken})
+      body:JSON.stringify({secret:_FCM_PUSH_SECRET||(DB.g('fcmPushSecret')||''),action:'mintToken',kakaoAccessToken:kakaoAccessToken,profile:_prof})
     });
     j=await res.json();
   }catch(e){return{error:'network',detail:String(e)};}
