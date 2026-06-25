@@ -10023,6 +10023,7 @@ function renderFullStats(){
   }
   const res=DB.g('rescues')||[];const facs=DB.g('facilities')||[];
   const haz=DB.g('hazards')||[];const hist=DB.g('history')||[];
+  const alertOps=DB.g('alertOps')||[];
   const now_=new Date();const todayStr=today();
   const fy=s=>s&&s.startsWith(now_.getFullYear()+'-');
   const fy_prev=s=>s&&s.startsWith((now_.getFullYear()-1)+'-');
@@ -10035,6 +10036,8 @@ function renderFullStats(){
   const pRes=res.filter(r=>pf(getDate(r)));
   const pHaz=haz.filter(h=>pf(getDate(h)));
   const pHist=hist.filter(h=>pf(h.date||''));
+  const pAlertOps=alertOps.filter(o=>pf((o.startedAt||'').split('T')[0]||o.startedAt||''));
+  const activeAlertOps=alertOps.filter(o=>!o.closedAt);
   // 전년대비
   const thisY=res.filter(r=>fy(getDate(r))).length;
   const prevY=res.filter(r=>fy_prev(getDate(r))).length;
@@ -10090,6 +10093,32 @@ function renderFullStats(){
         ${mini('요주의',facs.filter(f=>f.status==='warn').length,'#e67e22')}${mini('기간점검',pHist.length,'#27ae60')}
       </div>
     </div>
+    ${(()=>{
+      const lvlMap={};
+      pAlertOps.forEach(op=>{const lv=typeof _opLevel==='function'?_opLevel(op):(((op.alerts||[]).length?(op.alerts[op.alerts.length-1].stage||'예비특보'):(op.level||'예비특보')));lvlMap[lv]=(lvlMap[lv]||0)+1;});
+      const typeAlertMap={};
+      pAlertOps.forEach(op=>{(op.alerts||[]).forEach(a=>{const t=a.type||'기타';typeAlertMap[t]=(typeAlertMap[t]||0)+1;});});
+      const totResponders=pAlertOps.reduce((s,op)=>s+(op.responders||[]).length,0);
+      const totReports=pAlertOps.reduce((s,op)=>s+(op.reports||[]).length,0);
+      const closedOps=pAlertOps.filter(o=>o.closedAtMs&&o.startedAtMs);
+      const avgHrs=closedOps.length?Math.round(closedOps.reduce((s,o)=>s+((o.closedAtMs||0)-(o.startedAtMs||0)),0)/closedOps.length/3600000):0;
+      const lvlColor={'예비특보':'#27ae60','Ⅰ단계(주의보)':'#e67e22','Ⅱ단계(경보)':'#c0392b','Ⅲ단계':'#7d3c98'};
+      const lvlRows=Object.entries(lvlMap).sort((a,b)=>(['예비특보','Ⅰ단계(주의보)','Ⅱ단계(경보)','Ⅲ단계'].indexOf(b[0])||0)-(['예비특보','Ⅰ단계(주의보)','Ⅱ단계(경보)','Ⅲ단계'].indexOf(a[0])||0)).map(([k,v])=>barRow(k,v,Math.max(...Object.values(lvlMap),1),lvlColor[k]||'#4fa8d0')).join('');
+      const typeRows=Object.entries(typeAlertMap).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([k,v])=>barRow(k,v,Math.max(...Object.values(typeAlertMap),1),'#4fa8d0')).join('');
+      if(!pAlertOps.length&&!activeAlertOps.length)return '';
+      return `<div class="scard">
+        <div class="stitle">🌀 특보운영 · ${period} ${pAlertOps.length}건</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:3px;margin-bottom:6px;">
+          ${mini(period,pAlertOps.length,'#4fa8d0')}${mini('운영중',activeAlertOps.length,activeAlertOps.length?'#c0392b':'#4fa8d0')}
+          ${mini('응소인원',totResponders,'#e67e22')}${mini('관측보고',totReports,'#27ae60')}
+        </div>
+        ${pAlertOps.length?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div>${lvlRows?`<div style="font-size:9px;color:#7a9cb8;margin-bottom:3px;">단계별</div>${lvlRows}`:''}</div>
+          <div>${typeRows?`<div style="font-size:9px;color:#7a9cb8;margin-bottom:3px;">특보 종류</div>${typeRows}`:''}</div>
+        </div>${avgHrs?`<div style="font-size:9px;color:#5a8aaa;margin-top:4px;">평균 운영 ${avgHrs}시간</div>`:''}`:
+        `<div style="font-size:10px;color:#5a8aaa;">현재 운영중 ${activeAlertOps.length}건</div>`}
+      </div>`;
+    })()}
     ${accRes.length?`
     <div class="scard">
       <div class="stitle">🤕 안전사고 세부 · ${accRes.length}건</div>
