@@ -3306,6 +3306,8 @@ function viewOnMap(lat,lng){
 }
 function openApp(mode){
   if(isExternal()&&['inspect','stats','admin','settings','alert'].includes(mode)){toast('⚠️ 외부기관 계정은 해당 메뉴에 접근할 수 없습니다');return;}
+  // 작성 폼에서 다른 메뉴로 이동: 미저장 입력은 임시저장만 남기고 작성모드 해제
+  if(window._reportMode==='form'){try{_saveDraftNow();}catch(e){}window._reportMode='';clearInterval(_draftAutoTimer);}
   curApp=mode;
   document.querySelectorAll('.view').forEach(v=>v.classList.remove('on'));
   document.getElementById('appHdr').style.display='block';
@@ -5498,6 +5500,7 @@ function openNewRescue(){
   document.getElementById('bnav').style.display='none';
   showV('v-report');renderPhaseBar(0,1);render1BoForm(gpsPre);
   if(gpsPre&&gpsPre.lat)_autoFillLoc(gpsPre.lat,gpsPre.lng);
+  setTimeout(_maybeOfferDraftRestore,300); // 임시저장 복구 제안
 }
 function addPhase(){
   const res=DB.g('rescues')||[];const r=res.find(x=>x.id===selResId);if(!r)return;
@@ -6382,7 +6385,8 @@ function _buildLogHtml(r){
 }
 function renderTimeline(r,viewMode,outId){
   const _isBoard=outId&&outId!=='repContent';
-  if(!_isBoard)_hideRepFooter();
+  if(!_isBoard){_hideRepFooter();window._reportMode='timeline';clearInterval(_draftAutoTimer);} // 타임라인 보기 — 작성모드 해제
+
   _curViewResId=r.id;
   const mode=(viewMode==='full'||viewMode==='write')?'write':'advanced';
   _tlMode=mode;_tlViewMode=mode;
@@ -6931,6 +6935,62 @@ function submitNBo(){
 // ══════════════════════════════════════════
 // 1보 폼
 // ══════════════════════════════════════════
+// ── 구조 1보 폼: 자동 임시저장 + 작성중 이탈 경고 ──
+window._reportMode='';        // 'form'(작성) | 'timeline'(타임라인 보기)
+let _formDirty=false,_draftAutoTimer=null,_draftListenerBound=false;
+const _DRAFT_KEY='_rescueDraft1bo';
+function _snapshotRescueForm(){
+  const w=document.getElementById('repContent');if(!w)return null;
+  const fields={};
+  w.querySelectorAll('input,textarea,select').forEach(el=>{
+    if(!el.id||el.type==='file')return;
+    if(el.type==='checkbox'||el.type==='radio')fields[el.id]={c:el.checked};
+    else if(el.value!=='')fields[el.id]={v:el.value};
+  });
+  const pills=[];
+  w.querySelectorAll('.pills').forEach(pc=>{
+    if(!pc.id)return;
+    pc.querySelectorAll('.pill.on').forEach(p=>pills.push(pc.id+'::'+p.textContent.trim()));
+  });
+  return {fields,pills,at:Date.now()};
+}
+function _restoreRescueForm(snap){
+  if(!snap)return;
+  const w=document.getElementById('repContent');if(!w)return;
+  try{
+    Object.entries(snap.fields||{}).forEach(([id,o])=>{
+      const el=document.getElementById(id);if(!el)return;
+      if(o.c!==undefined)el.checked=o.c;else if(o.v!==undefined){el.value=o.v;try{el.dispatchEvent(new Event('change',{bubbles:true}));}catch(e){}}
+    });
+    (snap.pills||[]).forEach(key=>{
+      const i=key.indexOf('::');if(i<0)return;
+      const pid=key.slice(0,i),txt=key.slice(i+2);
+      const pc=document.getElementById(pid);if(!pc)return;
+      pc.querySelectorAll('.pill').forEach(p=>{if(p.textContent.trim()===txt)p.classList.add('on');});
+    });
+  }catch(e){}
+}
+function _saveDraftNow(){
+  if(window._reportMode!=='form'||!_formDirty||window._reportIsNbo)return;
+  try{const s=_snapshotRescueForm();if(s)localStorage.setItem(_DRAFT_KEY,JSON.stringify(s));}catch(e){}
+}
+function _clearRescueDraft(){try{localStorage.removeItem(_DRAFT_KEY);}catch(e){}_formDirty=false;}
+function _startDraftAutosave(){
+  clearInterval(_draftAutoTimer);
+  _draftAutoTimer=setInterval(()=>{
+    if(window._reportMode!=='form'){clearInterval(_draftAutoTimer);return;}
+    _saveDraftNow();
+  },30000); // 30초마다 임시저장
+}
+function _maybeOfferDraftRestore(){
+  let snap=null;try{snap=JSON.parse(localStorage.getItem(_DRAFT_KEY)||'null');}catch(e){}
+  if(!snap||!snap.at)return;
+  if(Date.now()-snap.at>24*3600000){_clearRescueDraft();return;} // 24시간 지난 초안은 폐기
+  const mins=Math.max(1,Math.round((Date.now()-snap.at)/60000));
+  if(confirm('작성하다 중단한 임시저장 내용이 있습니다 ('+mins+'분 전).\n불러올까요?')){
+    _restoreRescueForm(snap);toast('📄 임시저장 내용 불러옴');
+  }else{_clearRescueDraft();}
+}
 function render1BoForm(prefill=null){
   const ms=getTeamMembers();
   const hdTeam=getHwandonghaTeam();
@@ -7238,6 +7298,17 @@ function render1BoForm(prefill=null){
   initFormMiniMap(p.lat,p.lng);
   // GPS 자동 실행 (lat/lng 없을 때)
   if(!p.lat&&!p.lng)setTimeout(()=>gpsToFormMap(),800);
+  // 작성 모드 진입 — 자동저장·이탈경고 활성화
+  window._reportMode='form';
+  window._reportIsNbo=isNbo; // N보는 1보 임시저장 키를 공유하지 않음
+  _formDirty=false;
+  if(!_draftListenerBound){
+    const wc=document.getElementById('repContent');
+    if(wc){wc.addEventListener('input',()=>{if(window._reportMode==='form')_formDirty=true;});
+           wc.addEventListener('change',()=>{if(window._reportMode==='form')_formDirty=true;});
+           _draftListenerBound=true;}
+  }
+  if(!isNbo)_startDraftAutosave(); // 신규 1보만 임시저장
 }
 
 function _renderFormTl(){
@@ -7378,6 +7449,7 @@ function submit1Bo(){
   if(r.mobilize&&r.mobilize.length)pushNoti('🚨 야간 응소 요청: '+r.mobilize.join(', ')+' — '+title,'🚨',r.type,{app:'rescue',tab:2,id:r.id},'안전사고');
   syncToSheets('rescue',{id:r.id,title,type:r.type,date:r.date,author:r.author});
   toast('🚨 1보 등록 완료'+(r.mobilize&&r.mobilize.length?' · 응소: '+r.mobilize.join(', '):''));
+  _clearRescueDraft(); // 정상 등록됐으므로 임시저장 폐기
   // 저장 즉시 고도화 타임라인으로 이동
   selResId=r.id;curResId=r.id;
   document.getElementById('bnav').style.display='none';
@@ -11092,6 +11164,14 @@ window.onload=function(){
     }
     // v-report(구조 타임라인) → 목록으로 복귀
     if(document.getElementById('v-report').classList.contains('on')){
+      // 작성 중(미저장 입력 있음)이면 이탈 경고 — 취소 시 폼에 머무름
+      if(window._reportMode==='form'&&_formDirty){
+        if(!confirm('작성 중인 내용이 저장되지 않았습니다.\n나가시겠습니까? (임시저장본은 보관됩니다)')){
+          history.pushState({view:'rescue-report'},'','');return; // 머무르기
+        }
+        try{_saveDraftNow();}catch(e){}
+      }
+      window._reportMode='';clearInterval(_draftAutoTimer);
       _hideRepFooter();
       showV('v-rescue-list');renderResList();
       document.getElementById('appHdr').style.display='block';
