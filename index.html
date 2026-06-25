@@ -1566,6 +1566,33 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
   </div>
 </div>
 
+<!-- ══ 모달: 체류인원 보고 ══ -->
+<div id="modalAlertOcc" class="modal">
+  <div class="mbox">
+    <div class="mhdr"><span class="mtitle">👥 체류인원 보고</span><button class="mclose" onclick="closeM('modalAlertOcc')">×</button></div>
+    <div class="fg"><span class="fl">거점</span>
+      <div id="occLocDisplay" style="font-size:13px;font-weight:700;color:#e0edf8;background:rgba(79,168,208,.1);border:1px solid rgba(79,168,208,.25);border-radius:12px;padding:5px 12px;display:inline-block;margin-top:4px;"></div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <div class="fg" style="flex:1;"><span class="fl">직원 (명)</span><input type="number" inputmode="numeric" id="occStaff" class="fi" placeholder="0" min="0"></div>
+      <div class="fg" style="flex:1;"><span class="fl">탐방객 (명)</span><input type="number" inputmode="numeric" id="occVisitors" class="fi" placeholder="0" min="0"></div>
+    </div>
+    <div class="fg"><span class="fl">비고</span><input type="text" id="occNote" class="fi" placeholder="특이사항 (예: 출퇴근중, 하산지시 등)"></div>
+    <input type="hidden" id="occOpId"><input type="hidden" id="occLoc">
+    <button class="btn btn-red" onclick="addAlertOccupancy()">👥 체류인원 보고</button>
+  </div>
+</div>
+
+<!-- ══ 모달: 탐방로 통제 현황 ══ -->
+<div id="modalTrailCtrl" class="modal">
+  <div class="mbox">
+    <div class="mhdr"><span class="mtitle">🚧 탐방로 통제 현황</span><button class="mclose" onclick="closeM('modalTrailCtrl')">×</button></div>
+    <div id="trailCtrlBody" style="max-height:60vh;overflow-y:auto;"></div>
+    <div class="fg" style="margin-top:8px;"><span class="fl">일괄 메모</span><input type="text" id="trailCtrlNote" class="fi" placeholder="예: 호우 주의보로 전 구간 통제"></div>
+    <button class="btn btn-red" onclick="saveTrailCtrl()">🚧 통제 현황 저장</button>
+  </div>
+</div>
+
 <!-- ══ 모달: 특보운영 기록 보관함 상세 ══ -->
 <div id="modalAlertHistory" class="modal">
   <div class="mbox">
@@ -1678,7 +1705,7 @@ const _FB_CFG={
 // history: 점검이력은 무제한으로 계속 쌓이는 로그성 데이터라 단일문서 그대로 두면 매 점검마다 전체가 전원에게 재전송됨 → 건별 문서로 전환
 const _SHARED_COLL=['rescues','hazards','facilities','history'];
 // _SHARED_DOC: 단일 문서에 JSON 배열 저장 (관리자 전용, 동시 쓰기 없음)
-const _SHARED_DOC=['alertOps','staff','catFac','catFacMeta','pendingUsers','approvedUsers','deletedKakaoIds','adminOwnerKakaoId','adminApprovalCode','extAgencies','extAgencyCode','extAgencyDisplayName','geminiApiKey','kmaProxyUrl','_acl','loginLog'];
+const _SHARED_DOC=['alertOps','staff','catFac','catFacMeta','pendingUsers','approvedUsers','deletedKakaoIds','adminOwnerKakaoId','adminApprovalCode','extAgencies','extAgencyCode','extAgencyDisplayName','geminiApiKey','kmaProxyUrl','_acl','loginLog','trailStatus'];
 // 시설물 레거시(단일문서) 폴백/시드 동기화 상태
 let _legacyFacBackup=null; // appData/facilities(구버전)의 백업 — 컬렉션 비었을 때 화면 폴백
 let _facSeedReady=false;   // 시설물 첫 스냅샷·레거시 백업 확인 완료(시드 레이스 방지)
@@ -3133,6 +3160,10 @@ function renderBoard(){
   const aops=DB.g('alertOps')||[];
   const activeOp=aops.find(o=>!o.closedAt);
   const opRespCnt=activeOp?(activeOp.responders||[]).length:0;
+  const ts=DB.g('trailStatus')||{};
+  const trailCtrlCnt=Object.values(ts).filter(v=>v.status==='통제').length;
+  const trailWarnCnt=Object.values(ts).filter(v=>v.status==='주의').length;
+  const trailActive=_boardView==='trail';
   const rescueActive=_boardView==='rescue', hazActive=_boardView==='hazard', alertActive=_boardView==='alert';
   let html='';
   // 요약 스트립 (클릭 시 하단 카드 영역 전환)
@@ -3150,8 +3181,33 @@ function renderBoard(){
       <div style="font-size:30px;font-weight:900;color:${activeOp?'#4fa8d0':'#27ae60'};">${activeOp?opRespCnt:0}</div>
       <div style="font-size:12px;color:${alertActive?'#e0edf8':'rgba(255,255,255,.5)'};font-weight:${alertActive?'700':'400'};">🌀 ${activeOp?'특보 응소':'특보운영'}${alertActive?' ▾':''}</div>
     </div>
-  </div>`;
-  if(alertActive){
+  </div>
+  ${trailCtrlCnt||trailWarnCnt?`<div onclick="setBoardView('trail')" style="display:flex;align-items:center;gap:12px;background:rgba(231,76,60,.1);border:1px solid ${trailActive?'rgba(231,76,60,.85)':'rgba(231,76,60,.35)'};border-radius:12px;padding:10px 16px;margin-bottom:10px;cursor:pointer;">
+    <div style="font-size:26px;font-weight:900;color:#e74c3c;">${trailCtrlCnt}</div>
+    <div>
+      <div style="font-size:13px;font-weight:800;color:#e0edf8;">🚧 탐방로 통제 중${trailActive?' ▾':''}</div>
+      <div style="font-size:11px;color:#ff9e80;margin-top:2px;">통제 ${trailCtrlCnt}구간${trailWarnCnt?' · 주의 '+trailWarnCnt+'구간':''}</div>
+    </div>
+  </div>`:''}`;
+  if(trailActive){
+    const zones=[...new Set(SEORAK_TRAILS.map(t=>t.zone))];
+    html+=`<div style="background:#0a1626;border:1.5px solid rgba(231,76,60,.4);border-radius:14px;padding:16px 18px;">
+      <div style="font-size:16px;font-weight:900;color:#e74c3c;margin-bottom:12px;">🚧 탐방로 통제 현황</div>`;
+    zones.forEach(z=>{
+      const zTrails=SEORAK_TRAILS.filter(t=>t.zone===z);
+      html+=`<div style="font-size:10px;color:#5a7e98;font-weight:800;letter-spacing:.5px;margin:8px 0 4px;">${z.toUpperCase()}</div>`;
+      zTrails.forEach(t=>{
+        const st=(ts[t.id]||{}).status||'개방';
+        const col=TRAIL_STATUS_COLORS[st]||'#27ae60';
+        html+=`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-top:1px solid rgba(255,255,255,.04);">
+          <span style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0;box-shadow:0 0 6px ${col}66;"></span>
+          <span style="font-size:12px;color:${st==='개방'?'rgba(255,255,255,.55)':'#e0edf8'};flex:1;">${_esc(t.name)}</span>
+          <span style="font-size:11px;font-weight:800;color:${col};">${st}</span>
+        </div>`;
+      });
+    });
+    html+=`</div>`;
+  } else if(alertActive){
     if(!activeOp){
       html+=`<div style="text-align:center;padding:50px 0 30px;font-size:17px;color:rgba(255,255,255,.3);">✅ 진행중인 특보운영 없음</div>`;
     } else {
@@ -3177,12 +3233,37 @@ function renderBoard(){
           <span style="font-size:14px;font-weight:800;color:${gr.cnt?'#5dbf8a':'rgba(255,255,255,.22)'};min-width:42px;flex-shrink:0;">${gr.cnt}명</span>
           <span style="font-size:12px;color:#7a9cb8;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${gr.names||'-'}</span>
         </div>`).join('')}
-        ${reps.length?`<div style="font-size:13px;color:#9bbdd4;font-weight:700;margin:13px 0 4px;">📊 최근 관측</div>
+        ${(()=>{
+          // 체류인원 요약 (관측소별 최신값)
+          const occMap={};(activeOp.occupancy||[]).forEach(o=>{const k=o.loc||'사무소';if(!occMap[k]||(o.at||0)>(occMap[k].at||0))occMap[k]=o;});
+          const occEntries=Object.entries(occMap);
+          if(!occEntries.length)return'';
+          const totalV=occEntries.reduce((s,[,o])=>s+(o.visitors||0),0);
+          const totalS=occEntries.reduce((s,[,o])=>s+(o.staff||0),0);
+          return`<div style="font-size:13px;color:#9bbdd4;font-weight:700;margin:13px 0 4px;">👥 체류인원 (탐방객 총 ${totalV}명)</div>
+          ${occEntries.map(([loc,o])=>`<div style="display:flex;gap:8px;font-size:12px;padding:4px 0;border-top:1px solid rgba(255,255,255,.04);">
+            <span style="color:#5a7e98;min-width:100px;flex-shrink:0;">${_esc(_stationLabel(loc))}</span>
+            <span style="color:#7ec8a0;font-weight:700;">직원 ${o.staff??'-'}명</span>
+            <span style="color:#a8cdf5;font-weight:700;">탐방객 ${o.visitors??'-'}명</span>
+            <span style="color:#4a7090;font-size:10px;">${(o.time||'').slice(11,16)}</span>
+          </div>`).join('')}`;
+        })()}
+        ${reps.length?`<div style="font-size:13px;color:#9bbdd4;font-weight:700;margin:13px 0 4px;">📊 최근 관측 (누적)</div>
           ${reps.map(r=>`<div style="display:flex;gap:10px;font-size:12px;padding:4px 0;border-top:1px solid rgba(255,255,255,.04);">
             <span style="color:#5a7e98;min-width:96px;flex-shrink:0;">${_esc(_stationLabel(r.loc))}</span>
-            <span style="color:#7a9cb8;min-width:46px;flex-shrink:0;">${_esc(r.time||'')}</span>
+            <span style="color:#7a9cb8;min-width:46px;flex-shrink:0;">${_esc((r.time||'').slice(11,16))}</span>
             <span style="color:#cfe2f2;font-weight:700;">${r.snow!=null&&r.snow!==''?'❄️ '+_esc(r.snow)+'cm  ':''}${r.rain!=null&&r.rain!==''?'🌧️ '+_esc(r.rain)+'mm':''}</span>
           </div>`).join('')}`:''}
+        ${(()=>{
+          // 탐방로 통제 현황 요약
+          const ts=DB.g('trailStatus')||{};
+          const ctrl=SEORAK_TRAILS.filter(t=>(ts[t.id]||{}).status==='통제');
+          const warn=SEORAK_TRAILS.filter(t=>(ts[t.id]||{}).status==='주의');
+          if(!ctrl.length&&!warn.length)return'';
+          return`<div style="font-size:13px;color:#e67e22;font-weight:700;margin:13px 0 4px;">🚧 탐방로 통제 ${ctrl.length}구간${warn.length?' · 주의 '+warn.length+'구간':''}</div>
+          ${ctrl.map(t=>`<div style="font-size:11px;color:#ff9e80;padding:2px 0;">🔴 통제 — ${_esc(t.name)}</div>`).join('')}
+          ${warn.map(t=>`<div style="font-size:11px;color:#ffa040;padding:2px 0;">🟠 주의 — ${_esc(t.name)}</div>`).join('')}`;
+        })()}
         <button onclick="closeBoard();openApp('alert');" style="width:100%;margin-top:13px;padding:9px;border-radius:9px;border:1px solid rgba(79,168,208,.35);background:rgba(79,168,208,.1);color:#4fa8d0;font-size:13px;font-weight:700;cursor:pointer;">🌀 특보운영 상세 열기</button>
       </div>`;
     }
@@ -8278,6 +8359,7 @@ function renderAlertView(){
         </div>
         <div style="margin:6px 0 2px;">${myResps.length?myResps.map(r=>_alertRespChip(r,active.id)).join(''):'<span style="font-size:11px;color:#456a85;">아직 응소자 없음</span>'}</div>
         ${_repLine(last)}
+        ${(()=>{const occ=_latestOccupancy(active,st.loc);return occ?`<div style="font-size:11px;color:#7ec8a0;margin-top:4px;">👥 직원 <b>${occ.staff??'-'}</b>명 · 탐방객 <b>${occ.visitors??'-'}</b>명 <span style="color:#4a7090;">${(occ.time||'').slice(11,16)}</span>${occ.note?' · <span style="color:#7a9cb8;">'+_esc(occ.note)+'</span>':''}</div>`:''})()}
       </div>`;
     };
     // 그룹(사무소/분소)별 렌더 — 대청분소는 대피소 단위로 세분
@@ -8297,6 +8379,7 @@ function renderAlertView(){
           ${total?`<div class="ao-loc-need">필요: ${need}</div>${_progBar(myResps.length,total)}${shortG?`<div style="font-size:10px;color:#ff9e80;font-weight:700;margin-top:3px;">⚠️ 응소 ${shortG}명 부족</div>`:''}`:''}
           <div style="margin:6px 0 2px;">${myResps.length?myResps.map(r=>_alertRespChip(r,active.id)).join(''):'<span style="font-size:11px;color:#456a85;">아직 응소자 없음</span>'}</div>
           ${_repLine(last)}
+          ${(()=>{const occ=_latestOccupancy(active,st.loc);return occ?`<div style="font-size:11px;color:#7ec8a0;margin-top:4px;">👥 직원 <b>${occ.staff??'-'}</b>명 · 탐방객 <b>${occ.visitors??'-'}</b>명 <span style="color:#4a7090;">${(occ.time||'').slice(11,16)}</span></div>`:''})()}
         </div>`;
       }
       // 대청분소: 그룹 헤더 + 대피소 세부 카드
@@ -8430,15 +8513,27 @@ function _renderAlertInput(active){
       </div>
     </div>`;
   }
+  // 탐방로 통제 빠른 버튼 (관리자)
+  if(admin){
+    const ts=DB.g('trailStatus')||{};const ctrlCnt=Object.values(ts).filter(v=>v.status==='통제').length;
+    html+=`<div class="ao-card" style="margin-bottom:12px;">
+      <div class="ao-sec-hd" style="margin-top:0;"><span class="bar" style="background:#e67e22;"></span>🚧 탐방로 통제 현황${ctrlCnt?` <span style="background:rgba(231,76,60,.2);color:#ff9e80;font-size:10px;font-weight:800;border-radius:6px;padding:1px 7px;margin-left:6px;">통제 ${ctrlCnt}구간</span>`:''}</div>
+      <button onclick="openTrailCtrl()" class="ao-loc-btn" style="width:100%;">🚧 탐방로 통제/개방 관리</button>
+    </div>`;
+  }
   html+=`<div class="ao-sec-hd"><span class="bar"></span>📍 분소별 빠른 입력</div>`;
   ALERT_GROUPS.forEach(g=>{
     g.stations.forEach(st=>{
       const cnt=(active.responders||[]).filter(r=>(r.loc||'사무소')===st.loc).length;
+      const occ=_latestOccupancy(active,st.loc);
+      const occLine=occ?`<div style="font-size:11px;color:#7ec8a0;margin:2px 0 4px;">👥 직원 ${occ.staff??'-'}명 · 탐방객 ${occ.visitors??'-'}명 <span style="color:#4a7090;">${(occ.time||'').slice(11,16)}</span>${occ.note?' · '+_esc(occ.note):''}</div>`:'';
       html+=`<div class="ao-loc-card" style="margin-bottom:8px;">
-        <div class="ao-loc-hd"><b style="color:#e8f2fb;font-size:13px;">${g.stations.length>1?'⛺ ':g.ico+' '}${_esc(st.label)}</b><span class="ao-loc-cnt ${cnt?'ok':''}">👤 ${cnt}명</span></div>
-        <div style="display:flex;gap:6px;margin-top:8px;">
+        <div class="ao-loc-hd"><b style="color:#e8f2fb;font-size:13px;">${g.stations.length>1?'⛺ ':g.ico+' '}${_esc(st.label)}</b><span class="ao-loc-cnt ${cnt?'ok':''}">👤 응소 ${cnt}명</span></div>
+        ${occLine}
+        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
           <button onclick="openAddResponder(${active.id},'${st.loc}')" class="ao-loc-btn">👤 응소 등록</button>
           <button onclick="openAlertReport(${active.id},'${st.loc}')" class="ao-loc-btn rep">${repBtnLbl}</button>
+          <button onclick="openAlertOcc(${active.id},'${st.loc}')" class="ao-loc-btn" style="background:rgba(46,204,113,.08);border-color:rgba(46,204,113,.3);color:#7ec8a0;">👥 체류인원</button>
         </div>
       </div>`;
     });
@@ -8594,6 +8689,103 @@ function _syncAutoAlerts(liveList){
   }
   if(window.curApp==='alert')renderAlertView();
   updateSummary();
+}
+// ── 체류인원 ──
+function _latestOccupancy(op,loc){
+  const list=(op.occupancy||[]).filter(o=>o.loc===loc);
+  if(!list.length)return null;
+  return list.reduce((a,b)=>(b.at||0)>(a.at||0)?b:a);
+}
+let _occOpId=null,_occLoc='';
+function openAlertOcc(opId,presetLoc){
+  _occOpId=opId;_occLoc=presetLoc||'';
+  document.getElementById('occOpId').value=opId;
+  document.getElementById('occLoc').value=presetLoc||'';
+  document.getElementById('occLocDisplay').textContent=presetLoc?_stationLabel(presetLoc):'관측소 미지정';
+  document.getElementById('occStaff').value='';
+  document.getElementById('occVisitors').value='';
+  document.getElementById('occNote').value='';
+  document.getElementById('modalAlertOcc').classList.add('on');
+  setTimeout(()=>document.getElementById('occStaff').focus(),200);
+}
+function addAlertOccupancy(){
+  const opId=parseInt(document.getElementById('occOpId').value)||_occOpId;
+  const loc=document.getElementById('occLoc').value||_occLoc;
+  if(!loc){toast('거점 정보가 없습니다');return;}
+  const staff=document.getElementById('occStaff').value.trim();
+  const visitors=document.getElementById('occVisitors').value.trim();
+  if(staff===''&&visitors===''){toast('직원 또는 탐방객 수를 입력하세요');return;}
+  const ops=DB.g('alertOps')||[];
+  const idx=ops.findIndex(o=>o.id===opId);
+  if(idx===-1){toast('운영 기록을 찾을 수 없습니다');return;}
+  if(!ops[idx].occupancy)ops[idx].occupancy=[];
+  ops[idx].occupancy.push({
+    id:Date.now(),loc,
+    staff:staff!==''?parseInt(staff):null,
+    visitors:visitors!==''?parseInt(visitors):null,
+    note:document.getElementById('occNote').value.trim(),
+    time:now(),at:Date.now(),by:getAuthor()
+  });
+  DB.s('alertOps',ops);
+  closeM('modalAlertOcc');
+  toast('👥 '+_stationLabel(loc)+' 체류인원 보고 완료');
+  renderAlertView();
+}
+
+// ── 탐방로 통제 ──
+// 설악산 주요 탐방로 구간 목록
+const SEORAK_TRAILS=[
+  {id:'baekdam-bongjeongam',  name:'백담사 → 봉정암',       zone:'백담'},
+  {id:'sogong-biseon',        name:'소공원 → 비선대',       zone:'소공원'},
+  {id:'biseon-yangpok',       name:'비선대 → 양폭대피소',   zone:'소공원'},
+  {id:'yangpok-bongjeongam',  name:'양폭 → 봉정암',         zone:'소공원'},
+  {id:'daecheong-heunun',     name:'대청봉 → 희운각 대피소',zone:'대청'},
+  {id:'osaek-daecheong',      name:'오색 → 대청봉',         zone:'오색'},
+  {id:'osaek-pokpo',          name:'오색 → 설악폭포',       zone:'오색'},
+  {id:'hangyeryeong-daecheong',name:'한계령 → 끝청봉',      zone:'한계령'},
+  {id:'jujeongol',            name:'주전골',                zone:'오색'},
+  {id:'cable-gwongumseong',   name:'케이블카 → 권금성',     zone:'소공원'},
+  {id:'nahan-toyang',         name:'나한봉 → 토왕성폭포전망대',zone:'소공원'},
+  {id:'ulsan-bawi',           name:'소공원 → 울산바위',     zone:'소공원'},
+  {id:'heullimgol',           name:'흘림골',                zone:'오색'},
+  {id:'olsanbawi-biseon',     name:'울산바위 → 비선대',     zone:'소공원'},
+];
+const TRAIL_STATUS_OPTS=['개방','주의','통제'];
+const TRAIL_STATUS_COLORS={'개방':'#27ae60','주의':'#e67e22','통제':'#c0392b'};
+function openTrailCtrl(){
+  const ts=DB.g('trailStatus')||{};
+  const zones=[...new Set(SEORAK_TRAILS.map(t=>t.zone))];
+  let html='';
+  zones.forEach(z=>{
+    html+=`<div style="font-size:10px;color:#5a8aa0;font-weight:800;letter-spacing:.5px;margin:10px 0 4px;">${z.toUpperCase()} 구간</div>`;
+    SEORAK_TRAILS.filter(t=>t.zone===z).forEach(t=>{
+      const cur=(ts[t.id]||{}).status||'개방';
+      html+=`<div style="display:flex;align-items:center;gap:6px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04);">
+        <div style="flex:1;font-size:12px;color:#cfe2f2;">${_esc(t.name)}</div>
+        <div style="display:flex;gap:4px;">${TRAIL_STATUS_OPTS.map(s=>`<button onclick="this.closest('.trow')._sel='${s}';this.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('on'));this.classList.add('on')" class="ao-loc-btn tst${cur===s?' on':''}" data-tid="${t.id}" data-st="${s}" style="font-size:10px;padding:3px 8px;min-width:0;background:${cur===s?TRAIL_STATUS_COLORS[s]+'26':'rgba(255,255,255,.04)'};border-color:${cur===s?TRAIL_STATUS_COLORS[s]:'rgba(255,255,255,.1)'};color:${cur===s?TRAIL_STATUS_COLORS[s]:'rgba(255,255,255,.4)'}">${s}</button>`).join('')}</div>
+      </div>`;
+    });
+  });
+  document.getElementById('trailCtrlBody').innerHTML=html;
+  document.getElementById('trailCtrlNote').value='';
+  document.getElementById('modalTrailCtrl').classList.add('on');
+}
+function saveTrailCtrl(){
+  const ts=DB.g('trailStatus')||{};
+  const note=document.getElementById('trailCtrlNote').value.trim();
+  document.querySelectorAll('#trailCtrlBody button[data-tid].on').forEach(btn=>{
+    const tid=btn.dataset.tid,st=btn.dataset.st;
+    ts[tid]={status:st,time:now(),at:Date.now(),by:getAuthor(),note};
+  });
+  // 버튼 미클릭 = 기존 상태 유지; 없는 구간은 개방으로
+  SEORAK_TRAILS.forEach(t=>{if(!ts[t.id])ts[t.id]={status:'개방',time:now(),at:Date.now(),by:'초기'};});
+  DB.s('trailStatus',ts);
+  closeM('modalTrailCtrl');
+  const ctrlCnt=Object.values(ts).filter(v=>v.status==='통제').length;
+  const warnCnt=Object.values(ts).filter(v=>v.status==='주의').length;
+  toast(`🚧 통제 ${ctrlCnt}구간 · 주의 ${warnCnt}구간 저장`);
+  if(ctrlCnt>0)pushNoti(`🚧 탐방로 통제 ${ctrlCnt}구간 설정`,'🚧','재난',{app:'alert'},'안전사고');
+  renderAlertView();updateSummary();
 }
 function endAlertOps(id){
   if(!isAdminUser()){toast('⚠️ 관리자만 가능');return;}
