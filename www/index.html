@@ -1040,10 +1040,12 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
 </div>
 
 <!-- ══ 특보운영 ══ -->
-<div id="v-alert" class="view">
-  <div class="bpad" id="alertViewWrap">
-    <div id="alertCurrentWrap"></div>
-    <div id="alertActiveWrap"></div>
+<div id="v-alert" class="view" style="flex-direction:column;overflow:hidden;">
+  <div class="bpad" id="alertViewWrap" style="flex:1;min-height:0;overflow-y:auto;padding-bottom:18px;"></div>
+  <div id="alertBnav" style="display:flex;flex-shrink:0;background:#040a16;border-top:.5px solid rgba(255,255,255,.07);padding-bottom:env(safe-area-inset-bottom);">
+    <div class="navi on" id="anv1" onclick="alertTab(1)"><div class="navi-ico">📋</div><span class="navi-lbl">목록</span></div>
+    <div class="navi" id="anv2" onclick="alertTab(2)"><div class="navi-ico">📊</div><span class="navi-lbl">통계</span></div>
+    <div class="navi" id="anv3" onclick="alertTab(3)"><div class="navi-ico">🚨</div><span class="navi-lbl">입력</span></div>
   </div>
 </div>
 
@@ -2969,7 +2971,7 @@ function _initBoardMap(){
   if(!_boardMap){
     try{
       _boardMap=new kakao.maps.Map(el,{center:new kakao.maps.LatLng(DC.lat,DC.lng),level:9});
-      _boardMap.setMapTypeId(kakao.maps.MapTypeId.HYBRID);
+      _boardMap.setMapTypeId(kakao.maps.MapTypeId.SKYVIEW); // 순수 위성(도로·등산로 벡터선 제거) — 상황판 깔끔하게
     }catch(e){console.warn('boardMap',e);return;}
   }else{
     _boardMap.relayout();
@@ -3327,6 +3329,7 @@ function openApp(mode){
     rMaps();setTimeout(()=>{try{renderInspectMap();if(mapI&&!window._mapIInited){window._mapIInited=true;mapI.setCenter(new kakao.maps.LatLng(DC.lat,DC.lng));mapI.setLevel(9);}}catch(e){renderFacList();}},200);
   } else if(mode==='alert'){
     document.getElementById('topTitle').textContent='특보운영';
+    _alertTab=1; // 진입 시 항상 목록 탭부터
     bn.style.display='none';showV('v-alert');history.pushState({view:mode},'','');renderAlertView();
   } else if(mode==='admin'){
     // 소유자 카카오 계정은 비밀번호 생략 (최초 1회 관리자 로그인 시 자동 등록)
@@ -8136,10 +8139,24 @@ function _kmaLiveList(alertMap){
 // 마지막으로 화면에 표시된 공식 기상청 특보 (추정값 제외)
 window._kmaLiveAlerts=window._kmaLiveAlerts||[];
 
+let _alertTab=1; // 1:목록 2:통계 3:입력
+function alertTab(n){_alertTab=n;renderAlertView();}
+function _updateAlertNav(){
+  [1,2,3].forEach(i=>{const el=document.getElementById('anv'+i);if(el)el.classList.toggle('on',_alertTab===i);});
+}
 function renderAlertView(){
   const ops=DB.g('alertOps')||[];
   const active=ops.find(o=>!o.closedAt);
+  // 관측 리마인더는 탭과 무관하게 운영 중이면 항상 동작
+  if(active){active.responders=active.responders||[];active.reports=active.reports||[];active.alerts=active.alerts||_opAlerts(active);_startAlertReminder();}
+  else{_stopAlertReminder();}
+  _updateAlertNav();
+  const _wrapEl=document.getElementById('alertViewWrap');
+  if(!_wrapEl)return;
+  if(_alertTab===2){_wrapEl.innerHTML=_renderAlertStats(ops);return;}
+  if(_alertTab===3){_wrapEl.innerHTML=_renderAlertInput(active);return;}
 
+  // ── 목록 탭 ──
   // 기상청 실시간 발효 특보 (자동 발령 근거)
   const kmaLive=window._kmaLiveAlerts||[];
   let wxHtml='';
@@ -8155,8 +8172,6 @@ function renderAlertView(){
   // 활성 특보운영 — 분소별 응소 현황 + 시간별 기상관측
   let activeHtml='';
   if(active){
-    active.responders=active.responders||[];active.reports=active.reports||[];active.alerts=active.alerts||_opAlerts(active);
-    _startAlertReminder();
     const opLevel=_opLevel(active);
     const lvColor=ALERT_LEVEL_COLORS[opLevel]||'#4fa8d0';
     const itv=active.reportInterval||60;
@@ -8255,11 +8270,10 @@ function renderAlertView(){
       <div class="ao-sec-hd"><span class="bar" style="background:#6e96e6;"></span>🕐 시간대별 관측 기록</div>
       ${_renderReportsTable(active)}`;
   } else {
-    _stopAlertReminder();
     activeHtml=`<div class="ao-empty">
       <div class="ao-empty-ico">🌀</div>
       <div class="ao-empty-msg">현재 진행 중인 특보운영이 없습니다</div>
-      ${isAdminUser()?`<button onclick="openAlertStart()" class="ao-start-btn">🌀 특보운영 시작</button>`:'<div style="font-size:11px;color:#456a85;">관리자가 특보운영을 시작하면 표시됩니다</div>'}
+      ${isAdminUser()?`<button onclick="alertTab(3)" class="ao-start-btn">🌀 특보운영 시작</button>`:'<div style="font-size:11px;color:#456a85;">관리자가 특보운영을 시작하면 표시됩니다</div>'}
     </div>`;
   }
 
@@ -8282,6 +8296,82 @@ function renderAlertView(){
 
   const wrap=document.getElementById('alertViewWrap');
   if(wrap) wrap.innerHTML=wxHtml+`<div id="alertActiveWrap">`+activeHtml+`</div>`+histHtml;
+}
+
+// ── 특보운영 통계 탭 ──
+function _renderAlertStats(ops){
+  ops=ops||DB.g('alertOps')||[];
+  const active=ops.find(o=>!o.closedAt);
+  const closed=ops.filter(o=>o.closedAt);
+  if(!ops.length){
+    return `<div class="ao-empty"><div class="ao-empty-ico">📊</div><div class="ao-empty-msg">특보운영 기록이 없습니다</div></div>`;
+  }
+  // 단계별 / 종류별 집계 (발령된 모든 특보 기준)
+  const lvlMap={},typeMap={};
+  ops.forEach(o=>{const lv=_opLevel(o);lvlMap[lv]=(lvlMap[lv]||0)+1;(_opAlerts(o)||[]).forEach(a=>{const t=a.type||'기타';typeMap[t]=(typeMap[t]||0)+1;});});
+  const totResp=ops.reduce((s,o)=>s+(o.responders||[]).length,0);
+  const totRep=ops.reduce((s,o)=>s+(o.reports||[]).length,0);
+  const closedOps=closed.filter(o=>o.closedAtMs&&o.startedAtMs);
+  const avgHrs=closedOps.length?(closedOps.reduce((s,o)=>s+((o.closedAtMs||0)-(o.startedAtMs||0)),0)/closedOps.length/3600000):0;
+  const lvlColor={'예비특보':'#27ae60','Ⅰ단계(주의보)':'#e67e22','Ⅱ단계(경보)':'#c0392b','Ⅲ단계':'#7d3c98'};
+  const safeMax=o=>Math.max(...Object.values(o),1);
+  const barRow=(k,v,max,col)=>`<div style="margin-bottom:5px;"><div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:2px;"><span style="color:#c0d8ec;">${_esc(k)}</span><span style="color:${col};font-weight:700;">${v}건</span></div><div style="height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;"><div style="height:100%;width:${Math.round(v/max*100)}%;background:${col};border-radius:2px;"></div></div></div>`;
+  const mini=(label,val,col)=>`<div style="background:#060d1a;border-radius:9px;padding:11px 6px;text-align:center;"><div style="font-size:20px;font-weight:800;color:${col||'#e0edf8'};line-height:1.1;">${val}</div><div style="font-size:10px;color:#7a9cb8;margin-top:3px;">${label}</div></div>`;
+  const ord=['예비특보','Ⅰ단계(주의보)','Ⅱ단계(경보)','Ⅲ단계'];
+  const lvlRows=Object.entries(lvlMap).sort((a,b)=>ord.indexOf(a[0])-ord.indexOf(b[0])).map(([k,v])=>barRow(k,v,safeMax(lvlMap),lvlColor[k]||'#4fa8d0')).join('');
+  const typeRows=Object.entries(typeMap).sort((a,b)=>b[1]-a[1]).map(([k,v])=>barRow(k,v,safeMax(typeMap),'#4fa8d0')).join('');
+  return `<div style="padding:2px 2px 10px;">
+    <div class="scard" style="margin-bottom:10px;">
+      <div class="stitle">🌀 특보운영 종합</div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-bottom:6px;">
+        ${mini('총 운영',ops.length,'#4fa8d0')}${mini('운영중',active?1:0,active?'#c0392b':'#4fa8d0')}
+        ${mini('누적 응소',totResp+'명','#7ee0a8')}${mini('누적 관측',totRep+'건','#a8cdf5')}
+      </div>
+      ${avgHrs?`<div style="font-size:11px;color:#5a8aaa;text-align:center;margin-top:4px;">평균 운영 시간 ${avgHrs>=1?avgHrs.toFixed(1)+'시간':Math.round(avgHrs*60)+'분'} · 종료 ${closed.length}건</div>`:''}
+    </div>
+    ${lvlRows?`<div class="scard" style="margin-bottom:10px;"><div class="stitle">📶 단계별</div>${lvlRows}</div>`:''}
+    ${typeRows?`<div class="scard"><div class="stitle">🌧️ 특보 종류별</div>${typeRows}</div>`:''}
+  </div>`;
+}
+
+// ── 특보운영 입력 탭 (발령·응소·관측 진입점) ──
+function _renderAlertInput(active){
+  const admin=isAdminUser();
+  let html='<div style="padding:4px 2px 10px;">';
+  if(!active){
+    html+=`<div class="ao-card" style="text-align:center;padding:22px 16px;">
+      <div style="font-size:34px;margin-bottom:8px;">🌀</div>
+      <div style="font-size:13px;color:#9fc0da;margin-bottom:14px;">진행 중인 특보운영이 없습니다</div>
+      ${admin?`<button onclick="openAlertStart()" class="ao-start-btn" style="margin:0 auto;">🌀 특보운영 시작</button>`
+             :`<div style="font-size:11px;color:#456a85;">관리자가 특보운영을 시작하면<br>여기서 응소·관측을 입력할 수 있습니다</div>`}
+    </div>`;
+    return html+'</div>';
+  }
+  // 운영 중 — 발령/종료(관리자) + 분소별 빠른 입력(전원)
+  const repBtnLbl=(mt=>mt==='snow'?'❄️ 적설보고':mt==='rain'?'🌧️ 강우보고':'🌧️ 기상보고')(_alertMeasureType(active));
+  if(admin){
+    html+=`<div class="ao-card" style="margin-bottom:12px;">
+      <div class="ao-sec-hd" style="margin-top:0;"><span class="bar" style="background:#ff8a80;"></span>🚨 특보 발령 · 운영</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button onclick="openAlertStart()" class="ao-loc-btn" style="flex:1;min-width:130px;">＋ 특보 추가 발령</button>
+        <button onclick="endAlertOps(${active.id})" class="ao-loc-btn" style="flex:1;min-width:130px;background:rgba(192,57,43,.14);border-color:rgba(192,57,43,.4);color:#ff8a80;">■ 운영 종료</button>
+      </div>
+    </div>`;
+  }
+  html+=`<div class="ao-sec-hd"><span class="bar"></span>📍 분소별 빠른 입력</div>`;
+  ALERT_GROUPS.forEach(g=>{
+    g.stations.forEach(st=>{
+      const cnt=(active.responders||[]).filter(r=>(r.loc||'사무소')===st.loc).length;
+      html+=`<div class="ao-loc-card" style="margin-bottom:8px;">
+        <div class="ao-loc-hd"><b style="color:#e8f2fb;font-size:13px;">${g.stations.length>1?'⛺ ':g.ico+' '}${_esc(st.label)}</b><span class="ao-loc-cnt ${cnt?'ok':''}">👤 ${cnt}명</span></div>
+        <div style="display:flex;gap:6px;margin-top:8px;">
+          <button onclick="openAddResponder(${active.id},'${st.loc}')" class="ao-loc-btn">👤 응소 등록</button>
+          <button onclick="openAlertReport(${active.id},'${st.loc}')" class="ao-loc-btn rep">${repBtnLbl}</button>
+        </div>
+      </div>`;
+    });
+  });
+  return html+'</div>';
 }
 
 function _alertRespChip(r,opId){
