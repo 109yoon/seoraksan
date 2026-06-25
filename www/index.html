@@ -4044,30 +4044,9 @@ function selTTActor(el,actor){
 // 작성자 관리
 // ══════════════════════════════════════════
 function _renderStaffQuickPick(){
-  const dept=(document.getElementById('uDeptIn')||{}).value||'';
+  // 가입/작성자 설정 시 기존 직원 이름을 노출하지 않는다(개인정보·사칭 방지). 각자 직접 입력.
   const wrap=document.getElementById('staffQuickPick');
-  const chips=document.getElementById('staffQuickChips');
-  if(!wrap||!chips)return;
-  const me=DB.g('currentUser')||{};
-  const myKakaoId=me.kakaoId?String(me.kakaoId):null;
-  const users=(DB.g('pendingUsers')||[]).filter(u=>{
-    if(u.approvalStatus!=='approved')return false;
-    if(!(u.realName||u.name))return false;
-    if(dept&&u.dept!==dept)return false;
-    // 현재 카카오 로그인 계정과 일치하면 자기 자신 — 칩 제외
-    if(myKakaoId&&(String(u.id)===myKakaoId||String(u.kakaoId||'')===myKakaoId))return false;
-    return true;
-  });
-  if(!users.length){wrap.style.display='none';return;}
-  wrap.style.display='block';
-  chips.innerHTML=users.map(u=>{
-    const name=u.realName||u.name||'';
-    const rank=u.rank||'';
-    return `<div onclick="_fillFromStaff('${_escq(name)}','${_escq(rank)}','${_escq(u.dept||'')}') "
-      style="cursor:pointer;background:rgba(79,168,208,.1);color:#4fa8d0;border:1px solid rgba(79,168,208,.3);border-radius:20px;font-size:10px;font-weight:700;padding:5px 11px;">
-      ${_esc(name)}${rank?` <span style="font-size:9px;opacity:.7;">${_esc(rank)}</span>`:''}
-    </div>`;
-  }).join('');
+  if(wrap)wrap.style.display='none';
 }
 function _fillFromStaff(name,rank,dept){
   const ni=document.getElementById('uNameIn');if(ni)ni.value=name;
@@ -9740,6 +9719,24 @@ function _resolveAuthType(){
   if(u.kakaoId){DB.s('authType','kakao');return 'kakao';}
   return '';
 }
+// 같은 kakaoId의 프로필(이름·소속·직위)을 서버 기록(pendingUsers·loginLog)에서 currentUser로 복원.
+// 기기 변경·캐시 초기화로 로컬 currentUser가 비어도 재입력 없이 이어쓰도록 함.
+function _restoreProfileFromServer(kakaoId){
+  kakaoId=String(kakaoId||'');if(!kakaoId)return false;
+  var u=DB.g('currentUser')||{};
+  if(u.dept&&u.rank&&(u.realName||u.name))return true; // 이미 완성
+  var src=(DB.g('pendingUsers')||[]).find(function(p){return String(p.kakaoId||p.id)===kakaoId&&(p.dept||p.rank);})
+        ||(DB.g('loginLog')||[]).find(function(e){return String(e.kakaoId)===kakaoId&&(e.dept||e.rank);});
+  if(!src)return false;
+  var merged=Object.assign({},u,{
+    realName:u.realName||src.realName||src.name||'',
+    name:u.name||src.name||src.realName||'',
+    dept:u.dept||src.dept||'',
+    rank:u.rank||src.rank||''
+  });
+  DB.s('currentUser',merged);
+  return !!(merged.dept&&merged.rank&&(merged.realName||merged.name));
+}
 function _checkAndRequireProfile(){
   var authType=_resolveAuthType();
   if(!authType)return;
@@ -9748,8 +9745,9 @@ function _checkAndRequireProfile(){
   var isKakao=authType==='kakao';
   if(isKakao){
     if(window._needsCode)return; // _handleKakaoCode가 처리 중 — 간섭 금지
-    // 자동로그인: 프로필 미완성이면 코드 없이 프로필만 요구
+    // 프로필 미완성이면 먼저 서버 기록에서 복원 시도, 그래도 없을 때만 입력 요구
     if(!u.dept||!u.rank||!(u.realName||u.name)){
+      if(u.kakaoId&&_restoreProfileFromServer(u.kakaoId)){try{updateUserUI();}catch(e){}return;}
       window._requireProfile=true;
       setTimeout(function(){openChangeUser();},300);
     }
