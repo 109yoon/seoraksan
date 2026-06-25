@@ -710,6 +710,19 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
   </div>
 </div>
 
+<!-- ══ 승인 대기 게이트 (멤버 승인 전 앱 전체 차단) ══ -->
+<div id="approvalGate" style="display:none;position:fixed;inset:0;background:#060d1a;z-index:10001;flex-direction:column;align-items:center;justify-content:center;padding:28px;text-align:center;">
+  <div style="font-size:46px;margin-bottom:6px;">🔒</div>
+  <div style="font-size:17px;font-weight:800;color:#e0edf8;">관리자 승인 대기 중</div>
+  <div style="font-size:12px;color:#7a9cb8;line-height:1.9;margin-top:12px;max-width:300px;">
+    가입 신청이 접수되었습니다.<br>관리자가 <b style="color:#9fc0da;">멤버로 승인</b>하면 앱을 이용할 수 있습니다.<br>승인을 요청해 주세요.
+  </div>
+  <div id="approvalGateId" style="font-size:11px;color:#4a7090;margin-top:14px;font-family:monospace;background:rgba(255,255,255,.04);border-radius:8px;padding:7px 12px;"></div>
+  <button onclick="_recheckApproval()" style="margin-top:22px;width:100%;max-width:280px;background:#1a4a6e;color:#fff;border:none;border-radius:11px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;">🔄 승인 확인</button>
+  <button onclick="kakaoLogout()" style="margin-top:10px;width:100%;max-width:280px;background:rgba(255,255,255,.05);color:#9fc0da;border:1px solid rgba(255,255,255,.12);border-radius:11px;padding:11px;font-size:13px;font-weight:600;cursor:pointer;">로그아웃</button>
+  <div onclick="document.getElementById('adminLoginOverlay').style.display='flex';setTimeout(function(){var e=document.getElementById('adminLoginPw');if(e)e.focus();},200);" style="margin-top:18px;font-size:11px;color:#3a6a8a;cursor:pointer;text-decoration:underline;">관리자 비밀번호로 로그인</div>
+</div>
+
 
 <!-- 날씨 상세 모달 -->
 <div id="modalWeather" class="modal">
@@ -2010,11 +2023,13 @@ function initFirebase(onReady){
                 _authRole=c.admin?'admin':'member';
                 _authKakaoId=c.kakaoId||'';
                 if(c.admin)localStorage.setItem('_tokenAdmin','1');else localStorage.removeItem('_tokenAdmin');
+                try{_markMemberOk();}catch(e){}
               }else{
                 // 비익명인데 member 클레임이 없는 비정상 세션 → 카카오로 재발급 시도
                 setTimeout(function(){try{_ensureMemberAuth();}catch(e){}},400);
               }
               try{updateUserUI();}catch(e){}
+              try{_enforceAccessGate();}catch(e){}
             }).catch(function(){});
           }else{
             // 익명 세션: 카카오 로그인 이력이 있으면 member 토큰으로 자동 승급
@@ -4044,30 +4059,9 @@ function selTTActor(el,actor){
 // 작성자 관리
 // ══════════════════════════════════════════
 function _renderStaffQuickPick(){
-  const dept=(document.getElementById('uDeptIn')||{}).value||'';
+  // 가입/작성자 설정 시 기존 직원 이름을 노출하지 않는다(개인정보·사칭 방지). 각자 직접 입력.
   const wrap=document.getElementById('staffQuickPick');
-  const chips=document.getElementById('staffQuickChips');
-  if(!wrap||!chips)return;
-  const me=DB.g('currentUser')||{};
-  const myKakaoId=me.kakaoId?String(me.kakaoId):null;
-  const users=(DB.g('pendingUsers')||[]).filter(u=>{
-    if(u.approvalStatus!=='approved')return false;
-    if(!(u.realName||u.name))return false;
-    if(dept&&u.dept!==dept)return false;
-    // 현재 카카오 로그인 계정과 일치하면 자기 자신 — 칩 제외
-    if(myKakaoId&&(String(u.id)===myKakaoId||String(u.kakaoId||'')===myKakaoId))return false;
-    return true;
-  });
-  if(!users.length){wrap.style.display='none';return;}
-  wrap.style.display='block';
-  chips.innerHTML=users.map(u=>{
-    const name=u.realName||u.name||'';
-    const rank=u.rank||'';
-    return `<div onclick="_fillFromStaff('${_escq(name)}','${_escq(rank)}','${_escq(u.dept||'')}') "
-      style="cursor:pointer;background:rgba(79,168,208,.1);color:#4fa8d0;border:1px solid rgba(79,168,208,.3);border-radius:20px;font-size:10px;font-weight:700;padding:5px 11px;">
-      ${_esc(name)}${rank?` <span style="font-size:9px;opacity:.7;">${_esc(rank)}</span>`:''}
-    </div>`;
-  }).join('');
+  if(wrap)wrap.style.display='none';
 }
 function _fillFromStaff(name,rank,dept){
   const ni=document.getElementById('uNameIn');if(ni)ni.value=name;
@@ -4090,11 +4084,9 @@ function openChangeUser(){
   const notApproved=isKakao&&u.approvalStatus!=='approved';
   const titleEl=document.getElementById('modalUserTitle');
   if(titleEl)titleEl.textContent=notApproved?'🆕 가입 신청':'👤 작성자 설정';
-  const showCode=isKakao&&!!window._needsCode;
+  // 승인코드 폐지 — 입력란 항상 숨김(승인은 관리자 멤버 지정으로만)
   const codeWrap=document.getElementById('uCodeWrap');
-  if(codeWrap)codeWrap.style.display=showCode?'block':'none';
-  const codeIn=document.getElementById('uCodeIn');
-  if(codeIn)codeIn.value='';
+  if(codeWrap)codeWrap.style.display='none';
   document.getElementById('uNameIn').value=u.realName||u.name||'';
   const ds=document.getElementById('uDeptIn');if(ds)ds.value=u.dept||'';
   document.querySelectorAll('#rankPills .pill').forEach(p=>p.classList.remove('on'));
@@ -4121,6 +4113,7 @@ async function doAdminLogin(){
     if(_cu.kakaoId)DB.s('adminOwnerKakaoId',String(_cu.kakaoId));
     document.getElementById('adminLoginOverlay').style.display='none';
     document.getElementById('adminLoginPw').value='';
+    var _g=document.getElementById('approvalGate');if(_g)_g.style.display='none'; // 관리자는 게이트 통과
     openApp('admin');
   }else{
     toast('❌ 비밀번호가 틀렸습니다');
@@ -4139,6 +4132,51 @@ function isAdminUser(){
       || localStorage.getItem('_tokenAdmin')==='1'
       || _authRole==='admin';
 }
+// ── 멤버십(접근권한) 판정 — _acl 단일 기준 ──
+// 멤버/관리자만 앱 사용 가능. 외부기관은 별도 경로(자체 제한)라 통과시킨다.
+function _isMember(){
+  if(isExternal&&typeof isExternal==='function'&&isExternal())return true; // 외부기관: 자체 제한 적용
+  if(isAdminUser())return true;
+  if(_authRole==='member'||_authRole==='admin')return true;   // 토큰 클레임
+  if(localStorage.getItem('_memberOk')==='1')return true;      // 이전에 멤버 확인됨(오프라인 보호)
+  var u=DB.g('currentUser')||{};
+  if(u.kakaoId){var acl=_getAcl();var id=String(u.kakaoId);if(acl.members.indexOf(id)>=0||acl.admins.indexOf(id)>=0)return true;}
+  return false;
+}
+// 멤버 확인 시 호출 — 오프라인 재방문에도 잠기지 않도록 플래그 저장
+function _markMemberOk(){try{localStorage.setItem('_memberOk','1');}catch(e){}}
+// 접근 게이트: 카카오 로그인 + 프로필 완료 + 멤버 아님 → 전체 차단 화면 표시
+function _enforceAccessGate(){
+  var gate=document.getElementById('approvalGate');if(!gate)return;
+  var authType=(typeof _resolveAuthType==='function')?_resolveAuthType():'';
+  var u=DB.g('currentUser')||{};
+  var isKakao=authType==='kakao';
+  var profileDone=!!(u.dept&&u.rank&&(u.realName||u.name));
+  // 카카오 사용자가 프로필까지 끝냈는데 멤버가 아니면 차단. 그 외(미로그인·외부·프로필 미완)는 각 흐름이 처리.
+  if(isKakao&&profileDone&&!_isMember()){
+    var idEl=document.getElementById('approvalGateId');
+    if(idEl)idEl.innerHTML='이름: <b style="color:#cfe2f2;">'+_esc(u.realName||u.name||'-')+'</b> · '+_esc(u.dept||'')+'<br>내 카카오 ID: <b style="color:#cfe2f2;">'+(u.kakaoId||_authKakaoId||'?')+'</b><br><span style="color:#5a8aaa;">이 ID를 관리자에게 전달하면 승인됩니다</span>';
+    gate.style.display='flex';
+    return true; // 차단됨
+  }
+  gate.style.display='none';
+  return false;
+}
+// "승인 확인" 버튼 — 토큰 재발급 후 멤버면 게이트 해제
+function _recheckApproval(){
+  toast('승인 상태 확인 중...');
+  _ensureMemberAuth().then(function(ok){
+    if(ok||_isMember()){
+      _markMemberOk();
+      document.getElementById('approvalGate').style.display='none';
+      try{updateUserUI();}catch(e){}
+      try{goHome();}catch(e){}
+      toast('✅ 승인 확인됨 — 환영합니다');
+    }else{
+      toast('⚠️ 아직 승인되지 않았습니다. 관리자에게 요청하세요');
+    }
+  });
+}
 function saveUser(){
   const name=document.getElementById('uNameIn').value.trim();
   if(!name){toast('⚠️ 이름을 입력해주세요');return;}
@@ -4147,31 +4185,18 @@ function saveUser(){
   if(!dept){toast('⚠️ 소속 과/분소를 선택해주세요');return;}
   if(!rank){toast('⚠️ 직위를 선택해주세요');return;}
   const existing=DB.g('currentUser')||{};
-  const authType=DB.g('authType');
-  let newStatus;
-  if(authType!=='kakao'){
-    newStatus='approved';
-  }else if(window._needsCode){
-    // OAuth 경유 로그인: 코드 필수
-    const codeIn=document.getElementById('uCodeIn');
-    const code=(codeIn?codeIn.value:'').trim().toUpperCase();
-    if(!code){toast('⚠️ 승인 코드를 입력해주세요');return;}
-    const adminCode=(DB.g('adminApprovalCode')||'SEORAKSAN').toUpperCase();
-    if(code!==adminCode){toast('❌ 올바르지 않은 코드입니다');return;}
-    newStatus='approved';
-  }else{
-    // 자동로그인: 코드 불필요, 기존 승인 상태 유지
-    newStatus=existing.approvalStatus||'approved';
-  }
-  const saved={...existing,realName:name,name,dept,rank,approvalStatus:newStatus};
+  // 승인은 관리자가 직원 탭에서 '멤버' 지정으로만 부여(승인코드 제거). 여기선 프로필만 저장.
+  const saved={...existing,realName:name,name,dept,rank};
   DB.s('currentUser',saved);
   _notifyNewJoiner(saved);
   window._requireProfile=false;
   window._needsCode=false;
   closeM('modalUser');
   updateUserUI();
-  toast(newStatus==='approved'?'✅ 승인 완료! 이용하실 수 있습니다.':'✅ 저장: '+name);
+  toast('✅ 저장: '+name);
   try{renderSettings();}catch(e){}
+  // 프로필 저장 완료 → 멤버 승인 여부 확인(미승인이면 대기 화면)
+  try{_enforceAccessGate();}catch(e){}
 }
 function _notifyNewJoiner(u){
   const all=DB.g('pendingUsers')||[];
@@ -9179,14 +9204,6 @@ function renderAdmSys(){
       ${(()=>{try{const log=JSON.parse(localStorage.getItem('_errLog')||'[]');return log.length?log.slice(0,10).map(e=>`<div style="font-size:10px;color:#b8856a;font-family:monospace;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.04);">${e.t} ${_esc(e.m)}</div>`).join(''):'<div style="font-size:11px;color:rgba(255,255,255,.25);">기록된 오류 없음 ✅</div>';}catch(e){return'';}})()}
     </div>
     <div class="scard" style="margin-bottom:8px;">
-      <div class="stitle">🔑 승인 코드</div>
-      <div style="font-size:11px;color:#7a9cb8;margin-bottom:8px;">신규 대원에게 카카오톡으로 전달하세요</div>
-      <div style="display:flex;gap:6px;">
-        <input id="adminCodeInp" class="fi" value="${DB.g('adminApprovalCode')||'SEORAKSAN'}" style="flex:1;font-family:monospace;font-size:14px;letter-spacing:2px;">
-        <button onclick="setAdminCode()" style="background:#1a4a6e;color:#fff;border:none;padding:8px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">저장</button>
-      </div>
-    </div>
-    <div class="scard" style="margin-bottom:8px;">
       <div class="stitle">🚒 외부기관 관리</div>
       <div style="font-size:11px;color:#7a9cb8;margin-bottom:8px;">119·산악구조대·특수대응단 등 기관별로 추가하세요. 각 기관에 코드를 전달하면 해당 기관명으로 접수됩니다 (접수·조회·댓글만 가능).</div>
       <div id="extAgencyListWrap">${_extAgencyRowsHtml()}</div>
@@ -9494,11 +9511,14 @@ async function _signInWithKakaoToken(kakaoAccessToken){
   const url=_FCM_PUSH_URL||(DB.g('fcmPushUrl')||'').trim();
   if(!url||!kakaoAccessToken)return{error:'no_url_or_token'};
   let j;
+  // 미승인일 때 서버가 대기명단에 넣을 수 있도록 현재 프로필 동봉(관리자 직원 탭 자동 노출)
+  const _cu=DB.g('currentUser')||{};
+  const _prof={realName:_cu.realName||'',name:_cu.name||'',dept:_cu.dept||'',rank:_cu.rank||''};
   try{
     const res=await fetch(url,{
       method:'POST',
       headers:{'content-type':'text/plain;charset=utf-8'}, // Apps Script preflight 회피
-      body:JSON.stringify({secret:_FCM_PUSH_SECRET||(DB.g('fcmPushSecret')||''),action:'mintToken',kakaoAccessToken:kakaoAccessToken})
+      body:JSON.stringify({secret:_FCM_PUSH_SECRET||(DB.g('fcmPushSecret')||''),action:'mintToken',kakaoAccessToken:kakaoAccessToken,profile:_prof})
     });
     j=await res.json();
   }catch(e){return{error:'network',detail:String(e)};}
@@ -9510,9 +9530,13 @@ async function _signInWithKakaoToken(kakaoAccessToken){
       _authReady=true;_authErrCode='';
       if(_authRole==='admin')localStorage.setItem('_tokenAdmin','1');
       else localStorage.removeItem('_tokenAdmin');
+      _markMemberOk(); // 멤버 확인 → 오프라인 보호 플래그
+      try{_enforceAccessGate();}catch(e){} // 멤버 확인 → 혹시 떠있던 게이트 해제
       setTimeout(_flushSyncQueue,300);
     }catch(e){return{error:'signin_failed',detail:String(e)};}
   }
+  // 허용목록에서 빠진 사용자 → 멤버 플래그 회수(다음 게이트 평가 때 차단)
+  if(j&&j.error==='not_allowed'){try{localStorage.removeItem('_memberOk');}catch(e){}}
   return j||{error:'empty'};
 }
 // refresh_token으로 카카오 access_token 재발급 (앱 재시작·토큰 만료 후 무중단 복구)
@@ -9536,7 +9560,7 @@ async function _ensureMemberAuth(){
   try{
     var u=firebase.auth().currentUser;
     if(u&&!u.isAnonymous){
-      try{var r=await u.getIdTokenResult();if(r&&r.claims&&r.claims.member)return true;}catch(e){}
+      try{var r=await u.getIdTokenResult();if(r&&r.claims&&r.claims.member){_markMemberOk();return true;}}catch(e){}
     }
     var cu=DB.g('currentUser')||{};
     if(!cu.kakaoId)return false; // 카카오 로그인 이력이 없으면 재발급 불가(게스트)
@@ -9553,7 +9577,8 @@ async function _ensureMemberAuth(){
       if(nat){var mr2=await _signInWithKakaoToken(nat);if(mr2&&mr2.token){_ensuringMember=false;return true;}}
     }
     _ensuringMember=false;
-    // 복구 실패 — 토큰 만료 등. 한 번만 재로그인 안내(데이터는 큐에 보존됨).
+    // 멤버 승급 실패 → 미승인/만료. 프로필 완료 상태면 대기 게이트로 차단.
+    try{_enforceAccessGate();}catch(e){}
     if(!window._memberAuthWarned){window._memberAuthWarned=true;
       setTimeout(function(){try{toast('⚠️ 저장 권한이 만료되었습니다 — 카카오 재로그인이 필요합니다(데이터는 보존됨)');}catch(e){}},2500);
     }
@@ -9620,6 +9645,8 @@ function _handleKakaoCode(code,redirectUri){
       }
       try{_recordLoginLog();}catch(e){}
       try{updateUserUI();}catch(e){}
+      // 프로필이 이미 있으면 즉시 게이트 판정(미승인이면 대기 화면). 프로필 미완이면 입력 후 판정.
+      try{var cu=DB.g('currentUser')||{};if(cu.dept&&cu.rank&&(cu.realName||cu.name))_enforceAccessGate();}catch(e){}
     });
     if(window._hideLoading)window._hideLoading();
     if(window.hideLoginScreen)window.hideLoginScreen();
@@ -9644,7 +9671,8 @@ function kakaoLogout(){
   DB.s('authType','');
   // 커스텀 토큰 세션·역할 정리 → 익명 인증으로 복귀
   localStorage.removeItem('_tokenAdmin');_authRole='';_authKakaoId='';
-  try{localStorage.removeItem('_kkAT');localStorage.removeItem('_kkRT');window._memberAuthWarned=false;}catch(e){}
+  try{localStorage.removeItem('_kkAT');localStorage.removeItem('_kkRT');localStorage.removeItem('_memberOk');window._memberAuthWarned=false;}catch(e){}
+  var _g=document.getElementById('approvalGate');if(_g)_g.style.display='none';
   try{firebase.auth().signOut();}catch(e){}
   if(window.showLoginScreen)window.showLoginScreen();
   updateUserUI();
@@ -9740,6 +9768,24 @@ function _resolveAuthType(){
   if(u.kakaoId){DB.s('authType','kakao');return 'kakao';}
   return '';
 }
+// 같은 kakaoId의 프로필(이름·소속·직위)을 서버 기록(pendingUsers·loginLog)에서 currentUser로 복원.
+// 기기 변경·캐시 초기화로 로컬 currentUser가 비어도 재입력 없이 이어쓰도록 함.
+function _restoreProfileFromServer(kakaoId){
+  kakaoId=String(kakaoId||'');if(!kakaoId)return false;
+  var u=DB.g('currentUser')||{};
+  if(u.dept&&u.rank&&(u.realName||u.name))return true; // 이미 완성
+  var src=(DB.g('pendingUsers')||[]).find(function(p){return String(p.kakaoId||p.id)===kakaoId&&(p.dept||p.rank);})
+        ||(DB.g('loginLog')||[]).find(function(e){return String(e.kakaoId)===kakaoId&&(e.dept||e.rank);});
+  if(!src)return false;
+  var merged=Object.assign({},u,{
+    realName:u.realName||src.realName||src.name||'',
+    name:u.name||src.name||src.realName||'',
+    dept:u.dept||src.dept||'',
+    rank:u.rank||src.rank||''
+  });
+  DB.s('currentUser',merged);
+  return !!(merged.dept&&merged.rank&&(merged.realName||merged.name));
+}
 function _checkAndRequireProfile(){
   var authType=_resolveAuthType();
   if(!authType)return;
@@ -9748,11 +9794,17 @@ function _checkAndRequireProfile(){
   var isKakao=authType==='kakao';
   if(isKakao){
     if(window._needsCode)return; // _handleKakaoCode가 처리 중 — 간섭 금지
-    // 자동로그인: 프로필 미완성이면 코드 없이 프로필만 요구
+    // 프로필 미완성이면 먼저 서버 기록에서 복원 시도, 그래도 없을 때만 입력 요구
     if(!u.dept||!u.rank||!(u.realName||u.name)){
-      window._requireProfile=true;
-      setTimeout(function(){openChangeUser();},300);
+      if(!(u.kakaoId&&_restoreProfileFromServer(u.kakaoId))){
+        window._requireProfile=true;
+        setTimeout(function(){openChangeUser();},300);
+        return;
+      }
+      try{updateUserUI();}catch(e){}
     }
+    // 프로필 완료 → 멤버 승인 여부 확인(미승인이면 전체 차단)
+    try{_enforceAccessGate();}catch(e){}
     return;
   }
   if(!u.dept||!u.rank){
