@@ -834,7 +834,7 @@ body.hi-contrast .stat-lbl{color:rgba(255,255,255,.65)!important;}
   <!-- 하단 2칸 소형 메뉴 -->
   <div class="home-menu-bottom" style="flex-shrink:0;">
     <button class="mbtn-sm ext-hide" onclick="openApp('settings')"><span class="mbtn-sm-ico">⚙️</span><div class="mbtn-sm-text"><div class="mbtn-sm-title">내 설정</div><div class="mbtn-sm-desc">알림·계정·API키</div></div></button>
-    <button class="mbtn-sm ext-hide" style="background:#150e2a;border:1px solid rgba(139,92,246,.2);" onclick="openApp('admin')"><span class="mbtn-sm-ico">🔐</span><div class="mbtn-sm-text"><div class="mbtn-sm-title" style="color:#c4b5fd;">관리자 전용</div><div class="mbtn-sm-desc">관제·데이터 관리</div></div></button>
+    <button class="mbtn-sm ext-hide" style="background:#150e2a;border:1px solid rgba(139,92,246,.2);position:relative;" onclick="openApp('admin')"><span class="mbtn-sm-ico">🔐</span><div class="mbtn-sm-text"><div class="mbtn-sm-title" style="color:#c4b5fd;">관리자 전용</div><div class="mbtn-sm-desc">관제·데이터 관리</div></div><span id="admBadge" style="display:none;position:absolute;top:8px;right:10px;background:#e74c3c;color:#fff;font-size:10px;font-weight:800;min-width:17px;height:17px;line-height:17px;text-align:center;border-radius:9px;padding:0 4px;box-shadow:0 0 0 2px #150e2a;">0</span></button>
     <button class="mbtn-sm ext-hide" style="grid-column:1/-1;background:#06121f;border:1px solid rgba(79,168,208,.22);" onclick="openBoard()"><span class="mbtn-sm-ico">🖥️</span><div class="mbtn-sm-text"><div class="mbtn-sm-title" style="color:#7dd3fa;">본소 상황판</div><div class="mbtn-sm-desc">본소 모니터 거치용 관제 화면 — 지도+진행중 구조 (주소 뒤 ?board=1 북마크)</div></div></button>
     <!-- 외부기관 전용: 로그아웃 버튼 -->
     <button id="extLogoutBtn" class="mbtn-sm" style="grid-column:1/-1;background:rgba(255,80,30,.08);border:1px solid rgba(255,80,30,.22);" onclick="extAgencyLogout()"><span class="mbtn-sm-ico">🚪</span><div class="mbtn-sm-text"><div class="mbtn-sm-title" style="color:#f08050;">로그아웃</div><div class="mbtn-sm-desc">외부기관 세션 종료</div></div></button>
@@ -2062,6 +2062,7 @@ function initFirebase(onReady){
     function _checkReady(){if(loaded.size===totalKeys){onReady&&onReady();onReady=null;}}
     function _onRemoteUpdate(){
       _checkDeletedUser();updateSummary();
+      try{_checkNewJoinerAlert();}catch(e){}
       clearTimeout(_remoteUpdateTimer);
       _remoteUpdateTimer=setTimeout(function(){
         if(window.curApp==='rescue'){renderResList();try{renderRescueMap();}catch(e){}}
@@ -3363,10 +3364,11 @@ function openApp(mode){
     _alertTab=1; // 진입 시 항상 목록 탭부터
     bn.style.display='none';showV('v-alert');history.pushState({view:mode},'','');renderAlertView();
   } else if(mode==='admin'){
-    // 소유자 카카오 계정은 비밀번호 생략 (최초 1회 관리자 로그인 시 자동 등록)
+    // 관리자 카카오 계정은 비밀번호 생략: ①소유자 ②허용목록(_acl) 관리자 ③토큰 admin 클레임
     const _au=DB.g('currentUser')||{};
     const _owner=DB.g('adminOwnerKakaoId');
-    if(_au.kakaoId&&_owner&&String(_au.kakaoId)===String(_owner)){
+    const _aclAdmin=!!(_au.kakaoId&&_getAcl().admins.indexOf(String(_au.kakaoId))>=0);
+    if((_au.kakaoId&&_owner&&String(_au.kakaoId)===String(_owner))||_aclAdmin||isAdminUser()){
       localStorage.setItem('_adminAuthed','1');
     }
     if(localStorage.getItem('_adminAuthed')!=='1'){
@@ -4231,6 +4233,41 @@ function _markSeen(id){
 }
 function _getUnseenCount(){
   return(DB.g('pendingUsers')||[]).filter(function(p){return!p.seen;}).length;
+}
+// 아직 승인(_acl 등록) 안 된 가입 신청자 목록
+function _pendingNotApproved(){
+  var acl=_getAcl();
+  return(DB.g('pendingUsers')||[]).filter(function(u){
+    if((u.approvalStatus||'pending')==='approved')return false;
+    var id=String(u.kakaoId||'');
+    if(id&&(acl.members.indexOf(id)>=0||acl.admins.indexOf(id)>=0))return false; // 이미 멤버/관리자
+    return true;
+  });
+}
+// 홈 관리자 버튼 배지(미승인 신청 건수) 갱신
+function _updateAdminBadge(n){
+  var b=document.getElementById('admBadge');if(!b)return;
+  if(n>0){b.textContent=n>99?'99+':String(n);b.style.display='block';}
+  else b.style.display='none';
+}
+// 관리자 기기: 새 가입 신청이 들어오면 알림(첫 동기화 배치는 배지만, 이후 신규만 토스트)
+var _joinerAlertInited=false;
+function _checkNewJoinerAlert(){
+  var pend=_pendingNotApproved();
+  if(!isAdminUser()){_updateAdminBadge(0);return;}
+  _updateAdminBadge(pend.length);
+  var alerted={};try{alerted=JSON.parse(localStorage.getItem('_joinerAlerted')||'{}');}catch(e){}
+  var fresh=pend.filter(function(u){return!alerted[String(u.id)];});
+  if(fresh.length){
+    fresh.forEach(function(u){alerted[String(u.id)]=1;});
+    try{localStorage.setItem('_joinerAlerted',JSON.stringify(alerted));}catch(e){}
+    if(_joinerAlertInited){ // 첫 로드 폭주 방지: 초기 동기화분은 알림 생략
+      var names=fresh.map(function(u){return u.realName||u.name||'신규';}).join(', ');
+      toast('🔔 새 멤버 승인 요청: '+names);
+      try{_showSystemNoti('새 멤버 승인 요청: '+names+' — 직원 탭에서 멤버 지정','🔔');}catch(e){}
+    }
+  }
+  _joinerAlertInited=true;
 }
 function setAdminCode(){
   const _ac=document.getElementById('adminCodeInp');const code=(_ac?_ac.value:'').trim();
@@ -8472,9 +8509,21 @@ function startAlertOps(){
   const note=document.getElementById('alertStartNote').value.trim();
   if(active){
     active.alerts=active.alerts||_opAlerts(active);
-    // 같은 종류 중복 발령 차단 (자동·수동 무관)
+    // 같은 종류가 이미 발령돼 있으면 → 단계만 변경(경보↔주의보 상향·하향). 같은 단계면 무시.
     const dup=active.alerts.find(a=>a.type===_alertType);
-    if(dup){toast('⚠️ 이미 발령된 특보입니다: '+_alertType+_stageShort(dup.stage));return;}
+    if(dup){
+      if(dup.stage===_alertLevel){toast('⚠️ 이미 같은 단계로 발령됨: '+_alertType+_stageShort(dup.stage));return;}
+      const wasUp=_stageRank(_alertLevel)>_stageRank(dup.stage);
+      const prevStage=dup.stage;
+      dup.stage=_alertLevel;dup.source='manual';dup.issuedAt=now();dup.issuedAtMs=Date.now();dup.by=getAuthor();
+      if(note)active.note=note;
+      DB.s('alertOps',ops);
+      closeM('modalAlertStart');
+      pushNoti((wasUp?'🔺 특보 상향: ':'🔻 특보 하향: ')+_alertType+' '+_stageShort(prevStage)+'→'+_stageShort(_alertLevel),'🚨','재난',{app:'alert'},'안전사고');
+      toast((wasUp?'🔺 상향: ':'🔻 하향: ')+_alertType+' '+_stageShort(prevStage)+'→'+_stageShort(_alertLevel));
+      renderAlertView();updateSummary();
+      return;
+    }
     active.alerts.push({type:_alertType,stage:_alertLevel,source:'manual',issuedAt:now(),issuedAtMs:Date.now(),by:getAuthor()});
     if(note)active.note=note;
     DB.s('alertOps',ops);
@@ -8538,7 +8587,13 @@ function _syncAutoAlerts(liveList){
 }
 function endAlertOps(id){
   if(!isAdminUser()){toast('⚠️ 관리자만 가능');return;}
-  if(!confirm('특보운영을 종료하겠습니까?'))return;
+  const _op=(DB.g('alertOps')||[]).find(o=>o.id===id);
+  const _n=_op?(_op.alerts||_opAlerts(_op)).length:0;
+  // 특보가 여러 건이면 전체 종료 대신 개별 해제(×)·단계 하향이 가능함을 안내
+  const _msg=_n>1
+    ? '⚠️ 현재 '+_n+'건의 특보가 발령 중입니다.\n\n일부만 해제하려면 [취소] 후 각 특보의 ×(해제) 또는 특보 추가 발령으로 단계 하향(경보→주의보)을 하세요.\n\n전체 특보운영을 종료하시겠습니까?'
+    : '특보운영을 종료하겠습니까?';
+  if(!confirm(_msg))return;
   const ops=DB.g('alertOps')||[];
   const idx=ops.findIndex(o=>o.id===id);
   if(idx===-1)return;
@@ -8728,7 +8783,13 @@ function _renderCumulativeSummary(op){
 }
 function openAlertReport(opId,presetLoc){
   _reportOpId=opId;_reportLoc=presetLoc||'';
-  _renderStationPills('reportLocPills',_reportLoc,'selReportLoc');
+  // 특정 관측소(대피소·본소·분소)에서 보고하면 그 관측소로 고정 — 다른 관측소 재선택 차단
+  const _rlw=document.getElementById('reportLocPills');
+  if(presetLoc&&_rlw){
+    _rlw.innerHTML=`<span style="font-size:12px;font-weight:700;color:#e0edf8;background:rgba(79,168,208,.15);border:1px solid rgba(79,168,208,.3);border-radius:20px;padding:4px 12px;">📍 ${_esc(_stationLabel(presetLoc))}</span>`;
+  }else{
+    _renderStationPills('reportLocPills',_reportLoc,'selReportLoc');
+  }
   document.getElementById('reportObserver').value=getAuthor()==='미지정'?'':getAuthor();
   document.getElementById('reportSnow').value='';
   document.getElementById('reportRain').value='';
@@ -10339,6 +10400,7 @@ function updateSummary(){
   sd('hdI',bad.length?`⚠️ 위험 ${bad.length}개`:'시설 관리·이력',bad.length?'#ffaaaa':'');
   {const _ao=(DB.g('alertOps')||[]).find(o=>!o.closedAt);sd('hdA',_ao?`🌀 ${_opLevel(_ao)} 운영중`:'기상특보 비상근무',_ao?'#ffaaaa':'');}
   updateBell();
+  try{_checkNewJoinerAlert();}catch(e){}
   try{renderHomeActive();}catch(e){}
   try{renderMobilizeBanner();}catch(e){}
 }
