@@ -8331,6 +8331,76 @@ function _alertTimeMs(s){if(!s)return 0;const m=String(s).match(/(\d{4})-(\d{2})
 function _reqOf(level,reqType){const req=ALERT_REQS[level]||{};return reqType==='사무소'?(req.사무소||[]):(req.분소||[]);}
 // 특정 관측소의 최신 관측 보고
 function _latestReport(op,loc){const rs=(op.reports||[]).filter(r=>r.loc===loc);if(!rs.length)return null;return rs.reduce((a,b)=>((b.at||0)>(a.at||0)?b:a));}
+// ── 평시 상시 당직 인원 (특보 없어도 근무) ──
+// 본소 1 · 백담분소 1 · 대피소 각 2 · 그 외 분소 0(특보 시 응소)
+const DUTY_BASELINE={'사무소':1,'백담분소':1,'오색분소':0,'한계산성분소':0,'점봉산분소':0,'희운각':2,'양폭':2,'수렴동':2,'소청':2,'중청':2};
+const _dutyOf=loc=>DUTY_BASELINE[loc]||0;
+const _grpDuty=g=>g.stations.reduce((s,st)=>s+_dutyOf(st.loc),0);
+// 평시 당직 현황 카드 (특보 없을 때)
+function _renderDutyBaseline(){
+  return `<div class="ao-card">
+    <div class="ao-sec-hd" style="margin-top:0;"><span class="bar" style="background:#5fcf8f;"></span>🟢 평시 당직 현황</div>
+    <div style="font-size:12.5px;color:#cfe2f2;line-height:2;">
+      🏢 <b>본소(사무소)</b> — 당직 <b style="color:#7ee0a8;">1명</b> 상시<br>
+      🏔️ <b>백담분소</b> — 당직 <b style="color:#7ee0a8;">1명</b> 상시<br>
+      ⛺ <b>대피소</b> (희운각·양폭·수렴동·소청·중청) — 각 <b style="color:#7ee0a8;">2명</b> 상시
+    </div>
+    <div style="font-size:10px;color:#5a7e98;margin-top:8px;line-height:1.6;">※ 오색·한계산성·점봉산 분소는 상시 당직 없음(특보 시 응소).<br>주의보 시 백담은 상시 당직자가 특보 당직 겸직, 경보 시 1명 추가 응소.</div>
+  </div>`;
+}
+// 응소 현황 요약 (일회성) — 상시 당직 + 응소 합산해 충족/부족 한 줄
+function _renderRespSummary(active,opLevel){
+  const rows=ALERT_GROUPS.map(g=>{
+    const reqs=_reqOf(opLevel,g.reqType);
+    const required=reqs.reduce((s,r)=>s+r.min,0);
+    const base=_grpDuty(g);
+    const reg=active.responders.filter(r=>g.stations.some(s=>s.loc===(r.loc||'사무소'))).length;
+    const eff=base+reg, shortage=Math.max(0,required-eff), ok=required===0||shortage===0;
+    const badge=required===0
+      ? `<span style="font-size:10px;color:#6a94b0;">대기</span>`
+      : ok? `<span style="font-size:10px;color:#5fcf8f;font-weight:800;">✅ 충족</span>`
+          : `<span style="font-size:10px;color:#ff8a73;font-weight:800;">⚠️ ${shortage}명 부족</span>`;
+    const det=[];if(base)det.push(`상시 ${base}`);if(reg)det.push(`응소 ${reg}`);
+    const sub=det.length?`${det.join(' + ')}${required?` / 필요 ${required}`:''}`:(required?`필요 ${required}`:'평시');
+    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 2px;border-bottom:1px solid rgba(255,255,255,.04);">
+      <span style="font-size:12.5px;color:#dceaf6;min-width:104px;flex-shrink:0;">${g.ico} ${_esc(g.label)}</span>
+      <span style="font-size:11px;flex:1;color:#5a7e98;">${sub}</span>${badge}
+    </div>`;
+  }).join('');
+  return `<div class="ao-card" style="padding:4px 12px 8px;">${rows}<div style="font-size:9px;color:#46708f;margin-top:6px;">상시=평시 당직 자동 반영 · 응소 등록은 🚨 입력 탭</div></div>`;
+}
+// 관측 현황 요약 (지속) — 거점별 최신값 + 경과시간 + 미보고 강조
+function _renderObsSummary(active){
+  const itvMin=active.reportInterval||60, itvMs=itvMin*60000;
+  const start=active.startedAtMs||_alertTimeMs(active.startedAt)||0;
+  const mt=_alertMeasureType(active), NOW=Date.now();
+  const targets=[];
+  ALERT_STATIONS.filter(s=>!s.obs).forEach(s=>{
+    const manned=_dutyOf(s.loc)>0||active.responders.some(r=>(r.loc||'사무소')===s.loc)||(active.reports||[]).some(r=>r.loc===s.loc);
+    if(manned)targets.push(s);
+  });
+  ALERT_STATIONS.filter(s=>s.obs&&(active.reports||[]).some(r=>r.loc===s.loc)).forEach(s=>targets.push(s));
+  if(!targets.length)return `<div class="ao-card" style="font-size:11px;color:#456a85;padding:10px 12px;">관측 거점이 아직 없습니다</div>`;
+  const valTxt=last=>{
+    if(!last)return '<span style="color:#456a85;">보고 없음</span>';
+    if(mt==='snow')return `❄️ <b style="color:#9ce0f0;">${_esc(String(last.snow??'-'))}</b>cm`;
+    if(mt==='rain')return `🌧️ <b style="color:#a8cdf5;">${_esc(String(last.rain??'-'))}</b>mm`;
+    return `❄️ <b style="color:#9ce0f0;">${_esc(String(last.snow??'-'))}</b> · 🌧️ <b style="color:#a8cdf5;">${_esc(String(last.rain??'-'))}</b>`;
+  };
+  const _ov=s=>{const last=_latestReport(active,s.loc);const at=last?(last.at||_alertTimeMs(last.time)):0;return last?(NOW-at>itvMs):(start>0&&NOW-start>itvMs);};
+  const rows=targets.map(s=>{
+    const last=_latestReport(active,s.loc), at=last?(last.at||_alertTimeMs(last.time)):0, overdue=_ov(s);
+    let ago='-';if(at){const m=Math.floor((NOW-at)/60000);ago=m>=60?Math.floor(m/60)+'시간 '+(m%60)+'분 전':m+'분 전';}
+    return `<div style="display:flex;align-items:center;gap:8px;padding:7px 2px;border-bottom:1px solid rgba(255,255,255,.04);${overdue?'background:rgba(231,76,60,.07);border-radius:6px;':''}">
+      <span style="font-size:12px;color:${overdue?'#ff9e80':'#cfe2f2'};min-width:92px;flex-shrink:0;">${s.obs?'📡 ':''}${_esc(s.label)}</span>
+      <span style="font-size:12px;flex:1;">${valTxt(last)}</span>
+      <span style="font-size:10px;color:${overdue?'#ff8a73':'#6a96b4'};font-weight:${overdue?'800':'400'};flex-shrink:0;">${overdue?'⏰ 미보고':_esc(ago)}</span>
+    </div>`;
+  }).join('');
+  const ovCnt=targets.filter(_ov).length;
+  const head=`<div style="font-size:10px;color:#6a94b0;margin-bottom:5px;">보고 주기 ${itvMin>=60?(itvMin/60)+'시간':itvMin+'분'} · ${ovCnt?`<span style="color:#ff8a73;font-weight:800;">미보고 ${ovCnt}곳</span>`:'<span style="color:#5fcf8f;font-weight:700;">전 거점 양호</span>'}</div>`;
+  return `<div class="ao-card" style="padding:8px 12px;">${head}${rows}</div>`;
+}
 // 특보 종류에 따른 측정 항목: 대설→snow, 호우·태풍→rain, 혼합→both
 function _alertMeasureType(op){const types=(op.alerts||[]).map(a=>a.type||'');const hasRain=types.some(t=>t.includes('호우')||t.includes('태풍'));const hasSnow=types.some(t=>t.includes('대설'));if(hasRain&&hasSnow)return'both';if(hasSnow)return'snow';return'rain';}
 // ── 특보 발령 단계 모델 (수동·자동 공통, 발령 목록 op.alerts[]) ──
@@ -8404,56 +8474,6 @@ function renderAlertView(){
     // 경과 시간
     let elapsed='';
     if(active.startedAtMs){const ms=Date.now()-active.startedAtMs,h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000);elapsed=(h>0?h+'시간 ':'')+m+'분 경과';}
-    // 한 관측소(station) 최신 관측 한 줄
-    const _repLine=(last)=>{
-      if(!last)return`<div class="ao-rep-line" style="color:#456a85;background:rgba(255,255,255,.03);">관측 보고 없음</div>`;
-      const ts=`<span style="color:#6a96b4;font-weight:400;">${_esc(last.time?last.time.slice(11):'')} ${_esc(last.observer||'')}</span>`;
-      if(mt==='snow')return`<div class="ao-rep-line">❄️ 적설 <b style="color:#9ce0f0;">${_esc(String(last.snow??'-'))}</b>cm · ${ts}</div>`;
-      if(mt==='rain')return`<div class="ao-rep-line">🌧️ 강우 <b style="color:#a8cdf5;">${_esc(String(last.rain??'-'))}</b>mm · ${ts}</div>`;
-      return`<div class="ao-rep-line">❄️ <b style="color:#9ce0f0;">${_esc(String(last.snow??'-'))}</b>cm · 🌧️ <b style="color:#a8cdf5;">${_esc(String(last.rain??'-'))}</b>mm · ${ts}</div>`;
-    };
-    const _progBar=(cnt,total)=>{const pct=total>0?Math.min(100,Math.round(cnt/total*100)):(cnt>0?100:0);const ok=total>0&&cnt>=total;return`<div class="ao-prog"><div class="ao-prog-fill${ok?' ok':''}" style="width:${pct}%;"></div></div>`;};
-    const repBtnLbl=mt==='snow'?'❄️ 적설보고':mt==='rain'?'🌧️ 강우보고':'🌧️ 기상보고';
-    const stationCard=(st,sub)=>{
-      const myResps=active.responders.filter(r=>(r.loc||'사무소')===st.loc);
-      const last=_latestReport(active,st.loc);
-      return `<div class="ao-loc-card${sub?' sub':''}">
-        <div class="ao-loc-hd">
-          <b style="color:#e8f2fb;font-size:13px;">${sub?'⛺ ':''}${_esc(st.label)}</b>
-          <span class="ao-loc-cnt ${myResps.length?'ok':''}">👤 ${myResps.length}명</span>
-        </div>
-        <div style="margin:6px 0 2px;">${myResps.length?myResps.map(r=>_alertRespChip(r,active.id)).join(''):'<span style="font-size:11px;color:#456a85;">아직 응소자 없음</span>'}</div>
-        ${_repLine(last)}
-        ${(()=>{const occ=_latestOccupancy(active,st.loc);return occ?`<div style="font-size:11px;color:#7ec8a0;margin-top:4px;">👥 직원 <b>${occ.staff??'-'}</b>명 · 탐방객 <b>${occ.visitors??'-'}</b>명 <span style="color:#4a7090;">${(occ.time||'').slice(11,16)}</span>${occ.note?' · <span style="color:#7a9cb8;">'+_esc(occ.note)+'</span>':''}</div>`:''})()}
-      </div>`;
-    };
-    // 그룹(사무소/분소)별 렌더 — 대청분소는 대피소 단위로 세분
-    const locCards=ALERT_GROUPS.map(g=>{
-      const reqs=_reqOf(opLevel,g.reqType);
-      const need=reqs.length?reqs.map(r=>r.role+' '+r.min+'명').join(', '):'지정 없음';
-      const total=reqs.reduce((s,r)=>s+r.min,0);
-      const gResps=active.responders.filter(r=>g.stations.some(s=>s.loc===(r.loc||'사무소')));
-      const ok=total>0&&gResps.length>=total;
-      if(g.stations.length===1){
-        const st=g.stations[0];
-        const myResps=gResps;
-        const last=_latestReport(active,st.loc);
-        const shortG=total>0&&myResps.length<total?(total-myResps.length):0;
-        return `<div class="ao-loc-card"${shortG?' style="border-color:rgba(231,76,60,.4);"':''}>
-          <div class="ao-loc-hd"><span style="font-size:13px;">${g.ico} <b style="color:#e8f2fb;">${_esc(g.label)}</b></span><span class="ao-loc-cnt ${ok?'ok':''}">👤 ${myResps.length}${total?'/'+total:''}명</span></div>
-          ${total?`<div class="ao-loc-need">필요: ${need}</div>${_progBar(myResps.length,total)}${shortG?`<div style="font-size:10px;color:#ff9e80;font-weight:700;margin-top:3px;">⚠️ 응소 ${shortG}명 부족</div>`:''}`:''}
-          <div style="margin:6px 0 2px;">${myResps.length?myResps.map(r=>_alertRespChip(r,active.id)).join(''):'<span style="font-size:11px;color:#456a85;">아직 응소자 없음</span>'}</div>
-          ${_repLine(last)}
-          ${(()=>{const occ=_latestOccupancy(active,st.loc);return occ?`<div style="font-size:11px;color:#7ec8a0;margin-top:4px;">👥 직원 <b>${occ.staff??'-'}</b>명 · 탐방객 <b>${occ.visitors??'-'}</b>명 <span style="color:#4a7090;">${(occ.time||'').slice(11,16)}</span></div>`:''})()}
-        </div>`;
-      }
-      // 대청분소: 그룹 헤더 + 대피소 세부 카드
-      return `<div class="ao-grp">
-        <div class="ao-grp-hd"><span>${g.ico} ${_esc(g.label)}</span><span class="ao-loc-cnt ${ok?'ok':''}">👤 ${gResps.length}${total?'/'+total:''}명</span></div>
-        ${total?`<div class="ao-loc-need" style="padding:2px 2px 0;">필요: ${need} (분소 합계 기준)</div>${_progBar(gResps.length,total)}${total>gResps.length?`<div style="font-size:10px;color:#ff9e80;font-weight:700;margin-top:3px;padding-left:2px;">⚠️ 응소 ${total-gResps.length}명 부족</div>`:''}`:''}
-        <div style="margin-top:6px;">${g.stations.map(st=>stationCard(st,true)).join('')}</div>
-      </div>`;
-    }).join('');
     const alertChips=active.alerts.map((a,ai)=>`<span class="ao-alert-chip ${a.source==='auto'?'auto':'manual'}">${a.source==='auto'?'📡자동':'✋수동'} <b>${_esc(a.type)}${_stageShort(a.stage)}</b>${isAdminUser()?`<span onclick="removeAlertItem(${active.id},${ai})" style="cursor:pointer;color:#ff6b5b;margin-left:4px;font-weight:800;">×</span>`:''}</span>`).join('');
     // 히어로 배너 + 요약 stat + 상세
     activeHtml=`
@@ -8481,8 +8501,11 @@ function renderAlertView(){
         ${active.note?`<div style="font-size:12px;color:#9fc0da;margin-top:8px;background:rgba(255,255,255,.03);border-radius:8px;padding:7px 10px;">📝 ${_esc(active.note)}</div>`:''}
       </div>
 
-      <div class="ao-sec-hd"><span class="bar"></span>📋 분소별 응소 현황 <span style="font-size:9px;color:#46708f;font-weight:600;margin-left:auto;">응소·관측 입력은 🚨 입력 탭에서</span></div>
-      ${locCards}
+      <div class="ao-sec-hd"><span class="bar"></span>👤 응소 현황 <span style="font-size:9px;color:#46708f;font-weight:600;margin-left:auto;">일회성 · 입력은 🚨 입력 탭</span></div>
+      ${_renderRespSummary(active,opLevel)}
+
+      <div class="ao-sec-hd"><span class="bar" style="background:#4fc0a0;"></span>📡 관측 현황 <span style="font-size:9px;color:#46708f;font-weight:600;margin-left:auto;">주기마다 지속 보고</span></div>
+      ${_renderObsSummary(active)}
 
       <div class="ao-sec-hd"><span class="bar" style="background:#4fc0a0;"></span>📊 누적 관측 요약</div>
       ${_renderCumulativeSummary(active)}
@@ -8494,7 +8517,8 @@ function renderAlertView(){
       <div class="ao-empty-ico">🌀</div>
       <div class="ao-empty-msg">현재 진행 중인 특보운영이 없습니다</div>
       ${isAdminUser()?`<button onclick="alertTab(3)" class="ao-start-btn">🌀 특보운영 시작</button>`:'<div style="font-size:11px;color:#456a85;">관리자가 특보운영을 시작하면 표시됩니다</div>'}
-    </div>`;
+    </div>
+    ${_renderDutyBaseline()}`;
   }
 
   // 이전 운영 이력 (보관·열람) — 클릭 시 상세 모달
@@ -8610,8 +8634,9 @@ function _renderAlertInput(active){
       const occ=isShelter?_latestOccupancy(active,st.loc):null;
       // 대피소: 직원+탐방객 체류인원 표시 / 분소: 당직자(응소인원)만 표시
       const occLine=occ?`<div style="font-size:11px;color:#7ec8a0;margin:2px 0 4px;">⛺ 직원 ${occ.staff??'-'}명 · 탐방객 ${occ.visitors??'-'}명 <span style="color:#4a7090;">${(occ.time||'').slice(11,16)}</span>${occ.note?' · '+_esc(occ.note):''}</div>`:'';
+      const base=_dutyOf(st.loc);
       html+=`<div class="ao-loc-card" style="margin-bottom:8px;">
-        <div class="ao-loc-hd"><b style="color:#e8f2fb;font-size:13px;">${isShelter?'⛺ ':g.ico+' '}${_esc(st.label)}</b><span class="ao-loc-cnt ${cnt?'ok':''}">👤 응소 ${cnt}명</span></div>
+        <div class="ao-loc-hd"><b style="color:#e8f2fb;font-size:13px;">${isShelter?'⛺ ':g.ico+' '}${_esc(st.label)}</b><span class="ao-loc-cnt ${(cnt+base)?'ok':''}">👤 ${base?`상시 ${base}`:''}${base&&cnt?' + ':''}${cnt?`응소 ${cnt}`:(base?'':'응소 0')}명</span></div>
         ${occLine}
         <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap;">
           <button onclick="openAddResponder(${active.id},'${st.loc}')" class="ao-loc-btn">👤 응소 등록</button>
