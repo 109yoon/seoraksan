@@ -3092,31 +3092,18 @@ function _initBoardMap(){
   if(!_boardMap){
     try{
       _boardMap=new kakao.maps.Map(el,{center:new kakao.maps.LatLng(DC.lat,DC.lng),level:9});
-      _boardMap.setMapTypeId(kakao.maps.MapTypeId.SKYVIEW); // 순수 위성(도로·등산로 벡터선 제거) — 상황판 깔끔하게
+      _boardMap.setMapTypeId(kakao.maps.MapTypeId.HYBRID); // HYBRID: 위성+벡터 — 타일 이음새가 벡터 레이어로 덮여 세로줄 없음
     }catch(e){console.warn('boardMap',e);return;}
   }else{
     _boardMap.relayout();
   }
-  // 창 크기 변경(모니터 회전·해상도 변경) 시에도 이음새 재발 방지
+  // 창 크기 변경(모니터 회전·해상도 변경) 시 relayout
   if(!_boardResizeBound){
     _boardResizeBound=true;
-    window.addEventListener('resize',()=>{try{if(_boardMap&&document.getElementById('v-board').classList.contains('on'))_boardForceRedraw();}catch(e){}});
+    window.addEventListener('resize',()=>{try{if(_boardMap&&document.getElementById('v-board').classList.contains('on'))_boardMap.relayout();}catch(e){}});
   }
   _renderBoardPins(true); // 최초 1회만 전체 범위에 맞춤
-  // 세로 이음새(SKYVIEW 위성 타일 seam) 제거: relayout만으로는 안 지워져서
-  // 줌 레벨을 강제로 한 단계 바꿨다 되돌려 타일을 완전히 재요청한다.
-  setTimeout(()=>{try{_boardMap&&_boardMap.relayout();}catch(e){}},120);
-  setTimeout(_boardForceRedraw,650);
-}
-// SKYVIEW 타일 이음새 제거용 강제 재렌더: relayout + 줌 nudge (실제 타일 재요청 유발)
-function _boardForceRedraw(){
-  if(!_boardMap)return;
-  try{
-    _boardMap.relayout();
-    const lv=_boardMap.getLevel();
-    _boardMap.setLevel(lv<14?lv+1:lv-1);
-    setTimeout(()=>{try{_boardMap&&_boardMap.setLevel(lv);}catch(e){}},90);
-  }catch(e){}
+  setTimeout(()=>{try{_boardMap&&_boardMap.relayout();}catch(e){}},200);
 }
 function _renderBoardPins(fit){
   if(!_boardMap)return;
