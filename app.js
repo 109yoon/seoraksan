@@ -3685,6 +3685,26 @@ function renderResList(){
   if(_sig!==_resListSig){_resListSig=_sig;_resListLimit=50;}
   let cards=[];
   const _hdr=(txt,col)=>`<div style="display:flex;align-items:center;gap:7px;margin:4px 2px 7px;"><span style="font-size:11px;font-weight:800;color:${col};letter-spacing:.3px;">${txt}</span><div style="flex:1;height:1px;background:linear-gradient(90deg,${col}44,transparent);"></div></div>`;
+  // 🆘 조난·사고자 위치 수신 — 별도 sos 컬렉션이라 목록 최상단에 노출(아직 사고 미등록 건만)
+  if(_resListTab!=='haz'&&(_sosPings||[]).length){
+    const _regIds=new Set((res||[]).map(r=>r.sosId).filter(Boolean));
+    const _open=(_sosPings||[]).filter(p=>!_regIds.has(p.id)).sort((a,b)=>(b.ts||0)-(a.ts||0));
+    if(_open.length){
+      cards.push(_hdr('🆘 위치 수신 (미등록) '+_open.length,'#ffd24d'));
+      _open.forEach(p=>{
+        const mm=Math.round((Date.now()-(p.ts||0))/60000);
+        cards.push(`<div class="lcard" onclick="_sosPinPopup('${p.id}')" style="position:relative;border-left:3px solid #ffe14d;">
+          <div class="lico" style="background:#c0392b;border:none;color:#fff;">🆘</div>
+          <div class="linfo">
+            <div class="lname">🆘 ${_esc(p.name||'익명')} <span style="font-size:9px;color:#8ab4cc;font-weight:400;">±${p.acc||'?'}m · ${mm}분 전</span></div>
+            ${p.msg?`<div class="lmeta" style="margin-top:2px;color:#cfe2f2;">${_esc(p.msg)}</div>`:''}
+            <div class="lmeta" style="margin-top:2px;font-family:monospace;">${(+p.lat).toFixed(5)}, ${(+p.lng).toFixed(5)}</div>
+            <button onclick="event.stopPropagation();sosToRescue('${p.id}')" style="margin-top:6px;padding:6px 12px;background:rgba(231,76,60,.15);border:1px solid rgba(231,76,60,.45);color:#ff6b5e;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;">🚨 구조 사고로 등록</button>
+          </div>
+        </div>`);
+      });
+    }
+  }
   // 진행중 구조를 상단에 별도 그룹으로 모아 일일 운영 시인성 강화
   if(_showRes){
     const _rescues=res.filter(r=>_stOkRes(r.status)&&_dateOkL(r.date)&&_resMatchSearch(r)).slice().reverse();
@@ -10678,7 +10698,7 @@ function _bootSos(){
       <input id="sosName" placeholder="이름" oninput="_sosPushInfo()" style="width:100%;box-sizing:border-box;background:#0b1c30;border:1px solid rgba(255,255,255,.15);color:#fff;border-radius:9px;padding:12px;font-size:15px;margin-bottom:7px;">
       <textarea id="sosMsg" placeholder="상태·부상·주변 지형 등 (예: 발목 부상, 계곡 옆 큰 바위)" oninput="_sosPushInfo()" rows="3" style="width:100%;box-sizing:border-box;background:#0b1c30;border:1px solid rgba(255,255,255,.15);color:#fff;border-radius:9px;padding:12px;font-size:15px;resize:vertical;"></textarea>
     </div>
-    <div id="sosTip" style="margin-top:16px;font-size:12px;color:#5a7e98;text-align:center;line-height:1.6;max-width:420px;">⚠️ 배터리를 아끼려면 화면 밝기를 낮추고, 가능하면 한 자리에서 기다리세요.<br>119(소방)·구조대에도 함께 신고하세요.</div>`;
+    <div id="sosTip" style="margin-top:16px;font-size:12px;color:#5a7e98;text-align:center;line-height:1.6;max-width:420px;">⚠️ 배터리를 아끼려면 화면 밝기를 낮추고, 가능하면 한 자리에서 안전하게 기다리세요.<br>설악산 국립공원 구조대가 출동합니다.</div>`;
   document.body.innerHTML='';
   document.body.appendChild(wrap);
   document.title='🆘 위치 전송 — 설악산 구조대';
@@ -10719,19 +10739,28 @@ function _sosOnErr(e){
   _sosSet('⚠️',msg,'#ffd9d0');
   const btn=document.getElementById('sosStartBtn');if(btn){btn.style.display='block';btn.textContent='📍 다시 시도';}
 }
-function _sosWrite(){
+let _sosLastWriteTs=0,_sosLastWritePos=null;
+function _sosWrite(force){
   if(!_sosDb||!_sosLast||!_sosAuthed)return;
+  // 데이터 절약: 최소 15초 간격 또는 25m 이상 이동 시에만 전송 (force=이름/메모 입력 즉시 반영)
+  const nowMs=Date.now();
+  if(!force&&_sosLastWriteTs){
+    const dt=nowMs-_sosLastWriteTs;
+    let moved=999;try{if(_sosLastWritePos)moved=_haversineKm(_sosLastWritePos.lat,_sosLastWritePos.lng,_sosLast.lat,_sosLast.lng)*1000;}catch(e){}
+    if(dt<15000&&moved<25)return;
+  }
   const name=(document.getElementById('sosName')||{}).value||'';
   const msg=(document.getElementById('sosMsg')||{}).value||'';
   const d=new Date();
   const rec={id:_sosId,lat:_sosLast.lat,lng:_sosLast.lng,acc:_sosLast.acc,
     name:String(name).slice(0,40),msg:String(msg).slice(0,300),
     at:d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')+' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0')+':'+String(d.getSeconds()).padStart(2,'0'),
-    ts:Date.now(),ua:navigator.userAgent.slice(0,120),active:true};
+    ts:nowMs,ua:navigator.userAgent.slice(0,120),active:true};
+  _sosLastWriteTs=nowMs;_sosLastWritePos={lat:_sosLast.lat,lng:_sosLast.lng};
   _sosDb.collection('sos').doc(_sosId).set(rec,{merge:true}).then(()=>{_sosCount++;}).catch(()=>{});
 }
 let _sosInfoTimer=null;
-function _sosPushInfo(){clearTimeout(_sosInfoTimer);_sosInfoTimer=setTimeout(_sosWrite,600);}
+function _sosPushInfo(){clearTimeout(_sosInfoTimer);_sosInfoTimer=setTimeout(()=>_sosWrite(true),600);}
 
 // ── 구조대 측: 조난자 위치 실시간 구독 ──
 let _sosPings=[];
@@ -10745,8 +10774,8 @@ function _initSosWatch(){
       _sosPings=fresh;
       // 신규 조난자 알림
       const seen=window._sosSeen||(window._sosSeen={});
-      fresh.forEach(p=>{if(!seen[p.id]){seen[p.id]=1;if(Object.keys(seen).length>1){try{toast('🆘 조난자 위치 수신: '+(p.name||'익명')+(p.acc?' (±'+p.acc+'m)':''),6000);}catch(e){}try{pushNoti('🆘 조난자 위치 수신'+(p.name?': '+p.name:''),'🆘','sos',{app:'rescue',tab:1});}catch(e){}}}});
-      try{if(window.curApp==='rescue')renderRescueMap();}catch(e){}
+      fresh.forEach(p=>{if(!seen[p.id]){seen[p.id]=1;if(Object.keys(seen).length>1){try{toast('🆘 조난·사고자 위치 수신: '+(p.name||'익명')+(p.acc?' (±'+p.acc+'m)':''),6000);}catch(e){}try{pushNoti('🆘 조난·사고자 위치 수신'+(p.name?': '+p.name:''),'🆘','sos',{app:'rescue',tab:1});}catch(e){}}}});
+      try{if(window.curApp==='rescue'){renderRescueMap();renderResList();}}catch(e){}
       try{_updateSosFab();}catch(e){}
     });
   }catch(e){}
@@ -10755,7 +10784,7 @@ function _sosBadgeCount(){return (_sosPings||[]).length;}
 function _updateSosFab(){
   const b=document.getElementById('sosReqBtn');if(!b)return;
   const n=_sosBadgeCount();
-  b.innerHTML='🆘 조난자'+(n?' <span style="background:#fff;color:#c0392b;border-radius:50%;padding:0 5px;font-weight:800;">'+n+'</span>':' 위치요청');
+  b.innerHTML='🆘 조난·사고자'+(n?' <span style="background:#fff;color:#c0392b;border-radius:50%;padding:0 5px;font-weight:800;">'+n+'</span>':' 위치요청');
   b.style.background=n?'rgba(192,57,43,.95)':'rgba(192,57,43,.6)';
 }
 // 조난자에게 보낼 공개 링크 (로그인 불필요)
@@ -10789,7 +10818,7 @@ function openSosRequest(){
       ${n?`<button onclick="clearAllSos()" style="background:rgba(192,57,43,.1);color:#c0392b;border:1px solid rgba(192,57,43,.3);border-radius:7px;padding:5px 10px;font-size:11px;font-weight:700;cursor:pointer;">🗑️ 전체 삭제</button>`:''}
     </div>
     ${list}`;
-  _sosModal('🆘 조난자 위치요청',html);
+  _sosModal('🆘 조난·사고자 위치요청',html);
 }
 function _sosModal(title,html){
   let m=document.getElementById('sosModal');
@@ -10861,12 +10890,13 @@ function _sosFocus(id){
 function sosToRescue(id){
   const p=(_sosPings||[]).find(x=>x.id===id);if(!p)return;
   const r={id:Date.now(),type:'조난',status:'ongoing',date:now(),lat:p.lat,lng:p.lng,
-    location:'조난자 위치전송 ('+(p.name||'익명')+')',loctype:'법정탐방로',
+    location:'위치전송 ('+(p.name||'익명')+')',loctype:'법정탐방로',sosId:p.id,
     vName:p.name||'',situation:p.msg||'',
     author:getAuthor?getAuthor():'구조대',title:'조난 '+(p.name||'위치전송')};
   const res=DB.g('rescues')||[];res.push(r);DB.s('rescues',res);
-  toast('🚨 조난 사고로 등록됨');
-  try{renderRescueMap();}catch(e){}try{updateSummary();}catch(e){}
+  deleteSosPing(p.id,true); // 정식 사고로 전환됐으므로 sos 핀 제거(중복 방지)
+  toast('🚨 조난 사고로 등록됨 — 목록·지도에 표시');
+  try{renderRescueMap();}catch(e){}try{renderResList();}catch(e){}try{updateSummary();}catch(e){}
   _sosCloseModal();
 }
 
