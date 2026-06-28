@@ -10722,7 +10722,7 @@ let _sosHeartbeat=null;
 function _sosRequest(){
   if(!navigator.geolocation){_sosSet('⚠️','이 기기는 위치를 지원하지 않습니다','#ffd9d0');return;}
   // 하트비트: 가만히 있어 watchPosition이 안 울려도 20초마다 강제 재전송(연결 유지)
-  if(!_sosHeartbeat)_sosHeartbeat=setInterval(function(){if(_sosLast&&_sosAuthed)_sosWrite(true);},20000);
+  if(!_sosHeartbeat)_sosHeartbeat=setInterval(function(){if(_sosLast)_sosWrite(true);},20000);
   if(_sosWatch!=null)return; // 이미 추적 중
   _sosSet('📡','위치 확인 중...','#ffd9d0');
   _sosWatch=navigator.geolocation.watchPosition(_sosOnPos,_sosOnErr,{enableHighAccuracy:true,timeout:20000,maximumAge:2000});
@@ -10744,7 +10744,7 @@ function _sosOnErr(e){
 }
 let _sosLastWriteTs=0,_sosLastWritePos=null;
 function _sosWrite(force){
-  if(!_sosDb||!_sosLast||!_sosAuthed)return;
+  if(!_sosDb||!_sosLast)return; // 인증 여부와 무관하게 전송 시도(규칙이 sos 공개 허용)
   // 데이터 절약: 최소 15초 간격 또는 25m 이상 이동 시에만 전송 (force=이름/메모 입력 즉시 반영)
   const nowMs=Date.now();
   if(!force&&_sosLastWriteTs){
