@@ -2149,6 +2149,27 @@ function _startApprovalPoll(){
   },3500);
 }
 function _stopApprovalPoll(){if(_approvalPollTimer){clearInterval(_approvalPollTimer);_approvalPollTimer=null;}}
+// 전체 기기 오류 모아보기 (관리자 전용) — errLogs 컬렉션에서 최근순
+function _loadAllErrLogs(){
+  const el=document.getElementById('allErrLogs');
+  if(!_fdb){if(el)el.innerHTML='<div style="font-size:11px;color:#e05050;">서버 미연결</div>';return;}
+  if(el)el.innerHTML='<div style="font-size:11px;color:#5a8aaa;">불러오는 중…</div>';
+  _fdb.collection('errLogs').orderBy('at','desc').limit(80).get().then(function(snap){
+    if(!el)return;
+    const rows=snap.docs.map(d=>d.data());
+    if(!rows.length){el.innerHTML='<div style="font-size:11px;color:rgba(255,255,255,.25);">기록 없음 ✅</div>';return;}
+    el.innerHTML=rows.map(function(r){
+      const t=r.at?new Date(r.at).toLocaleString('ko-KR',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+      const who=(r.by||'미상')+(r.dept?'·'+r.dept:'');
+      const plat=r.plat==='APP'?'📱앱':'🌐웹';
+      return '<div style="font-size:10px;font-family:monospace;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);">'
+        +'<span style="color:#7dd3fa;">'+plat+'</span> <span style="color:#9bbdd4;">'+_esc(who)+'</span> <span style="color:#5a7e98;">'+t+'</span><br>'
+        +'<span style="color:#b8856a;">'+_esc(r.m||'')+'</span></div>';
+    }).join('');
+    // 7일 지난 오래된 기록 정리(한 번에 소량)
+    try{_fdb.collection('errLogs').where('at','<',Date.now()-7*86400000).limit(40).get().then(function(s){s.docs.forEach(function(d){d.ref.delete().catch(function(){});});}).catch(function(){});}catch(e){}
+  }).catch(function(){if(el)el.innerHTML='<div style="font-size:11px;color:#e05050;">불러오기 실패(색인 생성 중일 수 있음 — 잠시 후 재시도)</div>';});
+}
 function renderAdmSys(){
   const unseenCnt=_getUnseenCount();
   document.getElementById('admSysWrap').innerHTML=`
@@ -2181,8 +2202,14 @@ function renderAdmSys(){
       ${(()=>{const blk=!!DB.g('sosBlocked');return `<button onclick="toggleSosBlock()" style="width:100%;padding:11px;border-radius:8px;border:1px solid ${blk?'rgba(39,174,96,.4)':'rgba(192,57,43,.4)'};background:${blk?'rgba(39,174,96,.12)':'rgba(192,57,43,.12)'};color:${blk?'#27ae60':'#e05050'};font-size:13px;font-weight:700;cursor:pointer;">${blk?'⛔ 현재 차단됨 — 탭하여 접수 허용':'🆗 현재 허용됨 — 탭하여 접수 차단'}</button>`;})()}
     </div>
     <div class="scard" style="margin-bottom:8px;">
-      <div class="stitle">🐞 최근 오류 기록 <button onclick="localStorage.removeItem('_errLog');renderAdmSys();" style="float:right;background:none;border:none;color:rgba(255,255,255,.3);font-size:10px;cursor:pointer;">비우기</button></div>
-      ${(()=>{try{const log=JSON.parse(localStorage.getItem('_errLog')||'[]');return log.length?log.slice(0,10).map(e=>`<div style="font-size:10px;color:#b8856a;font-family:monospace;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.04);">${e.t} ${_esc(e.m)}</div>`).join(''):'<div style="font-size:11px;color:rgba(255,255,255,.25);">기록된 오류 없음 ✅</div>';}catch(e){return'';}})()}
+      <div class="stitle">🐞 오류 기록 <button onclick="localStorage.removeItem('_errLog');renderAdmSys();" style="float:right;background:none;border:none;color:rgba(255,255,255,.3);font-size:10px;cursor:pointer;">내 기록 비우기</button></div>
+      <div style="font-size:10px;color:#5a8aaa;font-weight:700;margin:4px 0 3px;">📱 내 기기</div>
+      ${(()=>{try{const log=JSON.parse(localStorage.getItem('_errLog')||'[]');return log.length?log.slice(0,8).map(e=>`<div style="font-size:10px;color:#b8856a;font-family:monospace;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.04);">${e.t} ${_esc(e.m)}</div>`).join(''):'<div style="font-size:11px;color:rgba(255,255,255,.25);">기록된 오류 없음 ✅</div>';}catch(e){return'';}})()}
+      <div style="display:flex;justify-content:space-between;align-items:center;margin:9px 0 3px;">
+        <span style="font-size:10px;color:#5a8aaa;font-weight:700;">🌐 전체 기기 (누가·웹/앱)</span>
+        <button onclick="_loadAllErrLogs()" style="background:rgba(79,168,208,.12);color:#4fa8d0;border:1px solid rgba(79,168,208,.28);border-radius:14px;padding:3px 10px;font-size:10px;font-weight:700;cursor:pointer;">불러오기 ↻</button>
+      </div>
+      <div id="allErrLogs" style="max-height:220px;overflow-y:auto;"><div style="font-size:11px;color:rgba(255,255,255,.25);">‘불러오기’를 누르면 모든 기기의 오류를 모아 봅니다(관리자 전용)</div></div>
     </div>
     <div class="scard" style="margin-bottom:8px;">
       <div class="stitle">🚒 외부기관 관리</div>
