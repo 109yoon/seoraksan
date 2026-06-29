@@ -9118,12 +9118,17 @@ function _recordLoginLog(){
     DB.s('loginLog',log.slice(0,300)); // 최근 300명 유지
   }catch(e){}
 }
+// 카카오 로그인 리다이렉트 URI: 네이티브 앱은 자기 출처(https://localhost)로 되돌려받아
+// 앱 안에서 로그인을 끝낸다(웹페이지로 이탈 → 하얀화면 방지). 웹은 기존 깃헙페이지 경로.
+function _kakaoRedirectUri(){
+  return (typeof _isNativeApp==='function'&&_isNativeApp()) ? 'https://localhost' : 'https://109yoon.github.io/seoraksan/';
+}
 function kakaoLogin(){
   if(!window.Kakao||!Kakao.isInitialized()){toast('⚠️ 카카오 SDK 오류');return;}
-  Kakao.Auth.authorize({redirectUri:'https://109yoon.github.io/seoraksan/',throughTalk:false});
+  Kakao.Auth.authorize({redirectUri:_kakaoRedirectUri(),throughTalk:false});
 }
 function _handleKakaoCode(code,redirectUri){
-  var _uri=redirectUri||'https://109yoon.github.io/seoraksan/';
+  var _uri=redirectUri||_kakaoRedirectUri();
   window._needsCode=true; // 동기적으로 먼저 세팅 (checkAuth 타이밍 충돌 방지)
   var _kakaoAccessTok=''; // 서버 검증(커스텀 토큰 발급)에 쓸 카카오 access_token 보관
   fetch('https://kauth.kakao.com/oauth/token',{
@@ -11304,7 +11309,7 @@ function sosToRescue(id){
 // 앱 자체 업데이트 (OTA · Capgo 자체호스팅) — APK 전용. 웹/PWA는 서비스워커가 자동 갱신.
 // 번들(www)의 새 버전을 ota.json으로 알리면, 설치된 앱이 받아서 그 자리에서 교체(재빌드 불필요).
 // ══════════════════════════════════════════
-const OTA_VER='2026.06.29.3';                         // ← 현재 번들 버전 (릴리스마다 올림 · build-ota.sh가 ota.json에 반영)
+const OTA_VER='2026.06.29.4';                         // ← 현재 번들 버전 (릴리스마다 올림 · build-ota.sh가 ota.json에 반영)
 const OTA_MANIFEST='https://109yoon.github.io/seoraksan/ota.json';
 let _otaInfo=null;
 function _otaPlugin(){try{return (window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.CapacitorUpdater)||null;}catch(e){return null;}}
