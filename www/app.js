@@ -173,7 +173,12 @@ function _kakaoRedirectUri(){
 }
 function kakaoLogin(){
   if(!window.Kakao||!Kakao.isInitialized()){toast('⚠️ 카카오 SDK 오류');return;}
-  Kakao.Auth.authorize({redirectUri:_kakaoRedirectUri(),throughTalk:false});
+  // throughTalk:true → 휴대폰에 카카오톡이 깔려 있으면 앱이 켜지며 간편 로그인(이메일·비번 입력 불필요).
+  //   앱 없거나 PC면 SDK가 자동으로 웹 로그인으로 폴백. 'prompt:login' 같은 강제 재입력 옵션은 두지 않음.
+  // 네이티브 APK는 방금 안정화한 https://localhost 복귀 흐름을 유지하기 위해 throughTalk를 끔(카톡 앱 왕복은
+  //   커스텀스킴/네이티브키 추가 설정이 필요해 추후 별도 작업).
+  var _native=(typeof _isNativeApp==='function'&&_isNativeApp());
+  Kakao.Auth.authorize({redirectUri:_kakaoRedirectUri(),throughTalk:!_native});
 }
 function _handleKakaoCode(code,redirectUri){
   var _uri=redirectUri||_kakaoRedirectUri();
@@ -2357,7 +2362,7 @@ function sosToRescue(id){
 // 앱 자체 업데이트 (OTA · Capgo 자체호스팅) — APK 전용. 웹/PWA는 서비스워커가 자동 갱신.
 // 번들(www)의 새 버전을 ota.json으로 알리면, 설치된 앱이 받아서 그 자리에서 교체(재빌드 불필요).
 // ══════════════════════════════════════════
-const OTA_VER='2026.06.29.9';                         // ← 현재 번들 버전 (릴리스마다 올림 · build-ota.sh가 ota.json에 반영)
+const OTA_VER='2026.06.29.10';                         // ← 현재 번들 버전 (릴리스마다 올림 · build-ota.sh가 ota.json에 반영)
 const OTA_MANIFEST='https://109yoon.github.io/seoraksan/ota.json';
 let _otaInfo=null;
 function _otaPlugin(){try{return (window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.CapacitorUpdater)||null;}catch(e){return null;}}

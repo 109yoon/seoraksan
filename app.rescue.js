@@ -41,7 +41,9 @@ function openChangeUser(){
     if(_quick)_quick.style.display='none';
     if(_saveBtn)_saveBtn.style.display='none';
     if(_lockNote)_lockNote.style.display='block';
+    var _fixBtn=document.getElementById('profileFixReqBtn');if(_fixBtn)_fixBtn.style.display='block';
   }else{
+    var _fixBtn2=document.getElementById('profileFixReqBtn');if(_fixBtn2)_fixBtn2.style.display='none';
     if(_nameIn){_nameIn.readOnly=false;_nameIn.style.opacity='';}
     if(_deptIn){_deptIn.disabled=false;_deptIn.style.opacity='';}
     if(_pillsBox){_pillsBox.style.pointerEvents='';_pillsBox.style.opacity='';}
@@ -165,6 +167,25 @@ function saveUser(){
   try{renderSettings();}catch(e){}
   // 프로필 저장 완료 → 멤버 승인 여부 확인(미승인이면 대기 화면)
   try{_enforceAccessGate();}catch(e){}
+}
+// 직원 → 관리자: 내 정보(이름·소속·직위) 정정 요청 (잠금 상태에서 직접 못 고치는 대신)
+function requestProfileFix(){
+  const u=DB.g('currentUser')||{};
+  const cur=(u.realName||u.name||'-')+' / '+(u.dept||'-')+' / '+(u.rank||'-');
+  const msg=prompt('수정이 필요한 내용을 적어주세요.\n관리자에게 정정 요청이 전달됩니다.\n\n(현재 등록: '+cur+')','');
+  if(msg==null)return;
+  const t=String(msg).trim();if(!t){toast('내용을 입력하세요');return;}
+  try{pushNoti('✏️ 정보 정정 요청 — '+(u.realName||u.name||'')+(u.kakaoId?' ('+u.kakaoId+')':'')+': '+t,'✏️','info',{app:'admin'});}catch(e){}
+  toast('✅ 관리자에게 정정 요청을 보냈습니다');
+}
+// 직원 → 관리자: 관리자 권한 요청 (관리자 페이지 권한 없음 화면에서)
+function requestAdminAccess(){
+  const u=DB.g('currentUser')||{};
+  if(!u.kakaoId){toast('카카오 로그인 후 요청하세요');return;}
+  try{pushNoti('🔐 관리자 권한 요청 — '+(u.realName||u.name||'')+' ('+u.kakaoId+')','🔐','info',{app:'admin'});}catch(e){}
+  toast('✅ 관리자에게 권한 요청을 보냈습니다');
+  const e=document.getElementById('adminDeniedOverlay');if(e)e.remove();
+  try{goHome();}catch(_e){}
 }
 function _notifyNewJoiner(u){
   const all=DB.g('pendingUsers')||[];
