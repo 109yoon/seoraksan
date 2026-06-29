@@ -11309,7 +11309,7 @@ function sosToRescue(id){
 // 앱 자체 업데이트 (OTA · Capgo 자체호스팅) — APK 전용. 웹/PWA는 서비스워커가 자동 갱신.
 // 번들(www)의 새 버전을 ota.json으로 알리면, 설치된 앱이 받아서 그 자리에서 교체(재빌드 불필요).
 // ══════════════════════════════════════════
-const OTA_VER='2026.06.29.4';                         // ← 현재 번들 버전 (릴리스마다 올림 · build-ota.sh가 ota.json에 반영)
+const OTA_VER='2026.06.29.5';                         // ← 현재 번들 버전 (릴리스마다 올림 · build-ota.sh가 ota.json에 반영)
 const OTA_MANIFEST='https://109yoon.github.io/seoraksan/ota.json';
 let _otaInfo=null;
 function _otaPlugin(){try{return (window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.CapacitorUpdater)||null;}catch(e){return null;}}
@@ -11327,25 +11327,50 @@ async function _otaCheck(manual){
 }
 async function _otaApply(){
   const plug=_otaPlugin(); if(!plug||!_otaInfo)return;
+  _otaClearCountdown();
+  const _m=document.getElementById('otaModal');if(_m)_m.remove();
   try{
     toast('⬇️ 업데이트 받는 중… 잠시만요 (완료되면 자동 재시작)',8000);
     const b=await plug.download({url:_otaInfo.url,version:String(_otaInfo.version)});
     await plug.set(b); // 적용 + 자동 재시작 (새 번들이 notifyAppReady 못하면 다음 실행 시 자동 롤백)
   }catch(e){ toast('⚠️ 업데이트 실패: '+(e&&(e.message||e.code)||e)); }
 }
+var _otaCountTimer=null,_otaDeferred=false;
+function _otaClearCountdown(){if(_otaCountTimer){clearInterval(_otaCountTimer);_otaCountTimer=null;}}
+function _otaDismiss(){_otaClearCountdown();_otaDeferred=true;const el=document.getElementById('otaModal');if(el)el.remove();}
+// 가운데 팝업: [지금 업데이트]/[나중에 하기]. 5초 안에 '나중에 하기'를 안 누르면 자동 업데이트.
 function _otaBanner(){
-  let el=document.getElementById('otaBanner');
-  if(!_otaInfo){ if(el)el.remove(); return; }
-  if(!el){ el=document.createElement('div'); el.id='otaBanner'; document.body.appendChild(el); }
-  el.style.cssText='position:fixed;top:0;left:0;right:0;z-index:99998;background:linear-gradient(180deg,#e74c3c,#c0392b);color:#fff;padding:11px 14px;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:10px;box-shadow:0 2px 10px rgba(0,0,0,.5);cursor:pointer;padding-top:calc(11px + env(safe-area-inset-top));';
-  el.innerHTML='<span>🔄 새 버전이 있습니다'+(_otaInfo.notes?' — '+_esc(_otaInfo.notes):'')+'</span><button style="background:#fff;color:#c0392b;border:none;border-radius:7px;padding:6px 12px;font-size:12px;font-weight:800;cursor:pointer;flex-shrink:0;">지금 업데이트</button>';
-  el.onclick=_otaApply;
+  // 정보 없음 → 닫기
+  if(!_otaInfo){_otaClearCountdown();const e=document.getElementById('otaModal');if(e)e.remove();return;}
+  if(_otaDeferred)return;            // 이미 '나중에' 선택 → 이번 세션엔 다시 안 띄움
+  let el=document.getElementById('otaModal');
+  if(el)return;                      // 이미 떠 있음
+  el=document.createElement('div');el.id='otaModal';
+  el.style.cssText='position:fixed;inset:0;z-index:100002;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:24px;';
+  el.innerHTML='<div style="background:#0f2034;border:1px solid rgba(79,168,208,.3);border-radius:18px;max-width:340px;width:100%;padding:24px 20px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.6);">'
+    +'<div style="font-size:40px;">🔄</div>'
+    +'<div style="font-size:18px;font-weight:800;color:#e0edf8;margin-top:8px;">새 버전이 있습니다</div>'
+    +(_otaInfo.notes?'<div style="font-size:12px;color:#9bbdd4;margin-top:8px;line-height:1.6;">'+_esc(_otaInfo.notes)+'</div>':'')
+    +'<div id="otaCountTxt" style="font-size:11px;color:#5a8aaa;margin-top:12px;"><b style="color:#7dd3fa;">5초</b> 후 자동으로 업데이트됩니다</div>'
+    +'<button onclick="_otaApply()" style="width:100%;margin-top:16px;padding:14px;border:none;border-radius:12px;background:linear-gradient(180deg,#4fa8d0,#1a6e9e);color:#fff;font-size:15px;font-weight:800;cursor:pointer;">지금 업데이트</button>'
+    +'<button onclick="_otaDismiss()" style="width:100%;margin-top:8px;padding:12px;border:1px solid rgba(255,255,255,.14);border-radius:12px;background:none;color:#9bbdd4;font-size:13px;font-weight:600;cursor:pointer;">나중에 하기</button>'
+    +'</div>';
+  document.body.appendChild(el);
+  // 5초 카운트다운 → 자동 업데이트
+  _otaClearCountdown();
+  var left=5;
+  _otaCountTimer=setInterval(function(){
+    left--;
+    var t=document.getElementById('otaCountTxt');
+    if(left>0){ if(t)t.innerHTML='<b style="color:#7dd3fa;">'+left+'초</b> 후 자동으로 업데이트됩니다'; }
+    else{ _otaClearCountdown(); if(document.getElementById('otaModal'))_otaApply(); }
+  },1000);
 }
 function _otaInit(){
   if(!_isNativeApp())return;
   const plug=_otaPlugin();
   if(plug&&plug.notifyAppReady){try{plug.notifyAppReady();}catch(e){}} // 현재 번들 정상 표시(미호출 시 다음 실행 롤백)
-  setTimeout(function(){_otaCheck(false);},4000); // 시작 후 조용히 확인 → 있으면 상단 배너
+  setTimeout(function(){_otaCheck(false);},4000); // 시작 후 조용히 확인 → 있으면 가운데 팝업
 }
 
 window.onload=function(){
