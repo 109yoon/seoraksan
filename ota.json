@@ -1,1 +1,1 @@
-{"version":"2026.06.29.3","url":"https://109yoon.github.io/seoraksan/bundle.zip","notes":"지도 SDK 무응답 자동 재시도(7초 타임아웃) + 로더 견고화"}
+{"version":"2026.06.29.4","url":"https://109yoon.github.io/seoraksan/bundle.zip","notes":"APK 카카오 로그인 인앱 완료(https://localhost) + 지도 origin 정상화 (재빌드 필요)"}
