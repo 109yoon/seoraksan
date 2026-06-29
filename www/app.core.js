@@ -6,6 +6,26 @@ function _logErr(msg){
     log.unshift({t:new Date().toISOString().slice(5,16).replace('T',' '),m:String(msg).slice(0,180)});
     localStorage.setItem('_errLog',JSON.stringify(log.slice(0,30)));
   }catch(e){}
+  try{_uploadErr(msg);}catch(e){} // 관리자가 모든 기기 오류를 모아볼 수 있도록 서버에도 기록(웹/앱·작성자 포함)
+}
+// 오류를 Firestore(errLogs)에 업로드 — 폭주 방지(같은 오류 세션당 1회 + 최소 3초 간격)
+var _errUpLast=0,_errUpSeen={};
+function _uploadErr(msg){
+  try{
+    var db=(typeof _fdb!=='undefined'&&_fdb)?_fdb:null;if(!db)return;
+    var key=String(msg).slice(0,80);
+    if(_errUpSeen[key])return;
+    var nowMs=Date.now();if(nowMs-_errUpLast<3000)return;
+    _errUpSeen[key]=1;_errUpLast=nowMs;
+    var u={};try{u=DB.g('currentUser')||{};}catch(e){}
+    db.collection('errLogs').add({
+      m:String(msg).slice(0,200),
+      dev:(typeof _MY_DEVICE_ID!=='undefined'?_MY_DEVICE_ID:''),
+      by:(u.realName||u.name||''),dept:(u.dept||''),
+      plat:(typeof _isNativeApp==='function'&&_isNativeApp())?'APP':'WEB',
+      at:nowMs
+    }).catch(function(){});
+  }catch(e){}
 }
 // 카카오 프로필 사진 URL은 http:// 로 오는데, 앱이 https://localhost 출처라 혼합콘텐츠로 차단됨 → https로 승격
 function _imgHttps(u){return String(u||'').replace(/^http:\/\//i,'https://');}
