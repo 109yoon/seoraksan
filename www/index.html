@@ -140,9 +140,9 @@ if(window.Kakao&&!Kakao.isInitialized()) Kakao.init(KAKAO_KEY);
 <!-- ══ 승인 대기 게이트 (멤버 승인 전 앱 전체 차단) ══ -->
 <div id="approvalGate" style="display:none;position:fixed;inset:0;background:#060d1a;z-index:10001;flex-direction:column;align-items:center;justify-content:center;padding:28px;text-align:center;">
   <div style="font-size:46px;margin-bottom:6px;">🔒</div>
-  <div style="font-size:17px;font-weight:800;color:#e0edf8;">관리자 승인 대기 중</div>
+  <div style="font-size:18px;font-weight:800;color:#e0edf8;">관리자의 승인을 기다리고 있습니다</div>
   <div style="font-size:12px;color:#7a9cb8;line-height:1.9;margin-top:12px;max-width:300px;">
-    가입 신청이 접수되었습니다.<br>관리자가 <b style="color:#9fc0da;">멤버로 승인</b>하면 앱을 이용할 수 있습니다.<br>승인을 요청해 주세요.
+    가입 신청이 접수되었습니다.<br>관리자가 <b style="color:#9fc0da;">승인</b>하면 <b style="color:#9fc0da;">재로그인 없이 자동으로</b> 입장됩니다.<br>아래 ID를 관리자에게 전달해 주세요.
   </div>
   <div id="approvalGateId" style="font-size:11px;color:#4a7090;margin-top:14px;font-family:monospace;background:rgba(255,255,255,.04);border-radius:8px;padding:7px 12px;"></div>
   <button onclick="_recheckApproval()" style="margin-top:22px;width:100%;max-width:280px;background:#1a4a6e;color:#fff;border:none;border-radius:11px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;">🔄 승인 확인</button>

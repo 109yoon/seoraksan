@@ -75,7 +75,7 @@ const _FB_CFG={
 // history: 점검이력은 무제한으로 계속 쌓이는 로그성 데이터라 단일문서 그대로 두면 매 점검마다 전체가 전원에게 재전송됨 → 건별 문서로 전환
 const _SHARED_COLL=['rescues','hazards','facilities','history'];
 // _SHARED_DOC: 단일 문서에 JSON 배열 저장 (관리자 전용, 동시 쓰기 없음)
-const _SHARED_DOC=['alertOps','staff','catFac','catFacMeta','pendingUsers','approvedUsers','deletedKakaoIds','adminOwnerKakaoId','adminApprovalCode','extAgencies','extAgencyCode','extAgencyDisplayName','geminiApiKey','kmaProxyUrl','_acl','loginLog','trailStatus','crisisLevel','weatherBrief','weatherLog','trailLog','sosBlocked'];
+const _SHARED_DOC=['alertOps','staff','catFac','catFacMeta','pendingUsers','approvedUsers','deletedKakaoIds','adminOwnerKakaoId','adminApprovalCode','extAgencies','extAgencyCode','extAgencyDisplayName','geminiApiKey','kmaProxyUrl','_acl','loginLog','trailStatus','crisisLevel','weatherBrief','weatherLog','trailLog','sosBlocked','autoApprove'];
 // 시설물 레거시(단일문서) 폴백/시드 동기화 상태
 let _legacyFacBackup=null; // appData/facilities(구버전)의 백업 — 컬렉션 비었을 때 화면 폴백
 let _facSeedReady=false;   // 시설물 첫 스냅샷·레거시 백업 확인 완료(시드 레이스 방지)
@@ -461,6 +461,8 @@ function initFirebase(onReady){
     function _onRemoteUpdate(){
       _checkDeletedUser();updateSummary();
       try{_checkNewJoinerAlert();}catch(e){}
+      // 승인 대기 중인 사용자: _acl 동기화 즉시 멤버 판정 → 재로그인 없이 자동 입장
+      try{var _g=document.getElementById('approvalGate');if(_g&&_g.style.display!=='none'){if(_isAutoApprove()){var _u=DB.g('currentUser')||{};if(_u.kakaoId)_aclSelfApprove(_u.kakaoId);}if(_isMember()){_g.style.display='none';_stopApprovalPoll();updateUserUI();try{goHome();}catch(e){}toast('✅ 승인 완료 — 환영합니다');}}}catch(e){}
       try{_updateCrisisBanner();}catch(e){}
       clearTimeout(_remoteUpdateTimer);
       _remoteUpdateTimer=setTimeout(function(){
@@ -1408,6 +1410,7 @@ function toggleMapType(m){
   toast(m==='inspect'?(mapIType==='hybrid'?'위성':'일반'):(mapRType==='hybrid'?'위성':'일반'));
 }
 function gpsTo(mode){
+  if(!window._KR||typeof kakao==='undefined'||!kakao.maps||!kakao.maps.LatLng){toast('⚠️ 지도 로딩 중 — 잠시 후 다시 시도하세요');return;}
   if(!navigator.geolocation){toast('⚠️ GPS 미지원');return;}
   toast('📍 GPS 수신 중...');
   navigator.geolocation.getCurrentPosition(p=>{
@@ -2740,11 +2743,23 @@ function _enforceAccessGate(){
   var profileDone=!!(u.dept&&u.rank&&(u.realName||u.name));
   // 카카오 사용자가 프로필까지 끝냈는데 멤버가 아니면 차단. 그 외(미로그인·외부·프로필 미완)는 각 흐름이 처리.
   if(isKakao&&profileDone&&!_isMember()){
+    // 자동 승인 모드: 대기 없이 스스로 멤버 등록 후 바로 입장
+    if(_isAutoApprove()&&(u.kakaoId||_authKakaoId)){
+      _aclSelfApprove(u.kakaoId||_authKakaoId);
+      gate.style.display='none';
+      try{closeM('modalUser');}catch(e){}
+      return false;
+    }
+    // 수동 승인 대기 화면을 최상단에 표시(로그인·프로필 모달 닫고 게이트만 남김)
+    try{closeM('modalUser');}catch(e){}
+    try{if(window.hideLoginScreen)window.hideLoginScreen();}catch(e){}
     var idEl=document.getElementById('approvalGateId');
     if(idEl)idEl.innerHTML='이름: <b style="color:#cfe2f2;">'+_esc(u.realName||u.name||'-')+'</b> · '+_esc(u.dept||'')+'<br>내 카카오 ID: <b style="color:#cfe2f2;">'+(u.kakaoId||_authKakaoId||'?')+'</b><br><span style="color:#5a8aaa;">이 ID를 관리자에게 전달하면 승인됩니다</span>';
     gate.style.display='flex';
+    _startApprovalPoll(); // 승인되면 재로그인 없이 자동 입장
     return true; // 차단됨
   }
+  _stopApprovalPoll();
   gate.style.display='none';
   return false;
 }
@@ -2839,6 +2854,8 @@ var _joinerAlertInited=false;
 function _checkNewJoinerAlert(){
   var pend=_pendingNotApproved();
   if(!isAdminUser()){_updateAdminBadge(0);return;}
+  // 자동 승인 모드면 관리자 기기에서 대기자를 즉시 일괄 승인(본인 기기 부재 대비 이중 안전장치)
+  if(_isAutoApprove()&&pend.length){try{if(_autoApproveSweep()>0){pend=_pendingNotApproved();try{renderAdmMembers();}catch(e){}}}catch(e){}}
   _updateAdminBadge(pend.length);
   var alerted={};try{alerted=JSON.parse(localStorage.getItem('_joinerAlerted')||'{}');}catch(e){}
   var fresh=pend.filter(function(u){return!alerted[String(u.id)];});
@@ -8270,9 +8287,40 @@ function renderAdmMembers(){
   const deptOpts=['행정과','재난안전과','탐방시설과','자원보전과','특수산악구조대','대청분소','백담분소','오색분소','한계산성분소','점봉산분소'];
   const rankOpts=['주임','계장','팀장','과장','분소장','소장'];
 
+  // 신규(아직 미등록=승인 대기) — 로그인했지만 멤버/관리자가 아닌 사람
+  const pendingNew=fu.filter(u=>roleOf(u.kakaoId)==='none');
+  const autoOn=_isAutoApprove();
+
   let html=`
+  <div class="scard" style="margin-bottom:10px;border:1px solid ${autoOn?'rgba(46,204,113,.4)':'rgba(255,255,255,.08)'};background:${autoOn?'rgba(46,204,113,.06)':'rgba(255,255,255,.02)'};">
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:700;color:${autoOn?'#5dbf8a':'#cfe2f2'};">${autoOn?'✅ 자동 승인 켜짐':'🔒 수동 승인 모드'}</div>
+        <div style="font-size:10px;color:#7a9cb8;margin-top:3px;line-height:1.5;">${autoOn?'지금 로그인하는 직원은 대기 없이 바로 입장합니다. 발표·행사가 끝나면 꺼주세요.':'새 직원은 아래 ‘신규 승인 대기’에서 승인해야 입장합니다.'}</div>
+      </div>
+      <button onclick="toggleAutoApprove()" style="flex-shrink:0;background:${autoOn?'#27ae60':'#1a4a6e'};color:#fff;border:none;border-radius:18px;padding:8px 14px;font-size:12px;font-weight:800;cursor:pointer;">${autoOn?'끄기':'자동 승인 켜기'}</button>
+    </div>
+  </div>
   <div style="font-size:11px;color:#7a9cb8;margin-bottom:8px;line-height:1.6;">카카오 로그인 이력 + DB 접근 권한을 한 곳에서 관리합니다. 역할을 지정하면 즉시 적용됩니다.</div>
-  <div style="font-size:11px;color:#9bbdd4;margin-bottom:8px;">총 <b style="color:#e0edf8;">${fu.length}</b>명 · 관리자 <b style="color:#5dbf8a;">${adminCnt}</b> · 멤버 <b style="color:#4fa8d0;">${memberCnt}</b></div>
+  <div style="font-size:11px;color:#9bbdd4;margin-bottom:8px;">총 <b style="color:#e0edf8;">${fu.length}</b>명 · 관리자 <b style="color:#5dbf8a;">${adminCnt}</b> · 멤버 <b style="color:#4fa8d0;">${memberCnt}</b>${pendingNew.length?` · <b style="color:#e67e22;">신규 ${pendingNew.length}</b>`:''}</div>`;
+
+  // ── 신규 승인 대기 섹션 (최상단 강조) ──
+  if(pendingNew.length){
+    html+=`<div style="background:rgba(230,126,34,.07);border:1px solid rgba(230,126,34,.3);border-radius:11px;padding:11px;margin-bottom:12px;">
+      <div style="font-size:12px;font-weight:800;color:#e67e22;margin-bottom:9px;">🆕 신규 승인 대기 <span style="background:#e67e22;color:#fff;border-radius:10px;padding:0 7px;font-size:10px;margin-left:3px;">${pendingNew.length}</span></div>`
+      +pendingNew.map(u=>`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;border-top:1px solid rgba(255,255,255,.05);">
+        ${u.kakaoImg?`<img src="${_esc(u.kakaoImg)}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0;" onerror="this.style.display='none'">`:`<div style="width:34px;height:34px;border-radius:50%;background:#3a2a18;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0;">🆕</div>`}
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:13px;font-weight:700;color:#e0edf8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${_esc(u.name||'이름없음')}</div>
+          <div style="font-size:10px;color:#9c8060;margin-top:1px;">${_esc(u.dept||'소속 미입력')}${u.rank?' · '+_esc(u.rank):''} <span style="font-family:monospace;color:#6a5030;">ID ${_esc(u.kakaoId)}</span></div>
+        </div>
+        <button onclick="grantMember('${_escq(u.kakaoId)}')" style="flex-shrink:0;background:#27ae60;color:#fff;border:none;border-radius:8px;padding:8px 13px;font-size:12px;font-weight:800;cursor:pointer;">✅ 승인</button>
+        ${u.puId?`<button onclick="deleteUser('${_escq(u.puId)}')" style="flex-shrink:0;background:rgba(192,57,43,.15);color:#ff8a80;border:1px solid rgba(192,57,43,.25);border-radius:8px;padding:8px 10px;font-size:11px;cursor:pointer;">거부</button>`:''}
+      </div>`).join('')
+      +`</div>`;
+  }
+
+  html+=`
   <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:10px;">
     ${chips.map(d=>`<div onclick="setAdmMemberFilter('${d}')" style="padding:4px 10px;border-radius:20px;font-size:10px;font-weight:700;cursor:pointer;${d===_admMemberFilter?'background:#1a4a6e;color:#4fa8d0;':'background:#0b1c30;color:#4a7090;border:1px solid #1a3a5a;'}">${d}</div>`).join('')}
   </div>`;
@@ -8556,6 +8604,65 @@ function _aclAddById(){
   if(!/^\d+$/.test(id)){toast('⚠️ 카카오 ID는 숫자여야 합니다');return;}
   _aclSetRole(id,'member');
 }
+// ── 자동 승인 모드 ── (발표·대량 가입 시 1탭으로 이후 가입자 전원 자동 입장)
+function _isAutoApprove(){return !!DB.g('autoApprove');}
+function toggleAutoApprove(){
+  if(!isAdminUser()){toast('⚠️ 관리자만 가능');return;}
+  const cur=_isAutoApprove();
+  if(!confirm(cur
+      ?'자동 승인을 끌까요?\n이후 가입자는 다시 관리자가 직접 승인해야 입장합니다.'
+      :'자동 승인을 켤까요?\n지금부터 카카오 로그인한 직원은 승인 대기 없이 바로 입장합니다.\n(발표·대량 가입용 — 끝나면 다시 끄세요)'))return;
+  DB.s('autoApprove',!cur);
+  if(!cur){try{_autoApproveSweep();}catch(e){}} // 켜는 즉시 대기자 일괄 승인
+  toast(cur?'🔒 자동 승인 꺼짐 — 수동 승인 모드':'✅ 자동 승인 켜짐 — 이후 가입자 자동 입장');
+  try{renderAdmMembers();}catch(e){}
+}
+// 관리자 기기: 대기 중인 신청자를 모두 멤버로 등록(자동 승인 ON일 때)
+function _autoApproveSweep(){
+  const pend=_pendingNotApproved();
+  if(!pend.length)return 0;
+  const acl=_getAcl();let n=0;
+  pend.forEach(function(u){
+    const kid=String(u.kakaoId||'');
+    if(kid&&acl.admins.indexOf(kid)<0&&acl.members.indexOf(kid)<0){acl.members.push(kid);n++;}
+  });
+  if(n){DB.s('_acl',acl);
+    // pendingUsers 상태도 approved로 갱신
+    const list=(DB.g('pendingUsers')||[]).map(function(p){
+      const kid=String(p.kakaoId||p.id);
+      if(acl.members.indexOf(kid)>=0||acl.admins.indexOf(kid)>=0)return Object.assign({},p,{approvalStatus:'approved',seen:true});
+      return p;
+    });
+    DB.s('pendingUsers',list);
+  }
+  return n;
+}
+// 본인 기기: 자동 승인 모드면 스스로 멤버 등록(관리자 부재여도 입장). _acl 쓰기는 인증사용자 누구나 허용.
+function _aclSelfApprove(kakaoId){
+  kakaoId=String(kakaoId||'');if(!kakaoId)return false;
+  const acl=_getAcl();
+  if(acl.members.indexOf(kakaoId)<0&&acl.admins.indexOf(kakaoId)<0){acl.members.push(kakaoId);DB.s('_acl',acl);}
+  _markMemberOk();
+  return true;
+}
+// 승인 대기 화면 폴링: 관리자가 승인(또는 자동 승인)하면 재로그인 없이 자동 입장
+var _approvalPollTimer=null;
+function _startApprovalPoll(){
+  if(_approvalPollTimer)return;
+  _approvalPollTimer=setInterval(function(){
+    var gate=document.getElementById('approvalGate');
+    if(!gate||gate.style.display==='none'){_stopApprovalPoll();return;}
+    // 자동 승인 모드로 바뀌었으면 스스로 입장
+    if(_isAutoApprove()){var u=DB.g('currentUser')||{};if(u.kakaoId)_aclSelfApprove(u.kakaoId);}
+    if(_isMember()){
+      _markMemberOk();_stopApprovalPoll();
+      gate.style.display='none';
+      try{updateUserUI();}catch(e){}try{goHome();}catch(e){}
+      toast('✅ 승인 완료 — 환영합니다');
+    }
+  },3500);
+}
+function _stopApprovalPoll(){if(_approvalPollTimer){clearInterval(_approvalPollTimer);_approvalPollTimer=null;}}
 function renderAdmSys(){
   const unseenCnt=_getUnseenCount();
   document.getElementById('admSysWrap').innerHTML=`
@@ -8703,9 +8810,26 @@ function approveUser(id){
   list[idx].approvalStatus='approved';
   list[idx].seen=true;
   DB.s('pendingUsers',list);
+  // 승인 = 실제 멤버십 부여(_acl). 이전엔 상태만 바꿔 앱 접근이 안 열리던 문제 해결.
+  const kid=String(list[idx].kakaoId||'');
+  if(kid){const acl=_getAcl();if(acl.admins.indexOf(kid)<0&&acl.members.indexOf(kid)<0){acl.members.push(kid);DB.s('_acl',acl);}}
   renderAdmMembers();
-  renderAdmSys();
-  toast('✅ 승인 완료');
+  try{renderAdmSys();}catch(e){}
+  toast('✅ 승인 완료 — 앱 접근 허용됨');
+}
+// 승인 = 멤버십 부여(puId 유무와 무관하게 kakaoId 기준). 신규 섹션·자동승인에서 공용 사용.
+function grantMember(kakaoId){
+  if(!isAdminUser()){toast('⚠️ 관리자만 가능');return;}
+  kakaoId=String(kakaoId||'');if(!kakaoId)return;
+  const acl=_getAcl();
+  if(acl.admins.indexOf(kakaoId)<0&&acl.members.indexOf(kakaoId)<0){acl.members.push(kakaoId);DB.s('_acl',acl);}
+  const list=(DB.g('pendingUsers')||[]).map(function(p){
+    if(String(p.kakaoId||p.id)===kakaoId)return Object.assign({},p,{approvalStatus:'approved',seen:true});
+    return p;
+  });
+  DB.s('pendingUsers',list);
+  renderAdmMembers();try{renderAdmSys();}catch(e){}
+  toast('✅ 승인 — 앱 접근 허용됨');
 }
 function _checkDeletedUser(){
   if(DB.g('authType')!=='kakao')return;
@@ -11180,7 +11304,7 @@ function sosToRescue(id){
 // 앱 자체 업데이트 (OTA · Capgo 자체호스팅) — APK 전용. 웹/PWA는 서비스워커가 자동 갱신.
 // 번들(www)의 새 버전을 ota.json으로 알리면, 설치된 앱이 받아서 그 자리에서 교체(재빌드 불필요).
 // ══════════════════════════════════════════
-const OTA_VER='2026.06.29.1';                         // ← 현재 번들 버전 (릴리스마다 올림 · build-ota.sh가 ota.json에 반영)
+const OTA_VER='2026.06.29.2';                         // ← 현재 번들 버전 (릴리스마다 올림 · build-ota.sh가 ota.json에 반영)
 const OTA_MANIFEST='https://109yoon.github.io/seoraksan/ota.json';
 let _otaInfo=null;
 function _otaPlugin(){try{return (window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.CapacitorUpdater)||null;}catch(e){return null;}}
