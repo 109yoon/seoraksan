@@ -1547,31 +1547,25 @@ function openResPopup(id,type='rescue'){
     // 빈값/미상 필터 헬퍼
     const _skip=v=>{if(!v)return true;const s=String(v).trim();return !s||s==='-'||['미상','없음','모르겠음','알수없음','미정','해당없음','기타'].includes(s);};
     const _arr=v=>(Array.isArray(v)?v:typeof v==='string'?[v]:[]).filter(x=>!_skip(x));
-    const row=_popRow;
     const d=data;
-    const rows=[
-      row('📅',d.date),
-      row('📍',[d.location,d.loctype].filter(x=>!_skip(x)).join(' · ')||''),
-      row('🌤',(!_skip(d.weather)?d.weather:'')+(!_skip(d.weatherAlert)?' '+d.weatherAlert:'')||''),
-      row('👤',[!_skip(d.vName)?d.vName:'',(!_skip(d.vBirth)?_ageFromBirth(d.vBirth)+'세':''),(!_skip(d.vGender)&&d.vGender!=='알수없음'?d.vGender:''),(!_skip(d.vNation)&&d.vNation!=='알수없음'?d.vNation:'')].filter(Boolean).join(' · ')||''),
-      row('🩺',!_skip(d.severity)?d.severity:''),
-      row('👥',(d.victims2&&d.victims2.length)?('추가 사고자 '+d.victims2.length+'명: '+_victims2Str(d.victims2)):''),
-      row('⚡',!_skip(d.cause)?d.cause:''),
-      row('🦵',_arr(d.injuryParts).join(', ')),
-      row('🚑',_arr(d.rescueMethod).join(', ')),
-      row('🚨',_arr(d.mobilize).length?'응소: '+_arr(d.mobilize).join(', '):''),
-      row('🏥',!_skip(d.hospital)&&d.hospital!=='미정'?d.hospital:''),
-      row('🍺',!_skip(d.alcohol)&&d.alcohol!=='알수없음'?'음주: '+d.alcohol:''),
-    ].filter(Boolean).join('');
+    // 우선순위: ① 부상 ② 위치 ③ 인적(전화·위치요청) ④ 신고자 ⑤ 접수내용 — 중요한 것만(컴팩트)
+    const _injStr=(()=>{const il=(Array.isArray(d.injuries)?d.injuries:[]).filter(i=>i&&(i.part||i.type));if(il.length)return il.map(i=>((i.side&&i.side!=='해당없음'?i.side+' ':'')+(i.part||'')+' '+(i.type||'')).trim()).filter(Boolean).join(', ');const ip=_arr(d.injuryParts),it=_arr(d.injuryTypes);return (ip.join(', ')+(it.length?' / '+it.join(', '):'')).trim();})();
+    const _vLine=[!_skip(d.vName)?_esc(d.vName):'미상',(!_skip(d.vBirth)?_ageFromBirth(d.vBirth)+'세':(!_skip(d.vAge)?_esc(d.vAge)+'세':'')),(!_skip(d.vGender)&&d.vGender!=='알수없음'?_esc(d.vGender):''),(!_skip(d.vTel)?_esc(d.vTel):'')].filter(Boolean).join(' · ');
     document.getElementById('resPopMeta').innerHTML=`
-      <div style="display:flex;gap:5px;margin-bottom:6px;align-items:center;">
+      <div style="display:flex;gap:5px;margin-bottom:7px;align-items:center;">
         <span style="font-size:10px;padding:2px 7px;border-radius:9px;font-weight:700;background:${isOg?'rgba(192,57,43,.2)':'rgba(39,174,96,.15)'};color:${isOg?'#e05050':'#27ae60'};">${isOg?'진행중':'종료'}</span>
-        <span style="font-size:10px;color:#4a7090;">${totalPh}보 기록</span>
         <span style="font-size:10px;color:#3a6a8a;">${_esc(d.type)}</span>
       </div>
-      ${rows||'<div style="color:#4a7090;font-size:11px;">상세 정보 없음</div>'}`;
+      <div style="background:rgba(231,76,60,.08);border:1px solid rgba(231,76,60,.3);border-radius:9px;padding:9px 11px;margin-bottom:6px;">
+        <div style="font-size:9px;color:#ff8a73;font-weight:800;margin-bottom:2px;">🤕 부상 정도</div>
+        <div style="font-size:14px;font-weight:800;color:#ffd9d0;line-height:1.35;">${_injStr||'<span style="font-size:12px;color:#9c7a72;font-weight:600;">미입력</span>'}${!_skip(d.severity)?` <span style="font-size:10px;color:#fff;background:#c0392b;border-radius:5px;padding:1px 6px;vertical-align:middle;">${_esc(d.severity)}</span>`:''}</div>
+      </div>
+      ${!_skip(d.location)?`<div style="font-size:12px;color:#cfe2f2;margin-bottom:6px;">📍 ${_esc(d.location)}${!_skip(d.loctype)?` <span style="color:#7a9cb8;font-size:10px;">· ${_esc(d.loctype)}</span>`:''}</div>`:''}
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-bottom:6px;"><span style="font-size:10px;color:#4a7090;font-weight:700;">사고자</span><span style="font-size:12px;color:#e0edf8;font-weight:600;">${_vLine}</span>${!_skip(d.vTel)?_telBtnsHtml(d.vTel):''}${(d.victims2&&d.victims2.length)?`<span style="font-size:10px;color:#e9897e;font-weight:700;">외 ${d.victims2.length}명</span>`:''}</div>
+      ${(!_skip(d.repName)||!_skip(d.repTel))?`<div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-bottom:6px;"><span style="font-size:10px;color:#4a7090;font-weight:700;">신고자</span><span style="font-size:12px;color:#cfe2f2;">${[!_skip(d.repName)?_esc(d.repName):'',!_skip(d.repTel)?_esc(d.repTel):''].filter(Boolean).join(' · ')}</span>${!_skip(d.repTel)?_telBtnsHtml(d.repTel):''}</div>`:''}
+      ${!_skip(d.reception)?`<div style="font-size:11px;color:#b8d4e8;line-height:1.5;background:#0b1c30;border-radius:8px;padding:8px 10px;"><span style="font-size:9px;color:#4a7090;font-weight:700;">📝 접수내용</span><br>${_esc(d.reception)}</div>`:''}`;
     document.getElementById('btnViewRep').style.display='block';
-    document.getElementById('btnViewTl').style.display=type==='rescue'?'block':'none';
+    document.getElementById('btnViewTl').style.display='none'; // 지도 팝업에선 출동(타임라인) 버튼 숨김
     const rEl=document.getElementById('resPopRoutes');
     if(rEl){const rh=_buildResRouteHtml(data);rEl.innerHTML=rh;rEl.style.display=rh?'block':'none';}
   } else {

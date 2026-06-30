@@ -1132,6 +1132,21 @@ function _buildLogHtml(r){
     ${legend}${rows}
   </div>`;
 }
+// 보고서 공유/복사/인쇄 — 헤더 우측 '📄 보고서' 버튼
+function openReportShare(rid){
+  let m=document.getElementById('repShareModal');
+  if(!m){m=document.createElement('div');m.id='repShareModal';document.body.appendChild(m);}
+  m.style.cssText='position:fixed;inset:0;z-index:9600;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:30px;';
+  const b='width:100%;margin-bottom:7px;padding:12px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;';
+  m.innerHTML=`<div style="background:#0a1828;border:1px solid rgba(79,168,208,.25);border-radius:14px;max-width:300px;width:100%;padding:16px;">
+    <div style="font-size:14px;font-weight:800;color:#e0edf8;margin-bottom:12px;text-align:center;">📄 보고서</div>
+    <button onclick="copyReportText(${rid});this.closest('#repShareModal').remove();" style="${b}border:1px solid rgba(79,168,208,.35);background:rgba(79,168,208,.1);color:#4fa8d0;">📋 텍스트 복사</button>
+    <button onclick="shareReportText(${rid});this.closest('#repShareModal').remove();" style="${b}border:1px solid rgba(39,174,96,.35);background:rgba(39,174,96,.1);color:#27ae60;">📤 공유</button>
+    <button onclick="printReport(${rid});this.closest('#repShareModal').remove();" style="${b}border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:#b8d4e8;">🖨 인쇄 / PDF</button>
+    <button onclick="this.closest('#repShareModal').remove();" style="width:100%;padding:9px;border:none;background:none;color:#7a9cb8;font-size:12px;cursor:pointer;">닫기</button>
+  </div>`;
+  m.onclick=function(e){if(e.target===m)m.remove();};
+}
 function renderTimeline(r,viewMode,outId){
   const _isBoard=outId&&outId!=='repContent';
   if(!_isBoard){_hideRepFooter();window._reportMode='timeline';clearInterval(_draftAutoTimer);} // 타임라인 보기 — 작성모드 해제
@@ -1158,8 +1173,13 @@ function renderTimeline(r,viewMode,outId){
   }
 
   const tabHdr=`<div style="background:#0b1c30;border-radius:10px;padding:11px 12px;border:.5px solid rgba(255,255,255,.07);margin-bottom:10px;">
-    <div style="font-size:14px;font-weight:700;color:#e0edf8;">${_esc(r.title)}</div>
-    <div style="font-size:11px;color:#3a6a8a;margin-top:3px;">${_esc(r.type)} · ${r.status==='ongoing'?'<span style="color:#c0392b;font-weight:700;">진행중</span>':'<span style="color:#27ae60;font-weight:700;">종료</span>'} · ${r.date}${r.status==='ongoing'&&_elapsedStr(r.date)?` · <span class="js-elapsed" data-d="${_esc(r.date)}" style="color:#f0a500;font-weight:700;">⏱ ${_elapsedStr(r.date)}</span>`:''}</div>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:14px;font-weight:700;color:#e0edf8;">${_esc(r.title)}</div>
+        <div style="font-size:11px;color:#3a6a8a;margin-top:3px;">${_esc(r.type)} · ${r.status==='ongoing'?'<span style="color:#c0392b;font-weight:700;">진행중</span>':'<span style="color:#27ae60;font-weight:700;">종료</span>'} · ${r.date}${r.status==='ongoing'&&_elapsedStr(r.date)?` · <span class="js-elapsed" data-d="${_esc(r.date)}" style="color:#f0a500;font-weight:700;">⏱ ${_elapsedStr(r.date)}</span>`:''}</div>
+      </div>
+      <button onclick="openReportShare(${r.id})" style="flex-shrink:0;background:rgba(79,168,208,.12);color:#4fa8d0;border:1px solid rgba(79,168,208,.32);border-radius:7px;padding:5px 9px;font-size:10px;font-weight:800;cursor:pointer;white-space:nowrap;">📄 보고서</button>
+    </div>
     <div style="display:flex;gap:5px;margin-top:9px;">
       <button onclick="${_isBoard?`_boardOpenDetail(${r.id},'advanced')`:`renderTimeline(getRes(${r.id}),'advanced')`}" style="flex:1;padding:6px;border-radius:7px;border:1px solid;font-size:11px;font-weight:600;cursor:pointer;background:${'advanced'===mode?'rgba(79,168,208,.15)':'transparent'};color:${'advanced'===mode?'#4fa8d0':'rgba(255,255,255,.35)'};border-color:${'advanced'===mode?'rgba(79,168,208,.5)':'rgba(255,255,255,.1)'};">📍 고도화 타임라인</button>
       ${isExternal()?'':`<button onclick="${_isBoard?`_boardOpenDetail(${r.id},'write')`:`renderTimeline(getRes(${r.id}),'write')`}" style="flex:1;padding:6px;border-radius:7px;border:1px solid;font-size:11px;font-weight:600;cursor:pointer;background:${'write'===mode?'rgba(79,168,208,.15)':'transparent'};color:${'write'===mode?'#4fa8d0':'rgba(255,255,255,.35)'};border-color:${'write'===mode?'rgba(79,168,208,.5)':'rgba(255,255,255,.1)'};">📄 보고서</button>`}
@@ -1219,34 +1239,27 @@ function renderTimeline(r,viewMode,outId){
       ? _injList.map(i=>((i.side&&i.side!=='해당없음'?i.side+' ':'')+(i.part||'')+' '+(i.type||'')).trim()).filter(Boolean).join(', ')
       : (()=>{const ip=_okA(r.injuryParts),it=_okA(r.injuryTypes);return (ip.join(', ')+(it.length?' / '+it.join(', '):'')).trim();})();
     const _vit0=(r.vitals&&_vitalsStr(r.vitals))?_vitalsStr(r.vitals):'';
-    const injuryBlock=`<div style="background:rgba(231,76,60,.08);border:1px solid rgba(231,76,60,.32);border-radius:12px;padding:13px 14px;margin-bottom:9px;">
-      <div style="font-size:10px;color:#ff8a73;font-weight:800;letter-spacing:.5px;margin-bottom:4px;">🤕 부상 정도</div>
-      <div style="font-size:16px;font-weight:800;color:#ffd9d0;line-height:1.4;">${_injMain||'<span style="color:#9c7a72;font-weight:600;font-size:13px;">부상 정보 미입력</span>'}</div>
+    const injurySect=`<div style="font-size:10px;color:#ff8a73;font-weight:800;letter-spacing:.5px;margin-bottom:4px;">🤕 부상 정도 (가장 중요)</div>
+      <div style="font-size:17px;font-weight:800;color:#ffd9d0;line-height:1.4;">${_injMain||'<span style="color:#9c7a72;font-weight:600;font-size:13px;">부상 정보 미입력</span>'}</div>
       <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;">
         ${_ok(r.severity)?`<span style="font-size:11px;font-weight:800;color:#fff;background:#c0392b;border-radius:6px;padding:2px 8px;">${_esc(r.severity)}</span>`:''}
         ${_ok(r.outcome)?`<span style="font-size:11px;color:#cfe2f2;background:rgba(255,255,255,.06);border-radius:6px;padding:2px 8px;">결과: ${_esc(r.outcome)}</span>`:''}
       </div>
-      ${_vit0?`<div style="font-size:10px;color:#9bbdd4;margin-top:6px;">활력: ${_vit0}</div>`:''}
-    </div>`;
-    const locBlock=_ok(r.location)?`<div style="display:flex;gap:7px;align-items:flex-start;background:#0b1c30;border-radius:9px;padding:9px 11px;margin-bottom:8px;border:.5px solid rgba(255,255,255,.06);"><span style="font-size:13px;">📍</span><span style="font-size:12px;color:#cfe2f2;line-height:1.5;flex:1;">${_esc(r.location)}${_ok(r.loctype)?` <span style="color:#7a9cb8;font-size:10px;">· ${_esc(r.loctype)}</span>`:''}</span></div>`:'';
-    // 전화 / 위치요청(SOS 링크 문자) 버튼
-    const _telBtns=(tel)=>{const t=String(tel||'').replace(/[^0-9+]/g,'');if(!t)return '';return ` <span style="display:inline-flex;gap:4px;"><button onclick="_callTel('${t}')" style="background:rgba(39,174,96,.15);color:#5dbf8a;border:1px solid rgba(39,174,96,.35);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;cursor:pointer;">📞 전화</button><button onclick="_smsSosTo('${t}')" style="background:rgba(79,168,208,.15);color:#7dd3fa;border:1px solid rgba(79,168,208,.35);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;cursor:pointer;">🆘 위치요청</button></span>`;};
+      ${_vit0?`<div style="font-size:10px;color:#9bbdd4;margin-top:6px;">활력: ${_vit0}</div>`:''}`;
+    const _div='<div style="height:1px;background:rgba(255,255,255,.06);margin:9px 0;"></div>';
+    const locSect=_ok(r.location)?`<div style="font-size:12px;color:#cfe2f2;line-height:1.5;">📍 ${_esc(r.location)}${_ok(r.loctype)?` <span style="color:#7a9cb8;font-size:10px;">· ${_esc(r.loctype)}</span>`:''}</div>`:'';
     const _vAge=_ok(r.vBirth)?_ageFromBirth(r.vBirth)+'세':(_ok(r.vAge)?_esc(r.vAge)+'세':'');
     const _vLine=[_ok(r.vName)?_esc(r.vName):'미상',_vAge,_ok(r.vGender)&&r.vGender!=='알수없음'?_esc(r.vGender):'',_ok(r.vNation)&&r.vNation==='외국인'?'외국인':'',_ok(r.vTel)?_esc(r.vTel):''].filter(Boolean).join(' · ');
-    let personBlock=`<div style="background:#0b1c30;border-radius:9px;padding:10px 11px;margin-bottom:8px;border:.5px solid rgba(255,255,255,.06);">
-      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;"><span style="font-size:10px;color:#4a7090;font-weight:700;min-width:40px;">사고자</span><span style="font-size:12px;color:#e0edf8;font-weight:600;">${_vLine}</span>${_ok(r.vTel)?_telBtns(r.vTel):''}</div>
-      ${(r.victims2&&r.victims2.length)?`<div style="font-size:11px;color:#b8d4e8;margin-top:5px;"><span style="color:#e9897e;font-weight:700;">외 ${r.victims2.length}명:</span> ${r.victims2.map(v=>[_esc(v.name||'미상'),v.age?_esc(v.age)+'세':'',v.gender&&v.gender!=='알수없음'?_esc(v.gender):''].filter(Boolean).join(' ')).join(', ')}</div>`:''}`;
-    if(_ok(r.repName)||_ok(r.repTel)){
-      personBlock+=`<div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-top:6px;padding-top:6px;border-top:.5px solid rgba(255,255,255,.06);"><span style="font-size:10px;color:#4a7090;font-weight:700;min-width:40px;">신고자</span><span style="font-size:12px;color:#cfe2f2;">${[_ok(r.repName)?_esc(r.repName):'',_ok(r.repTel)?_esc(r.repTel):''].filter(Boolean).join(' · ')||'-'}</span>${_ok(r.repTel)?_telBtns(r.repTel):''}</div>`;
-    }
-    personBlock+=`</div>`;
+    let personSect=`<div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;"><span style="font-size:10px;color:#4a7090;font-weight:700;min-width:40px;">사고자</span><span style="font-size:12px;color:#e0edf8;font-weight:600;">${_vLine}</span>${_ok(r.vTel)?_telBtnsHtml(r.vTel):''}${(r.victims2&&r.victims2.length)?`<span style="font-size:10px;color:#e9897e;font-weight:700;">외 ${r.victims2.length}명</span>`:''}</div>`;
+    if(r.victims2&&r.victims2.length)personSect+=`<div style="font-size:11px;color:#b8d4e8;margin-top:4px;">${r.victims2.map(v=>[_esc(v.name||'미상'),v.age?_esc(v.age)+'세':'',v.gender&&v.gender!=='알수없음'?_esc(v.gender):''].filter(Boolean).join(' ')).join(', ')}</div>`;
+    if(_ok(r.repName)||_ok(r.repTel))personSect+=`<div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-top:6px;"><span style="font-size:10px;color:#4a7090;font-weight:700;min-width:40px;">신고자</span><span style="font-size:12px;color:#cfe2f2;">${[_ok(r.repName)?_esc(r.repName):'',_ok(r.repTel)?_esc(r.repTel):''].filter(Boolean).join(' · ')}</span>${_ok(r.repTel)?_telBtnsHtml(r.repTel):''}</div>`;
+    const recvSect=_ok(r.reception)?`<div><span style="font-size:10px;color:#4a7090;font-weight:700;">📝 접수내용</span><div style="font-size:12px;color:#cfe2f2;line-height:1.55;margin-top:2px;">${_esc(r.reception)}</div></div>`:'';
     // 나머지(컴팩트)
     const rows=[];
     const dparts=[_ok(r.date)?r.date:'',_ok(r.dispatch)?'신고 '+r.dispatch:'',_ok(r.arrival)?'출동 '+r.arrival:''].filter(Boolean);
     if(dparts.length)rows.push(_row('일시',dparts.join(' · ')));
     const wx=[_ok(r.weather)?_esc(r.weather):'',(r.initTemp!=null&&r.initTemp!=='')?_esc(r.initTemp)+'°C':'',_ok(r.weatherAlert)?_esc(r.weatherAlert):''].filter(Boolean).join(' · ');
     if(wx)rows.push(_row('기상',wx));
-    if(_ok(r.reception))rows.push(_row('접수',_esc(r.reception)));
     const rm=_okA(r.rescueMethod);if(rm.length)rows.push(_row('구조',rm.join(', ')));
     const mob=_okA(r.mobilize);if(mob.length)rows.push(_row('응소',mob.join(', ')));
     if(_ok(r.cause))rows.push(_row('원인',_esc(r.cause)));
@@ -1260,21 +1273,18 @@ function renderTimeline(r,viewMode,outId){
     const updates=(r.reports||[]).map((p,i)=>({p,ci:i+1})).filter(({p})=>p.update||(p.victimChange&&p.victimChange!=='변화없음')||p.addMem||p.extra);
     const updHtml=updates.length?`<div style="background:#0b1c30;border-radius:10px;padding:11px 12px;border:.5px solid rgba(79,168,208,.14);margin-bottom:8px;"><div style="font-size:10px;color:#4fa8d0;font-weight:800;margin-bottom:5px;">📌 추가 내용</div>${updates.map(({p,ci})=>{const pts=[];if(p.update)pts.push(_esc(p.update));if(p.victimChange&&p.victimChange!=='변화없음')pts.push('부상자 '+_esc(p.victimChange));if(p.addMem)pts.push('추가대원 '+_esc(p.addMem));if(p.extra)pts.push(_esc(p.extra));return `<div style="padding:6px 0;border-bottom:.5px solid rgba(255,255,255,.05);"><div style="font-size:11px;color:#7dd3fa;font-weight:700;">${ci}차 추가내용 <span style="color:#5a7e98;font-weight:400;font-size:9px;">${p.repTime||''}${p.author?' · '+_esc(p.author):''}</span></div><div style="font-size:11px;color:#b8d4e8;line-height:1.5;margin-top:2px;">${pts.join(' / ')}</div></div>`;}).join('')}</div>`:'';
     const logHtml=_buildLogHtml(r);
-    w.innerHTML=tabHdr+logHtml+`
-      <div style="margin-bottom:9px;">
-        <button onclick="(function(b){var d=b.nextElementSibling;d.style.display=d.style.display==='none'?'flex':'none';})(this)" style="width:100%;padding:9px;border-radius:9px;border:1px solid rgba(79,168,208,.3);background:rgba(79,168,208,.08);color:#4fa8d0;font-size:12px;font-weight:700;cursor:pointer;">📄 보고서 만들기 (복사·공유·인쇄)</button>
-        <div style="display:none;gap:6px;margin-top:6px;">
-          <button onclick="copyReportText(${r.id})" style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(79,168,208,.35);background:rgba(79,168,208,.1);color:#4fa8d0;font-size:11px;font-weight:700;cursor:pointer;">📋 복사</button>
-          <button onclick="shareReportText(${r.id})" style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(39,174,96,.35);background:rgba(39,174,96,.1);color:#27ae60;font-size:11px;font-weight:700;cursor:pointer;">📤 공유</button>
-          <button onclick="printReport(${r.id})" style="flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.04);color:#b8d4e8;font-size:11px;font-weight:700;cursor:pointer;">🖨 인쇄</button>
-        </div>
-      </div>
-      ${injuryBlock}
-      ${locBlock}
-      ${personBlock}
-      ${rows.length?`<div style="background:#0b1c30;border-radius:10px;padding:11px 12px;border:.5px solid rgba(255,255,255,.07);margin-bottom:8px;">${rows.join('')}</div>`:''}
+    // 한 장 보고서처럼 하나의 카드에 우선순위대로 쭉: 부상 → 위치 → 인적 → 신고자 → 접수내용 → 나머지
+    const reportSheet=`<div style="background:#0b1c30;border:1px solid rgba(231,76,60,.18);border-radius:12px;padding:13px 14px;margin-bottom:9px;">
+      ${injurySect}
+      ${locSect?_div+locSect:''}
+      ${_div}${personSect}
+      ${recvSect?_div+recvSect:''}
+      ${rows.length?_div+rows.join(''):''}
+      <div style="text-align:right;font-size:9px;color:#3a5a6a;margin-top:9px;">📝 최초접수 ${r.date||''}${r.author?' · 작성 '+_esc(r.author):''}</div>
+    </div>`;
+    w.innerHTML=tabHdr+`
+      ${reportSheet}
       ${updHtml}
-      <div style="text-align:right;font-size:9px;color:#3a5a6a;margin:-2px 2px 8px;">📝 최초접수 ${r.date||''}${r.author?' · 작성 '+_esc(r.author):''}</div>
       ${_scenePhotosHtml(r)}
 
       <div style="background:#0b1c30;border-radius:10px;padding:12px;border:.5px solid rgba(255,255,255,.07);margin-top:10px;">
@@ -1309,7 +1319,8 @@ function renderTimeline(r,viewMode,outId){
           return parts.length?`<div style="font-size:11px;color:#b8d4e8;margin-top:2px;"><span style="color:#4a7090;">유관기관:</span> ${parts.join(' · ')}</div>`:'';
         })():''}
       </div>
-      ${_mobilizeBlockHtml('rescues',r)}`;
+      ${_mobilizeBlockHtml('rescues',r)}
+      ${logHtml?`<div style="margin-top:10px;"><div style="font-size:10px;color:#5a7e98;font-weight:700;margin:0 2px 4px;">🕘 상황일지</div>${logHtml}</div>`:''}`;
   }
   // sticky footer
   const _ftEl=document.getElementById(_isBoard?'boardDetailFooter':'rep1BoFooter');
