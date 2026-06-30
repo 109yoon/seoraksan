@@ -28,7 +28,7 @@ function openNewRescue(){
       const c=mapR.getCenter();gpsPre={lat:c.getLat(),lng:c.getLng()};
     }
   }
-  document.getElementById('topTitle').textContent='신규 구조 접수 (1보)';
+  document.getElementById('topTitle').textContent='신규 구조 접수 (최초접수)';
   document.getElementById('bnav').style.display='none';
   showV('v-report');renderPhaseBar(0,1);render1BoForm(gpsPre);
   if(gpsPre&&gpsPre.lat)_autoFillLoc(gpsPre.lat,gpsPre.lng);
@@ -1865,11 +1865,10 @@ function render1BoForm(prefill=null){
     <!-- ══ 섹터1: 위치·기상 ══ -->
     <div id="repSec1" class="rep-sec" style="padding:12px;overflow-y:auto;">
       <div class="rsec"><div class="rsec-t">🚨 사고 유형</div>
-        <div class="fg"><span class="fl">사고 유형</span>
-          <select id="r_type" class="fsel" onchange="autoGenTitle()">
-            ${['안전사고','조난','고립','실종','낙석','위험수목','화재','기타'].map(o=>`<option${p.type===o?' selected':''}>${o}</option>`).join('')}
-          </select>
+        <div class="pills" id="typePills">
+          ${['안전사고','조난','고립','실종','낙석','위험수목','화재','기타'].map(o=>`<div class="pill${(p.type||'안전사고')===o?' on':''}" onclick="selAccType('${o}')">${o}</div>`).join('')}
         </div>
+        <input type="hidden" id="r_type" value="${p.type||'안전사고'}">
       </div>
       <div class="rsec"><div class="rsec-t">📍 사고 위치</div>
         <div class="fg">
@@ -1917,6 +1916,9 @@ function render1BoForm(prefill=null){
       <div class="rsec"><div class="rsec-t">🌤️ 기상 정보</div>
         <div class="fg"><span class="fl">기상 상황</span>
           <div class="pills" id="weatherPills">${['맑음','흐림','비','눈','강풍','안개'].map(o=>`<div class="pill${p.weather===o?' on':''}" onclick="sPill(this,'weatherPills')">${o}</div>`).join('')}</div>
+        </div>
+        <div class="fg"><span class="fl">최초접수 당시 기온 (°C) <span style="font-size:9px;color:#7a9cb8;font-weight:400;">(가까운 관측지점 자동 · 수정 가능)</span></span>
+          <input type="number" inputmode="decimal" step="0.1" id="r_initTemp" class="fi" placeholder="자동 입력" value="${p.initTemp!=null&&p.initTemp!==''?p.initTemp:(()=>{try{const t=(document.getElementById('wTmp')||{}).textContent||'';const n=parseInt(t);return isNaN(n)?'':n;}catch(e){return '';}})()}">
         </div>
         <div class="fg"><span class="fl">기상 특보</span>
           <div style="background:#060d1a;border-radius:8px;border:1px solid rgba(255,255,255,.07);padding:10px;margin-top:4px;">
@@ -2102,8 +2104,8 @@ function render1BoForm(prefill=null){
           <textarea id="r_equip" class="fta" rows="2" placeholder="들것, 로프, AED, 헬기 등">${p.equipment||''}</textarea>
         </div>
       </div>
-      <div class="rsec" style="margin-top:12px;"><div class="rsec-t">🚑 병원 후송</div>
-        <select id="r_hosp" class="fsel">${['미정','후송 없음','후송 완료','후송 중','본인 귀가','기타'].map(o=>`<option${(p.hospital||'미정')===o?' selected':''}>${o}</option>`).join('')}</select>
+      <div class="rsec" style="margin-top:12px;"><div class="rsec-t">📝 사고접수 내용 (자유작성)</div>
+        <textarea id="r_recv" class="fta" rows="4" placeholder="사고 접수 당시 상황을 자유롭게 적어주세요 (신고 내용, 현장 상황, 인지 경위 등)">${p.reception||''}</textarea>
       </div>
       <div class="rsec" style="margin-top:12px;"><div class="rsec-t">📋 사고 제목 및 작성 정보</div>
         <div class="fg">
@@ -2125,7 +2127,7 @@ function render1BoForm(prefill=null){
     _footer.style.display='block';
     _footer.innerHTML=isNbo
       ?`<button class="btn-submit" style="background:#1a4a6e;color:#fff;" onclick="submitNBoFromForm()">💾 ${p._phaseNum||2}보 저장</button>`
-      :`<button class="btn-submit" style="background:#1a4a6e;color:#fff;" onclick="submit1Bo()">💾 1보 등록</button>`;
+      :`<button class="btn-submit" style="background:#1a4a6e;color:#fff;" onclick="submit1Bo()">💾 최초 접수 등록</button>`;
   }
 
   _ttInlineEntries=p.timetable||[];   // (수정) 미선언 _ttEntries → strict 모드 ReferenceError로 이후 초기화 전체 중단되던 버그
@@ -2212,6 +2214,7 @@ function submit1Bo(){
     date:nowStr,
     reception:document.getElementById('r_recv')?.value||'',
     weather:getSelPills('weatherPills')[0]||'',
+    initTemp:document.getElementById('r_initTemp')?.value||'',
     weatherAlert:getWeatherAlertStr()||'',
     alertOpId:((DB.g('alertOps')||[]).find(o=>!o.closedAt)||{}).id||null,
     lat, lng,

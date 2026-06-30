@@ -1865,6 +1865,12 @@ function confirmMapPicker(){
 // ══════════════════════════════════════════
 // 사고 제목 자동생성
 // ══════════════════════════════════════════
+// 사고 유형 버튼 선택 → 숨김 input(r_type) 갱신 + 제목 자동생성
+function selAccType(t){
+  const h=document.getElementById('r_type');if(h)h.value=t;
+  document.querySelectorAll('#typePills .pill').forEach(p=>p.classList.toggle('on',p.textContent.trim()===t));
+  try{autoGenTitle();}catch(e){}
+}
 function autoGenTitle(returnOnly=false){
   const loc   = (document.getElementById('r_loc')?.value||'').trim();
   const sev   = getSelPills('sevPills')[0]||'';
@@ -2447,7 +2453,7 @@ function sosToRescue(id){
   };
   // 1보 작성 폼 열기 (openNewRescue와 동일 경로)
   curResId=null;
-  document.getElementById('topTitle').textContent='신규 구조 접수 (1보)';
+  document.getElementById('topTitle').textContent='신규 구조 접수 (최초접수)';
   document.getElementById('bnav').style.display='none';
   showV('v-report');renderPhaseBar(0,1);render1BoForm(prefill);
   try{_autoFillLoc(p.lat,p.lng);}catch(e){}     // 사고 장소 자동(가까운 표지판)
@@ -2474,7 +2480,7 @@ function sosToRescue(id){
 // 앱 자체 업데이트 (OTA · Capgo 자체호스팅) — APK 전용. 웹/PWA는 서비스워커가 자동 갱신.
 // 번들(www)의 새 버전을 ota.json으로 알리면, 설치된 앱이 받아서 그 자리에서 교체(재빌드 불필요).
 // ══════════════════════════════════════════
-const OTA_VER='2026.06.29.25';                         // ← 현재 번들 버전 (릴리스마다 올림 · build-ota.sh가 ota.json에 반영)
+const OTA_VER='2026.06.29.26';                         // ← 현재 번들 버전 (릴리스마다 올림 · build-ota.sh가 ota.json에 반영)
 const OTA_MANIFEST='https://109yoon.github.io/seoraksan/ota.json';
 let _otaInfo=null;
 function _otaPlugin(){try{return (window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.CapacitorUpdater)||null;}catch(e){return null;}}
