@@ -162,6 +162,23 @@ function _nearestSign(lat,lng){
   var dist=bestD<1000?Math.round(bestD)+'m':((bestD/1000).toFixed(1)+'km');
   return label+' 인근 '+dist;
 }
+// 지도의 '활성 지점'(십자선·좌표읽기·현위치 착지점)을 하단 탭바에 가려지지 않은
+// '보이는 영역의 중앙'으로 맞추기 위한 세로 오프셋(px). 지도는 화면 전체를 채우는데
+// 불투명 하단바(.bnav)가 아래를 덮으므로, div 정중앙은 시각적 중앙보다 그만큼 아래에 있음.
+// → 오프셋 = 보이는 바(하단바) 높이의 절반. CSS 변수(--map-voff)로 십자선도 함께 위로 올림.
+function _mapVOff(){
+  try{
+    const bn=document.getElementById('bnav');
+    const h=(bn&&getComputedStyle(bn).display!=='none')?bn.offsetHeight:0;
+    return h>0?Math.round(h/2):0;
+  }catch(e){return 0;}
+}
+function _applyMapVOff(){
+  const off=_mapVOff();
+  try{document.documentElement.style.setProperty('--map-voff',off+'px');}catch(e){}
+  window._mapVOff=off;
+  return off;
+}
 function initMaps(){
   function doInit(){
     if(mapR&&mapI)return; // Guard: don't recreate if already initialized
@@ -179,7 +196,7 @@ function initMaps(){
         const mapEl=document.getElementById('mapRescue');
         const h=mapEl.offsetHeight||mapEl.clientHeight;
         if(h>0){
-          const coord=mapR.getProjection().coordsFromContainerPoint(new kakao.maps.Point(mapEl.offsetWidth/2,h/2));
+          const coord=mapR.getProjection().coordsFromContainerPoint(new kakao.maps.Point(mapEl.offsetWidth/2,h/2-_mapVOff()));
           lat=coord.getLat();lng=coord.getLng();
         }else{
           const c=mapR.getCenter();lat=c.getLat();lng=c.getLng();
@@ -196,13 +213,14 @@ function initMaps(){
       }catch(e){}
     }
     kakao.maps.event.addListener(mapR,'center_changed',saveMapCenter);
+    window._saveMapCenter=saveMapCenter;
     saveMapCenter();
     function saveInspectCenter(){
       try{
         const mapEl=document.getElementById('mapInspect');
         const h=mapEl.offsetHeight||mapEl.clientHeight;
         if(h>0){
-          const coord=mapI.getProjection().coordsFromContainerPoint(new kakao.maps.Point(mapEl.offsetWidth/2,h/2));
+          const coord=mapI.getProjection().coordsFromContainerPoint(new kakao.maps.Point(mapEl.offsetWidth/2,h/2-_mapVOff()));
           window._lastInspectCrosshairCoord={lat:coord.getLat(),lng:coord.getLng()};
           const ci=document.getElementById('inspectCoords');
           if(ci)ci.textContent=coord.getLat().toFixed(5)+', '+coord.getLng().toFixed(5);
@@ -245,9 +263,12 @@ function rMaps(){
     const el=document.getElementById(id);
     if(el){el.style.width='100%';el.style.height='100%';}
   });
+  _applyMapVOff(); // 하단바 기준 활성지점 오프셋(십자선 위치) 갱신
   setTimeout(()=>{
     try{if(mapI){mapI.relayout();}}catch(e){}
     try{if(mapR){mapR.relayout();}}catch(e){}
+    _applyMapVOff();
+    try{if(typeof window._saveMapCenter==='function')window._saveMapCenter();}catch(e){}
   },150);
 }
 function toggleMapType(m){
@@ -262,11 +283,12 @@ function gpsTo(mode){
   navigator.geolocation.getCurrentPosition(p=>{
     const ll=new kakao.maps.LatLng(p.coords.latitude,p.coords.longitude);
     const m=mode==='inspect'?mapI:mapR;
-    m.setCenter(ll);m.setLevel(4);
-    // 하단 탭바 높이만큼 보정: GPS 점이 십자선 위치에 오도록 아래로 pan
-    const bnavEl=document.getElementById('bnav');
-    const bnavH=(bnavEl&&bnavEl.style.display!=='none')?bnavEl.offsetHeight:0;
-    if(bnavH>0){setTimeout(()=>{try{m.panBy(0,Math.round(bnavH/2));}catch(e){}},50);}
+    m.setLevel(4);
+    // GPS 점이 '보이는 중앙(십자선 위치)'에 오도록 중심을 오프셋만큼 아래로 잡아줌.
+    // (지도 중심은 div정중앙이고 십자선은 그보다 오프셋만큼 위 → 중심을 그만큼 남쪽으로 옮기면 GPS가 십자선에 옴)
+    const off=_mapVOff();
+    m.setCenter(ll);
+    if(off>0){try{const proj=m.getProjection();const pt=proj.containerPointFromCoords(ll);pt.y+=off;m.setCenter(proj.coordsFromContainerPoint(pt));}catch(e){}}
     if(myOv)myOv.setMap(null);
     const el=document.createElement('div');
     el.style.cssText='width:18px;height:18px;border-radius:50%;background:#4fa8d0;border:3px solid #fff;box-shadow:0 0 10px rgba(79,168,208,.8),0 2px 6px rgba(0,0,0,.5);';
@@ -275,7 +297,12 @@ function gpsTo(mode){
   },()=>toast('⚠️ GPS 실패. 위치 권한 확인'),{enableHighAccuracy:true,timeout:15000,maximumAge:10000});
 }
 function gpsFromMap(id,mode){
-  try{const m=mode==='inspect'?mapI:mapR;const c=m.getCenter();const lat=c.getLat(),lng=c.getLng();document.getElementById(id).value=lat.toFixed(5)+', '+lng.toFixed(5);toast('🗺️ 지도 중심 좌표');if(id==='hz_gps')_updateHazMiniMap(lat,lng);}
+  try{const m=mode==='inspect'?mapI:mapR;
+    const el=m.getNode&&m.getNode();const h=el?(el.offsetHeight||el.clientHeight):0;const off=_mapVOff();
+    let lat,lng;
+    if(h>0){const coord=m.getProjection().coordsFromContainerPoint(new kakao.maps.Point(el.offsetWidth/2,h/2-off));lat=coord.getLat();lng=coord.getLng();}
+    else{const c=m.getCenter();lat=c.getLat();lng=c.getLng();}
+    document.getElementById(id).value=lat.toFixed(5)+', '+lng.toFixed(5);toast('🗺️ 지도 중심 좌표(십자선)');if(id==='hz_gps')_updateHazMiniMap(lat,lng);}
   catch(e){toast('⚠️ 지도를 먼저 여세요');}
 }
 function gpsFromPhone(id){
