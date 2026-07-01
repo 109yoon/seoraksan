@@ -176,7 +176,9 @@ function _mapVOff(){
 function _applyMapVOff(){
   const off=_mapVOff();
   try{document.documentElement.style.setProperty('--map-voff',off+'px');}catch(e){}
-  window._mapVOff=off;
+  // 주의: window._mapVOff 같은 이름으로 저장하면 전역 함수 _mapVOff 를 숫자로 덮어써서
+  // 이후 _mapVOff() 호출이 TypeError → 좌표읽기 정지·내위치 먹통. 별도 이름 사용.
+  window._mapVOffPx=off;
   return off;
 }
 function initMaps(){
@@ -195,12 +197,10 @@ function initMaps(){
         var lat,lng;
         const mapEl=document.getElementById('mapRescue');
         const h=mapEl.offsetHeight||mapEl.clientHeight;
-        if(h>0){
-          const coord=mapR.getProjection().coordsFromContainerPoint(new kakao.maps.Point(mapEl.offsetWidth/2,h/2-_mapVOff()));
-          lat=coord.getLat();lng=coord.getLng();
-        }else{
-          const c=mapR.getCenter();lat=c.getLat();lng=c.getLng();
-        }
+        var coord=null;
+        if(h>0){try{coord=mapR.getProjection().coordsFromContainerPoint(new kakao.maps.Point(mapEl.offsetWidth/2,h/2-_mapVOff()));}catch(e){coord=null;}}
+        if(coord){lat=coord.getLat();lng=coord.getLng();}
+        else{const c=mapR.getCenter();lat=c.getLat();lng=c.getLng();}
         window._lastCrosshairCoord={lat,lng};
         const cd=document.getElementById('rescueCoords');
         if(cd)cd.innerHTML=lat.toFixed(5)+', '+lng.toFixed(5);

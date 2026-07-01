@@ -1,1 +1,1 @@
-{"version":"2026.06.29.36","url":"https://109yoon.github.io/seoraksan/bundle.zip","notes":"지도 중심 보정: 십자선·좌표·현위치를 하단바 뺀 실제 보이는 중앙으로 통일(panBy hack 제거)"}
+{"version":"2026.06.29.37","url":"https://109yoon.github.io/seoraksan/bundle.zip","notes":"버그픽스: _mapVOff 전역 함수가 숫자로 덮여 좌표읽기 정지·내위치 먹통 → 이름 충돌 제거+폴백"}
