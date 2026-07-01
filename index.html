@@ -288,7 +288,7 @@ if(window.Kakao&&!Kakao.isInitialized()) Kakao.init(KAKAO_KEY);
   <div class="mapwrap">
     <div id="mapRescue" class="kakaomap"></div>
     <!-- 십자선 조준점 -->
-    <div id="rescueCross" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:8;pointer-events:none;opacity:.6;">
+    <div id="rescueCross" style="position:absolute;top:calc(50% - var(--map-voff, 0px));left:50%;transform:translate(-50%,-50%);z-index:8;pointer-events:none;opacity:.6;">
       <div style="position:relative;width:34px;height:34px;">
         <div style="position:absolute;left:50%;top:0;height:calc(50% - 6px);width:1.5px;background:rgba(255,255,255,.85);transform:translateX(-50%);box-shadow:0 0 2px rgba(0,0,0,.7);"></div>
         <div style="position:absolute;left:50%;top:calc(50% + 6px);bottom:0;width:1.5px;background:rgba(255,255,255,.85);transform:translateX(-50%);box-shadow:0 0 2px rgba(0,0,0,.7);"></div>
@@ -412,7 +412,7 @@ if(window.Kakao&&!Kakao.isInitialized()) Kakao.init(KAKAO_KEY);
   <div class="mapwrap">
     <div id="mapInspect" class="kakaomap"></div>
     <!-- 십자선 조준점 -->
-    <div id="inspectCross" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:8;pointer-events:none;opacity:.6;">
+    <div id="inspectCross" style="position:absolute;top:calc(50% - var(--map-voff, 0px));left:50%;transform:translate(-50%,-50%);z-index:8;pointer-events:none;opacity:.6;">
       <div style="position:relative;width:34px;height:34px;">
         <div style="position:absolute;left:50%;top:0;height:calc(50% - 6px);width:1.5px;background:rgba(255,255,255,.85);transform:translateX(-50%);box-shadow:0 0 2px rgba(0,0,0,.7);"></div>
         <div style="position:absolute;left:50%;top:calc(50% + 6px);bottom:0;width:1.5px;background:rgba(255,255,255,.85);transform:translateX(-50%);box-shadow:0 0 2px rgba(0,0,0,.7);"></div>
