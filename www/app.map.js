@@ -1353,6 +1353,33 @@ function selHasComp(val){
   document.querySelectorAll('#hasCompBtns .tog-btn').forEach(b=>b.classList.toggle('on',b.dataset.val===val));
   document.getElementById('companionWrap').style.display=val==='y'?'block':'none';
 }
+// 성별 버튼 (select → 버튼식)
+function selGender(v){
+  document.getElementById('r_vGender').value=v;
+  document.querySelectorAll('#genderBtns .tog-btn').forEach(b=>b.classList.toggle('on',b.dataset.val===v));
+  autoGenTitle();
+}
+// 내/외국인 버튼 (select → 버튼식) — 외국인 선택 시 국적칸 노출
+function selNation(v){
+  document.getElementById('r_vNat').value=v;
+  document.querySelectorAll('#nationBtns .tog-btn').forEach(b=>b.classList.toggle('on',b.dataset.val===v));
+  const w=document.getElementById('r_vNatWrap_extra');if(w)w.style.display=v==='외국인'?'block':'none';
+  autoGenTitle();
+}
+// 신고자-사고자 관계 (같은 버튼 다시 누르면 해제) — '동반자' 선택 시 동반자1 정보 자동 채움(빈칸일 때만)
+function selRepRel(v){
+  const h=document.getElementById('r_repRel');if(!h)return;
+  const nv=h.value===v?'':v;
+  h.value=nv;
+  document.querySelectorAll('#repRelBtns .tog-btn').forEach(b=>b.classList.toggle('on',b.dataset.val===nv));
+  if(nv==='동반자'){
+    try{
+      const comps=(typeof getCompanions==='function')?getCompanions():[];
+      const n=document.getElementById('r_repName'),t=document.getElementById('r_repTel');
+      if(comps.length&&n&&!n.value.trim()){n.value=comps[0].name||'';if(t&&!t.value.trim())t.value=comps[0].tel||'';toast('👥 동반자 1 정보 자동 입력');}
+    }catch(e){}
+  }
+}
 
 // 부상 현황
 let _injuries=[];

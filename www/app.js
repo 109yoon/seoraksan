@@ -2451,6 +2451,13 @@ function _linkedSosPing(r){
   const p=(_sosPings||[]).find(x=>x.id===r.sosId);
   return (p&&p.lat&&p.lng)?p:null;
 }
+// 사고 종료 시 연계된 SOS 링크(토큰)도 함께 비활성화 — 종료된 사고의 실시간 추적 잔존 방지
+function _closeLinkedSos(r){
+  if(!r||!r.sosId)return;
+  try{if(_fdb)_fdb.collection('sos').doc(r.sosId).set({active:false,closedAt:Date.now()},{merge:true}).catch(()=>{});}catch(e){}
+  _sosPings=(_sosPings||[]).filter(x=>x.id!==r.sosId);
+  try{_drawSosPins();_updateSosFab();}catch(e){}
+}
 // 사고자 실시간 위치를 최초접수 좌표로 '채택'(수동) — r.lat/lng 갱신 + 변경 이력 기록. 최초접수는 원본 보존(origLat/origLng)
 function adoptSosLoc(resId){
   const res=DB.g('rescues')||[];const i=res.findIndex(x=>String(x.id)===String(resId));if(i<0)return;
@@ -2499,7 +2506,7 @@ function sosToRescue(id){
   curResId=null;
   document.getElementById('topTitle').textContent='신규 구조 접수 (최초접수)';
   document.getElementById('bnav').style.display='none';
-  showV('v-report');renderPhaseBar(0,1);render1BoForm(prefill);
+  showV('v-report');render1BoForm(prefill);
   try{_autoFillLoc(p.lat,p.lng);}catch(e){}     // 사고 장소 자동(가까운 표지판)
   setTimeout(function(){
     const t=document.getElementById('r_title');if(!t)return;
@@ -2524,7 +2531,7 @@ function sosToRescue(id){
 // 앱 자체 업데이트 (OTA · Capgo 자체호스팅) — APK 전용. 웹/PWA는 서비스워커가 자동 갱신.
 // 번들(www)의 새 버전을 ota.json으로 알리면, 설치된 앱이 받아서 그 자리에서 교체(재빌드 불필요).
 // ══════════════════════════════════════════
-const OTA_VER='2026.06.29.37';                         // ← 현재 번들 버전 (릴리스마다 올림 · build-ota.sh가 ota.json에 반영)
+const OTA_VER='2026.06.29.38';                         // ← 현재 번들 버전 (릴리스마다 올림 · build-ota.sh가 ota.json에 반영)
 const OTA_MANIFEST='https://109yoon.github.io/seoraksan/ota.json';
 let _otaInfo=null;
 function _otaPlugin(){try{return (window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.CapacitorUpdater)||null;}catch(e){return null;}}

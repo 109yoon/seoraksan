@@ -30,7 +30,7 @@ function openNewRescue(){
   }
   document.getElementById('topTitle').textContent='신규 구조 접수 (최초접수)';
   document.getElementById('bnav').style.display='none';
-  showV('v-report');renderPhaseBar(0,1);render1BoForm(gpsPre);
+  showV('v-report');render1BoForm(gpsPre);
   if(gpsPre&&gpsPre.lat)_autoFillLoc(gpsPre.lat,gpsPre.lng);
   setTimeout(_maybeOfferDraftRestore,300); // 임시저장 복구 제안
 }
@@ -41,7 +41,6 @@ function addPhase(){
   document.getElementById('topTitle').textContent=r.title+' (추가 보고)';
   document.getElementById('bnav').style.display='none';
   showV('v-report');closeDB();
-  renderPhaseBar(phaseNum,phaseNum+1);
   // 이전 보 데이터: 이전 보고가 있으면 그것, 없으면 1보(r)
   const prevReport=r.reports&&r.reports.length>0?r.reports[r.reports.length-1]:null;
   // prefill: 1보 기본 정보 + 이전 보 변경사항 합쳐서
@@ -84,6 +83,10 @@ function submitNBoFromForm(){
     vGender: document.getElementById('r_vGender')?.value||res[idx].vGender,
     vBirth: document.getElementById('r_vBirth')?.value||res[idx].vBirth||'',
     vAddr: document.getElementById('r_vAddr')?.value||res[idx].vAddr||'',
+    hasRep: document.getElementById('r_hasRep')?.value||res[idx].hasRep||'n',
+    repName: document.getElementById('r_repName')?.value||res[idx].repName||'',
+    repTel: document.getElementById('r_repTel')?.value||res[idx].repTel||'',
+    repRel: document.getElementById('r_repRel')?.value||res[idx].repRel||'',
     vDisease: document.getElementById('r_vDis')?.value||res[idx].vDisease||'',
     vAllergy: document.getElementById('r_vAll')?.value||res[idx].vAllergy||'',
     vMeds: document.getElementById('r_vMed')?.value||res[idx].vMeds||'',
@@ -119,17 +122,39 @@ function submitNBoFromForm(){
   const _BLANK2=['','-','미정','해당없음','알수없음','없음','미상','모르겠음'];
   const _cv=v=>Array.isArray(v)?v.filter(Boolean).join(', '):(v==null?'':String(v).trim());
   const changes=[];
-  [['사고유형','type'],['중증도','severity'],['위치','location'],['장소구분','loctype'],['사고자','vName'],['전화','vTel'],['성별','vGender'],['부상부위','injuryParts'],['부상유형','injuryTypes'],['원인','cause'],['구조방법','rescueMethod'],['음주','alcohol'],['병원후송','hospital']].forEach(([label,key])=>{
+  // 정형 항목 전수 비교 — 새 값이 있고 전보와 다르면 전부 '변경 이력'에 기재 ('상태 유지' 뭉뚱그림 없음)
+  [['사고유형','type'],['중증도','severity'],['위치','location'],['장소구분','loctype'],
+   ['사고자','vName'],['전화','vTel'],['성별','vGender'],['내외국인','vNation'],['국적','vNationality'],
+   ['생년월일','vBirth'],['거주지','vAddr'],['기저질환','vDisease'],['알레르기','vAllergy'],['복용약','vMeds'],
+   ['신고자','repName'],['신고자 연락처','repTel'],['신고자 관계','repRel'],
+   ['부상부위','injuryParts'],['부상유형','injuryTypes'],['원인','cause'],['구조방법','rescueMethod'],
+   ['음주','alcohol'],['음주량','alcAmount'],['병원후송','hospital'],['기상','weather'],['동원장비','equipment'],['119공조','r119']].forEach(([label,key])=>{
     const a=_cv(prev[key]),b=_cv(phaseData[key]);
     if(!b||_BLANK2.includes(b))return;          // 새 값이 비면 '이어받기'라 변경 아님
     if(a===b)return;                             // 동일 → 변경 아님
     changes.push({label,from:_BLANK2.includes(a)?'(없음)':a,to:b});
   });
+  // 명단형 항목(동반자·추가 사고자) — 이름 목록으로 비교
+  const _nameList=v=>(Array.isArray(v)?v.map(x=>x&&(x.name||'')).filter(Boolean).join(', '):'');
+  [['동반자','companions'],['추가 사고자','victims2']].forEach(([label,key])=>{
+    const a=_nameList(prev[key]),b=_nameList(phaseData[key]);
+    if(!b||a===b)return;
+    changes.push({label,from:a||'(없음)',to:b});
+  });
+  // 활력징후 변경도 기록 (추이 파악용)
+  try{
+    const pv=prev.vitals||{},nv=phaseData.vitals||{};
+    [['맥박','hr'],['SpO₂','spo2'],['체온','temp'],['의식','avpu'],['혈압','bp']].forEach(([label,k])=>{
+      const a=String(pv[k]||'').trim(),b=String(nv[k]||'').trim();
+      if(!b||a===b)return;
+      changes.push({label:'활력·'+label,from:a||'(없음)',to:b});
+    });
+  }catch(e){}
   phaseData.changes=changes;
   const diffs=changes.map(c=>`${c.label} ${c.from}→${c.to}`);
   if(phaseData.situation&&phaseData.situation!==prev.situation)diffs.push('경위 갱신');
   if(_ttInlineEntries.length)diffs.push(`타임라인 ${_ttInlineEntries.length}건 추가`);
-  phaseData.update=diffs.join(' · ')||'상태 유지';
+  phaseData.update=diffs.join(' · ');   // 변경 없으면 빈값 — '상태 유지' 같은 뭉뚱그린 문구 사용 안 함
   // 타임라인 저장
   if(_ttInlineEntries.length){
     if(!res[idx].timetable)res[idx].timetable=[];
@@ -143,7 +168,7 @@ function submitNBoFromForm(){
   const phaseNum=res[idx].reports.length;
   pushNoti(`📋 추가 보고: ${res[idx].title}`,'📋','rescue_update',{app:'rescue',tab:2,id:res[idx].id});
   toast('✅ 추가 보고 저장 완료');
-  renderPhaseBar(phaseNum-1,phaseNum);
+  try{document.getElementById('phaseBar').innerHTML='';}catch(e){}
   renderTimeline(res[idx],'brief');
 }
 function viewFullPrev(){
@@ -1279,7 +1304,8 @@ function renderTimeline(r,viewMode,outId){
     const _vLine=[_ok(r.vName)?_esc(r.vName):'미상',_vAge,_ok(r.vGender)&&r.vGender!=='알수없음'?_esc(r.vGender):'',_ok(r.vNation)&&r.vNation==='외국인'?'외국인':'',_ok(r.vTel)?_esc(r.vTel):''].filter(Boolean).join(' · ');
     let personSect=`<div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;"><span style="font-size:10px;color:#4a7090;font-weight:700;min-width:40px;">사고자</span><span style="font-size:12px;color:#e0edf8;font-weight:600;">${_vLine}</span>${_ok(r.vTel)?_telBtnsHtml(r.vTel,r.id):''}${(r.victims2&&r.victims2.length)?`<span style="font-size:10px;color:#e9897e;font-weight:700;">외 ${r.victims2.length}명</span>`:''}</div>`;
     if(r.victims2&&r.victims2.length)personSect+=`<div style="font-size:11px;color:#b8d4e8;margin-top:4px;">${r.victims2.map(v=>[_esc(v.name||'미상'),v.age?_esc(v.age)+'세':'',v.gender&&v.gender!=='알수없음'?_esc(v.gender):''].filter(Boolean).join(' ')).join(', ')}</div>`;
-    if(_ok(r.repName)||_ok(r.repTel))personSect+=`<div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-top:6px;"><span style="font-size:10px;color:#4a7090;font-weight:700;min-width:40px;">신고자</span><span style="font-size:12px;color:#cfe2f2;">${[_ok(r.repName)?_esc(r.repName):'',_ok(r.repTel)?_esc(r.repTel):''].filter(Boolean).join(' · ')}</span>${_ok(r.repTel)?_telBtnsHtml(r.repTel,r.id):''}</div>`;
+    if(_ok(r.repName)||_ok(r.repTel))personSect+=`<div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-top:6px;"><span style="font-size:10px;color:#4a7090;font-weight:700;min-width:40px;">신고자</span><span style="font-size:12px;color:#cfe2f2;">${[_ok(r.repName)?_esc(r.repName):'',_ok(r.repTel)?_esc(r.repTel):''].filter(Boolean).join(' · ')}</span>${_ok(r.repRel)?`<span style="font-size:10px;color:#e8b34a;background:rgba(232,179,74,.1);border:1px solid rgba(232,179,74,.3);border-radius:5px;padding:1px 6px;font-weight:700;">${_esc(r.repRel)}</span>`:''}${_ok(r.repTel)?_telBtnsHtml(r.repTel,r.id):''}</div>`;
+    if(r.companions&&r.companions.length)personSect+=`<div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-top:6px;"><span style="font-size:10px;color:#4a7090;font-weight:700;min-width:40px;">동반자</span><span style="font-size:12px;color:#cfe2f2;">${r.companions.map(c=>_esc((c.name||'미상')+(c.tel?' '+c.tel:''))).join(', ')}</span></div>`;
     if(typeof _sosLiveLineHtml==='function'){const _sl=_sosLiveLineHtml(r);if(_sl)personSect+='<div style="margin-top:6px;">'+_sl+'</div>';}
     const recvSect=_ok(r.reception)?`<div><span style="font-size:10px;color:#4a7090;font-weight:700;">📝 접수내용</span><div style="font-size:12px;color:#cfe2f2;line-height:1.55;margin-top:2px;">${_esc(r.reception)}</div></div>`:'';
     // 나머지(컴팩트)
@@ -1782,6 +1808,7 @@ function endSit(){
   const res=DB.g('rescues')||[];const idx=res.findIndex(x=>x.id===selResId);if(idx===-1)return;
   if(!confirm('상황을 종료 처리하겠습니까?'))return;
   res[idx].status='done';DB.s('rescues',res);
+  try{if(typeof _closeLinkedSos==='function')_closeLinkedSos(res[idx]);}catch(e){} // 연계 SOS 링크도 종료
   pushNoti(`✅ 종료: ${res[idx].title}`,'✅','rescue_close',{app:'rescue',tab:2,id:res[idx].id});
   try{renderRescueMap();}catch(e){}try{renderResList();}catch(e){}closeDB();toast('✅ 상황 종료');updateSummary();
   // 타임라인 뷰에 있으면 갱신
@@ -1880,6 +1907,8 @@ function render1BoForm(prefill=null){
   const isNbo=prefill!==null&&!!prefill._phaseNum;
   const p=prefill||{};
   const w=document.getElementById('repContent');
+  // 상단 '1보' phase 바 제거 — 자리만 차지. 섹터 탭이 최상단 고정으로 대체
+  try{document.getElementById('phaseBar').innerHTML='';}catch(e){}
 
   const tabs=[
     {id:'repSec1', icon:'📍', label:'위치·기상'},
@@ -1889,42 +1918,20 @@ function render1BoForm(prefill=null){
   ];
 
   const _offHrs=_isOffHours();
-  const _mobilizeHtml=(!isNbo)?`<div id="mobilizeWrap" style="background:${_offHrs?'rgba(231,76,60,.1)':'rgba(79,168,208,.06)'};border-bottom:1px solid ${_offHrs?'rgba(231,76,60,.3)':'rgba(79,168,208,.18)'};padding:10px 13px;flex-shrink:0;">
-      <div style="font-size:11px;color:${_offHrs?'#e74c3c':'#4fa8d0'};font-weight:700;margin-bottom:6px;">${_offHrs?'🌙 야간 출동(18~09시) — 응소 여부 선택 (확인 필요)':'🚨 응소 여부 선택 (해당 시 선택)'}</div>
-      <div class="pills" id="mobilizePills">
-        ${['특구대','재난과','전직원응소'].map(o=>`<div class="pill${(p.mobilize||[]).includes(o)?' on':''}" onclick="tPill(this)">${o}</div>`).join('')}
-      </div>
-    </div>`:'';
 
   w.innerHTML=`
-    ${isNbo?`<div id="nboBanner" style="background:rgba(79,168,208,.1);border:1px solid rgba(79,168,208,.25);border-radius:0;padding:9px 13px;font-size:11px;color:#4fa8d0;display:flex;align-items:center;justify-content:space-between;">
-      <span>📋 <b>${p._phaseNum||2}보 작성중</b> — 변경사항만 수정</span>
-      <button onclick="history.back()" style="background:rgba(255,255,255,.07);color:#c0d8ec;border:none;padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;">✕</button>
-    </div>`:''}
-
-    ${_mobilizeHtml}
-
-    <!-- AI 출동지령서 스캔 버튼 -->
-    <div style="padding:9px 12px;background:#06101e;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;">
-      <label style="display:flex;align-items:center;gap:9px;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.3);border-radius:10px;padding:10px 13px;cursor:pointer;touch-action:manipulation;">
-        <span style="font-size:18px;">📷</span>
-        <div style="flex:1;">
-          <div style="font-size:12px;font-weight:700;color:#c4b5fd;">AI 출동지령서 스캔</div>
-          <div style="font-size:10px;color:#7a6a9a;margin-top:1px;">사진 촬영 또는 선택 → 자동 입력</div>
-        </div>
-        <div id="aiScanSpinner" style="display:none;width:18px;height:18px;border:2px solid rgba(139,92,246,.3);border-top-color:#c4b5fd;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;"></div>
-        <input type="file" accept="image/*" style="display:none;" onchange="aiScanDispatch(this)">
-      </label>
-      <div id="aiScanStatus" style="display:none;font-size:10px;color:#7a9cb8;margin-top:6px;padding:0 4px;line-height:1.6;"></div>
-    </div>
-
-    <div style="display:flex;background:#040a16;border-bottom:1px solid rgba(255,255,255,.06);overflow-x:auto;scrollbar-width:none;flex-shrink:0;">
+    <!-- 섹터 탭 — 최상단 고정(sticky). 스크롤해도 4개 섹터 전환이 항상 보임 -->
+    <div style="position:sticky;top:-12px;margin:-12px -12px 0;z-index:6;display:flex;background:#040a16;border-bottom:1px solid rgba(255,255,255,.06);overflow-x:auto;scrollbar-width:none;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.45);">
       ${tabs.map((t,i)=>`<div class="rep-tab${i===0?' rep-tab-on':''}" onclick="switchRepTab('${t.id}',this)"
         style="flex:1;min-width:52px;padding:8px 3px;text-align:center;font-size:10px;cursor:pointer;
         border-bottom:2px solid ${i===0?'#4fa8d0':'transparent'};
         color:${i===0?'#4fa8d0':'rgba(255,255,255,.3)'};white-space:nowrap;">
         ${t.icon}<br>${t.label}</div>`).join('')}
     </div>
+    ${isNbo?`<div id="nboBanner" style="background:rgba(79,168,208,.1);border:1px solid rgba(79,168,208,.25);border-radius:0;margin:0 -12px;padding:9px 13px;font-size:11px;color:#4fa8d0;display:flex;align-items:center;justify-content:space-between;">
+      <span>📋 <b>${p._phaseNum||2}보 작성중</b> — 변경사항만 수정</span>
+      <button onclick="history.back()" style="background:rgba(255,255,255,.07);color:#c0d8ec;border:none;padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;">✕</button>
+    </div>`:''}
 
     <!-- ══ 섹터0: 고도화 타임라인 ══ -->
     <div id="repSec0" class="rep-sec" style="display:none;padding:12px;overflow-y:auto;">
@@ -1935,6 +1942,19 @@ function render1BoForm(prefill=null){
 
     <!-- ══ 섹터1: 위치·기상 ══ -->
     <div id="repSec1" class="rep-sec" style="padding:12px;overflow-y:auto;">
+      <!-- AI 출동지령서 스캔 (상단 고정칸에서 섹터1 안으로 이동 — 화면 낭비 제거) -->
+      <div style="margin-bottom:10px;">
+        <label style="display:flex;align-items:center;gap:9px;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.3);border-radius:10px;padding:10px 13px;cursor:pointer;touch-action:manipulation;">
+          <span style="font-size:18px;">📷</span>
+          <div style="flex:1;">
+            <div style="font-size:12px;font-weight:700;color:#c4b5fd;">AI 출동지령서 스캔</div>
+            <div style="font-size:10px;color:#7a6a9a;margin-top:1px;">사진 촬영 또는 선택 → 자동 입력</div>
+          </div>
+          <div id="aiScanSpinner" style="display:none;width:18px;height:18px;border:2px solid rgba(139,92,246,.3);border-top-color:#c4b5fd;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;"></div>
+          <input type="file" accept="image/*" style="display:none;" onchange="aiScanDispatch(this)">
+        </label>
+        <div id="aiScanStatus" style="display:none;font-size:10px;color:#7a9cb8;margin-top:6px;padding:0 4px;line-height:1.6;"></div>
+      </div>
       <div class="rsec"><div class="rsec-t">🚨 사고 유형</div>
         <div class="pills" id="typePills">
           ${['안전사고','조난','고립','실종','낙석','위험수목','화재','기타'].map(o=>`<div class="pill${(p.type||'안전사고')===o?' on':''}" onclick="selAccType('${o}')">${o}</div>`).join('')}
@@ -2107,16 +2127,21 @@ function render1BoForm(prefill=null){
           <div class="fg"><span class="fl">성명</span><input type="text" id="r_vName" class="fi" value="${p.vName||''}"></div>
           <div class="fg"><span class="fl">연락처</span><input type="tel" id="r_vTel" class="fi" value="${p.vTel||''}"></div>
         </div>
-        <div class="frow">
-          <div class="fg"><span class="fl">내/외국인</span>
-            <select id="r_vNat" class="fsel" onchange="chkNation(this)">${['내국인','외국인','알수없음'].map(o=>`<option${p.vNation===o?' selected':''}>${o}</option>`).join('')}</select>
+        ${isNbo&&p.vTel?`<div style="margin:-2px 0 8px;">${(typeof _telBtnsHtml==='function')?_telBtnsHtml(p.vTel,curResId):''}</div>`:''}
+        <div class="fg"><span class="fl">성별</span>
+          <div style="display:flex;gap:6px;" id="genderBtns">
+            ${['남','여','알수없음'].map(o=>`<button class="tog-btn${(p.vGender||'알수없음')===o?' on':''}" data-val="${o}" style="flex:1;" onclick="selGender('${o}')">${o==='남'?'👨 남':o==='여'?'👩 여':'알수없음'}</button>`).join('')}
           </div>
-          <div id="r_vNatWrap_extra" style="display:${p.vNation==='외국인'?'block':'none'};" class="fg">
-            <span class="fl">국적</span><input type="text" id="r_vNationality" class="fi" placeholder="예: 미국, 중국" value="${p.vNationality||''}">
+          <input type="hidden" id="r_vGender" value="${p.vGender||'알수없음'}">
+        </div>
+        <div class="fg"><span class="fl">내/외국인</span>
+          <div style="display:flex;gap:6px;" id="nationBtns">
+            ${['내국인','외국인','알수없음'].map(o=>`<button class="tog-btn${(p.vNation||'알수없음')===o?' on':''}" data-val="${o}" style="flex:1;" onclick="selNation('${o}')">${o==='내국인'?'🇰🇷 내국인':o==='외국인'?'🌏 외국인':'알수없음'}</button>`).join('')}
           </div>
-          <div class="fg"><span class="fl">성별</span>
-            <select id="r_vGender" class="fsel" onchange="autoGenTitle()">${['알수없음','남','여'].map(o=>`<option${(p.vGender||'알수없음')===o?' selected':''}>${o}</option>`).join('')}</select>
-          </div>
+          <input type="hidden" id="r_vNat" value="${p.vNation||'알수없음'}">
+        </div>
+        <div id="r_vNatWrap_extra" style="display:${p.vNation==='외국인'?'block':'none'};" class="fg">
+          <span class="fl">국적</span><input type="text" id="r_vNationality" class="fi" placeholder="예: 미국, 중국" value="${p.vNationality||''}">
         </div>
         <div class="frow">
           <div class="fg"><span class="fl">생년월일</span><input type="text" inputmode="numeric" id="r_vBirth" class="fi" placeholder="19901231" maxlength="10" value="${p.vBirth||''}" oninput="_fmtBirth(this)"></div>
@@ -2139,10 +2164,17 @@ function render1BoForm(prefill=null){
           <input type="hidden" id="r_hasRep" value="${p.hasRep||'n'}">
         </div>
         <div id="reporterWrap" style="display:${p.hasRep==='y'?'block':'none'};">
+          <div class="fg"><span class="fl">사고자와의 관계 <span style="font-size:9px;color:#7a9cb8;font-weight:400;">(동반자 선택 시 동반자1 정보 자동 입력)</span></span>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;" id="repRelBtns">
+              ${['동반자','가족','일행','목격자','본인','기타'].map(o=>`<button class="tog-btn${p.repRel===o?' on':''}" data-val="${o}" onclick="selRepRel('${o}')" style="padding:7px 12px;min-height:34px;font-size:11px;">${o}</button>`).join('')}
+            </div>
+            <input type="hidden" id="r_repRel" value="${p.repRel||''}">
+          </div>
           <div class="frow">
             <div class="fg"><span class="fl">성명</span><input type="text" id="r_repName" class="fi" value="${p.repName||''}"></div>
             <div class="fg"><span class="fl">연락처</span><input type="tel" id="r_repTel" class="fi" value="${p.repTel||''}"></div>
           </div>
+          ${isNbo&&p.repTel?`<div style="margin:-2px 0 8px;">${(typeof _telBtnsHtml==='function')?_telBtnsHtml(p.repTel,curResId):''}</div>`:''}
         </div>
       </div>
       <div class="rsec"><div class="rsec-t">👥 동반자</div>
@@ -2190,6 +2222,12 @@ function render1BoForm(prefill=null){
           <textarea id="r_extra" class="fta" rows="3">${p.extra||''}</textarea>
         </div>
       </div>
+      ${!isNbo?`<div class="rsec" style="margin-top:12px;border:1px solid ${_offHrs?'rgba(231,76,60,.3)':'rgba(79,168,208,.18)'};border-radius:10px;background:${_offHrs?'rgba(231,76,60,.08)':'rgba(79,168,208,.05)'};padding:10px 12px;">
+        <div class="rsec-t" style="color:${_offHrs?'#e74c3c':'#4fa8d0'};">${_offHrs?'🌙 야간 출동(18~09시) — 응소 여부 선택':'🚨 응소 여부 (해당 시 선택)'}</div>
+        <div class="pills" id="mobilizePills">
+          ${['특구대','재난과','전직원응소'].map(o=>`<div class="pill${(p.mobilize||[]).includes(o)?' on':''}" onclick="tPill(this)">${o}</div>`).join('')}
+        </div>
+      </div>`:''}
     </div>
   `;
 
@@ -2327,6 +2365,7 @@ function submit1Bo(){
     hasRep:document.getElementById('r_hasRep')?.value||'n',
     repName:document.getElementById('r_repName')?.value||'',
     repTel:document.getElementById('r_repTel')?.value||'',
+    repRel:document.getElementById('r_repRel')?.value||'',
     injuryPhoto:_photoUrl('prevInj'),
     transPhoto:_photoUrl('prevTrans'),
     timetable: sortTTByTime(_ttInlineEntries||[]),
