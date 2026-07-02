@@ -1,1 +1,1 @@
-{"version":"2026.06.29.37","url":"https://109yoon.github.io/seoraksan/bundle.zip","notes":"버그픽스: _mapVOff 전역 함수가 숫자로 덮여 좌표읽기 정지·내위치 먹통 → 이름 충돌 제거+폴백"}
+{"version":"2026.06.29.38","url":"https://109yoon.github.io/seoraksan/bundle.zip","notes":"폼 개편: 탭 상단고정·1보바 제거·성별/내외국인 버튼·신고자 관계·응소 이동, 추가보고 변경 전수기재, 종료시 SOS 링크 종료"}

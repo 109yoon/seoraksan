@@ -1724,7 +1724,7 @@ function admDelFac(id){
   _loadArchive('history').then(()=>{DB.s('history',(DB.g('history')||[]).filter(h=>h.facId!==id));});
   renderAdmCtrl();try{renderInspectMap();}catch(e){}toast('🗑️ 삭제');updateSummary();
 }
-function admEndRes(id){if(!isAdminUser()){toast('⚠️ 관리자만 가능');return;}const res=DB.g('rescues')||[];const i=res.findIndex(x=>x.id===id);if(i===-1)return;if(!confirm("'"+(res[i].title||'')+"' 상황을 종료 처리하겠습니까?"))return;res[i].status='done';DB.s('rescues',res);renderAdmCtrl();try{renderRescueMap();}catch(e){}try{renderResList();}catch(e){}toast('✅ 상황 종료');}
+function admEndRes(id){if(!isAdminUser()){toast('⚠️ 관리자만 가능');return;}const res=DB.g('rescues')||[];const i=res.findIndex(x=>x.id===id);if(i===-1)return;if(!confirm("'"+(res[i].title||'')+"' 상황을 종료 처리하겠습니까?"))return;res[i].status='done';DB.s('rescues',res);try{if(typeof _closeLinkedSos==='function')_closeLinkedSos(res[i]);}catch(e){}renderAdmCtrl();try{renderRescueMap();}catch(e){}try{renderResList();}catch(e){}toast('✅ 상황 종료');}
 function admDelRes(id){
   if(!isAdminUser()){toast('⚠️ 관리자만 가능');return;}
   const res=DB.g('rescues')||[];const r=res.find(x=>x.id===id);if(!r)return;
@@ -1739,12 +1739,13 @@ function admDelRes(id){
       if(!cur.some(x=>x.id===backup.id)){cur.push(backup);DB.s('rescues',cur);}
       renderAdmCtrl();try{renderRescueMap();}catch(e){}try{renderResList();}catch(e){}updateSummary();toast('↩ 삭제 취소됨');
     },
-    function(){ // 5초 후 실제 확정: 사진·댓글 영구 삭제
+    function(){ // 5초 후 실제 확정: 사진·댓글 영구 삭제 + 연계 SOS 링크 종료
       if(backup&&_fst){
         [backup.injuryPhoto,backup.transPhoto,...((backup.reports||[]).map(p=>p.photo)),...((backup.photos||[]).map(p=>p.url))]
           .filter(u=>u&&String(u).startsWith('http'))
           .forEach(u=>{try{_fst.refFromURL(u).delete().catch(()=>{});}catch(e){}});
       }
+      try{if(typeof _closeLinkedSos==='function')_closeLinkedSos(backup);}catch(e){}
       try{localStorage.removeItem('v7_comments_'+id);}catch(e){}
     });
 }
